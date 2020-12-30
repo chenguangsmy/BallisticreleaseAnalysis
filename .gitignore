@@ -1,0 +1,5 @@
+.DS_Store
+KingKongData/*
+rawdata/*
+DataAnalysis/forcedata/*
+matlab/*.mat
