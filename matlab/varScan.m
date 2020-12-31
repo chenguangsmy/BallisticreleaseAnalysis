@@ -10,9 +10,6 @@ classdef varScan < handle
     end
     
     methods
-        function this = importData(fname)
-
-        end
         
         function obj = varScan(fname) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
@@ -32,9 +29,11 @@ classdef varScan < handle
             obj.trials_num = max(TrialNo);
             obj.Data = Data;
             % execution functions 
-            trialTimeAverage(obj); % how to use class function?
-            taskStateMuskFig(obj);
-            taskJointPosition(obj);
+            % trialTimeAverage(obj); % how to use class function?
+            % taskStateMuskFig(obj);
+            % taskJointPosition(obj);
+            taskForceData(obj);
+            taskEndpointPosition(obj);
         end
         
         function trialTimeAverage(obj)
@@ -96,6 +95,29 @@ classdef varScan < handle
             ylabel(axish(2), 'joints velocities');
             xlabel(axish(2), 'time points');
             
+        end
+        
+        function taskForceData(obj)
+            figure();
+            force = obj.Data.Force.Sensor(1:3,:); 
+            plot(force');
+            ylabel('force (N)');
+            xlabel('time points');
+            legend('x', 'y', 'z'); % remember to alter the axis 
+            title('Force data before convert axis');
+        end
+            
+        function taskEndpointPosition(obj)
+            figure();
+            position = obj.Data.Position.Actual'; 
+            % Use first element as offset
+            position_offset = position(:,~isnan(position(1,:)));
+            position_offset = repmat(position_offset(:,1),1,size(position,2));
+            plot((position - position_offset)');  
+            ylabel('relative endpoint positions');
+            xlabel('time points');
+            legend('x', 'y', 'z');
+            title('relative positions');
         end
     end
     
