@@ -1,4 +1,4 @@
-classdef varScan < handle
+classdef sessionScan < handle
     %VARSCAN scanning some variables in the formatted data
     %   Detailed explanation goes here
 
@@ -7,11 +7,18 @@ classdef varScan < handle
         trials_num
         duration
         duration_avg
+        hand_pos        % position read from WAM endpoint
+        hand_pos_offset % the center_pos for WAM endpoint
+        force           % force in the force transducer
+        FTrot_M = ...   % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
+            [0          0           cosd(180)
+            cosd(135)   cosd(45)    0
+            cosd(45)    cosd(45)    0];
     end
     
     methods
         
-        function obj = varScan(fname) %(inputArg1,inputArg2)
+        function obj = sessionScan(fname) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
             %   Detailed explanation goes here
             file_name = 'KingKong.01545.mat'; % an examplary trial
@@ -28,12 +35,18 @@ classdef varScan < handle
             obj.duration = max(Time);
             obj.trials_num = max(TrialNo);
             obj.Data = Data;
+            obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
+            obj.hand_pos_offset = obj.hand_pos_offset(:,1); 
             % execution functions 
             % trialTimeAverage(obj); % how to use class function?
-            % taskStateMuskFig(obj);
-            % taskJointPosition(obj);
+
+            % processing 
+            forceFTconvert(obj);
+            % plots
             taskForceData(obj);
             taskEndpointPosition(obj);
+            % taskStateMuskFig(obj);
+            % taskJointPosition(obj);
         end
         
         function trialTimeAverage(obj)
@@ -41,8 +54,6 @@ classdef varScan < handle
             %   Detailed explanation goes here
             obj.duration_avg = obj.duration/double(obj.trials_num);
         end
-    % end
-    % methods (Static)
         function taskStateMuskFig(obj)
             % display task masks in y-axis, blue: suceed, red: failure
             fields_t = fieldnames(obj.Data.TaskStateMasks); 
@@ -78,7 +89,6 @@ classdef varScan < handle
             xlabel('time pts');
             title('states though time');
         end
-        
         function taskJointPosition(obj) % need further changing. 
             % plot 
             figure();
@@ -96,22 +106,25 @@ classdef varScan < handle
             xlabel(axish(2), 'time points');
             
         end
-        
         function taskForceData(obj)
             figure();
-            force = obj.Data.Force.Sensor(1:3,:); 
+            % force = obj.Data.Force.Sensor(1:3,:); 
+            force = obj.force;
             plot(force');
             ylabel('force (N)');
             xlabel('time points');
             legend('x', 'y', 'z'); % remember to alter the axis 
             title('Force data before convert axis');
         end
-            
+        function forceFTconvert(obj) % convert from select into world axis
+            obj.force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
+        end
         function taskEndpointPosition(obj)
             figure();
             position = obj.Data.Position.Actual'; 
             % Use first element as offset
-            position_offset = position(:,~isnan(position(1,:)));
+            % position_offset = position(:,~isnan(position(1,:)));
+            position_offset = obj.hand_pos_offset;
             position_offset = repmat(position_offset(:,1),1,size(position,2));
             plot((position - position_offset)');  
             ylabel('relative endpoint positions');
@@ -120,6 +133,6 @@ classdef varScan < handle
             title('relative positions');
         end
     end
-    
+
 end
 

@@ -12,6 +12,7 @@ ST_HLD = 5;
 ST_END = 6;
 ST_RST = 7;
 
+avoidVals.fth = 0.0220; % don't know why this value, but it is useless -cg
 % to be sure: the trial method
 trial_count = sum(diff(Data.TrialNo) ~= 0); 
 
@@ -25,9 +26,9 @@ idx_END = find([0 diff(Data.TaskStateCodes.Values)] ~= 0 & Data.TaskStateCodes.V
 idx_RST = find([0 diff(Data.TaskStateCodes.Values)] ~= 0 & Data.TaskStateCodes.Values(1:end) == ST_RST);
 
 % assign value in each trial
-for trial_i = 1:trial_count,
+for trial_i = 1:trial_count-1 % remove last trial in case of unfinished
     % display 
-    if mod(trial_i/trial_count*100,10) < 1,
+    if mod(trial_i/trial_count*100,10) < 1
         fprintf('%03d %% \n',floor(trial_i/trial_count*100));
     end
     trial_bgn = idx_BGN(trial_i);
@@ -46,8 +47,9 @@ for trial_i = 1:trial_count,
     targetl = sort(unique(Data.TaskJudging.Target(6, trial_bgn:trial_end)));    % target_r
     trial(trial_i).target = target(end); % choose bigger one
     trial(trial_i).targetl = targetl(end);
-    %               ForceThreshold
-    fth = unique(nonzeros(Data.TaskJudging.Target(4, trial_bgn:trial_end)));
+    %               ForceThreshold % why?
+    fth = unique(nonzeros(Data.TaskJudging.Target(4, trial_bgn:trial_end))); 
+    fth = setdiff(fth, avoidVals.fth);
     if isempty(fth), fth = nan; end 
     trial(trial_i).fth = fth;
     

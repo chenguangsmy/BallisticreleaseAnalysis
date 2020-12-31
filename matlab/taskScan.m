@@ -3,13 +3,15 @@ file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
 fname = 'KingKong.01545.mat';
 dst_file = [file_dir '/' fname(1:end-4) '_tf.mat'];
 load([file_dir '/' fname]);
-rot_M = ...% using x-right, y-front, z-up to represent x-backup, y-frontup, z-left
-    [0          0          -1
-    -sqrt(2)/2  sqrt(2)/2  0
-    sqrt(2)/2   sqrt(2)/2  0];
+
+rot_M = ... % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
+    [0          0           cosd(180)
+    cosd(135)   cosd(45)    0
+    cosd(45)    cosd(45)    0];
 
 Data.Force.Sensor(7:9,:) = rot_M*Data.Force.Sensor(1:3,:);
-save([file_dir '/' fname, 'r.mat'],'Data');
+save([file_dir '/' fname, 'r.mat'],'Data'); 
+% TODO: convert following function into a class member function -cg
 ballisticRelease_trialfy([file_dir '/' fname 'r.mat'], dst_file);
 
 load(dst_file);
@@ -30,8 +32,8 @@ disp(['tarl_all:    ' num2str(tarl_all')]);
 %% show sucess rate on each condition
 success_table = zeros(fth_num,tar_num);
 success_table_idx = cell(fth_num,tar_num);
-for ii = 1:fth_num, % force threshold
-    for jj = 1:tar_num, % target
+for ii = 1:fth_num % force threshold
+    for jj = 1:tar_num % target
         all_trials_num = sum([trial.fth] == fth_all(ii) & [trial.target] == tar_all(jj));
         fin_trials_num = sum([trial.fth] == fth_all(ii) & [trial.target] == tar_all(jj) & [trial.outcome] == 1);
         success_table(ii,jj) = fin_trials_num;
@@ -44,8 +46,8 @@ trial = ballisticRelease_aligntrials(trial, ST_MOV, 'min');
 
 %% show force on each condition
 f_h1 = figure;
-for ii = 1:fth_num, % force threshold
-   for jj = 1:tar_num, % target
+for ii = 1:fth_num % force threshold
+   for jj = 1:tar_num % target
         % plot force here
         ii = 1; jj = 1;
         
@@ -65,20 +67,20 @@ for ii = 1:fth_num, % force threshold
         %x_tick = [-50 0 50]' + x_ct;
         %x_ticklabel = cell(size(x_tick)); 
         x_tick = [-1 0 1]';
-            for tt = 1:length(x_tick), 
+            for tt = 1:length(x_tick) 
                 % x_ticklabel{tt,1} = num2str((x_tick(tt)-x_ct)*SAMPLE_T); 
             end
         xticks(x_tick); 
         %xticklabels(x_ticklabel);
-        if (1),% plot each line
-            for kk = 1:length(qtrials),
+        if (1)% plot each line
+            for kk = 1:length(qtrials)
                 x = qtrials(kk).time(1,:)-qtrials(kk).time(1,x_ct);
                 plot(x, qtrials(kk).force(7,:),'r');
                 plot(x, qtrials(kk).force(8,:),'g');
                 plot(x, qtrials(kk).force(9,:),'b');
                 plot(x, sqrt(qtrials(kk).force(7,:).^2+qtrials(kk).force(7,:).^2),'m');
             end
-        else, % plot mean
+        else % plot mean
             f_mat = [qtrials.force]; 
             f_matr = reshape(f_mat', size(qtrials(1).force,2), length(qtrials), size(qtrials(1).force,1));
             plot(mean(f_matr(:,:,7)'),'r');
@@ -93,8 +95,8 @@ suptitle('force with task');
 
 %% show trajectory on each condition
 f_h2 = figure;
-for ii = 1:fth_num, % force threshold
-    for jj = 1:tar_num, % target
+for ii = 1:fth_num % force threshold
+    for jj = 1:tar_num % target
         % plot force here
         subplot(fth_num,tar_num,(ii-1)*tar_num+jj);
         hold on;
@@ -110,17 +112,17 @@ for ii = 1:fth_num, % force threshold
         x_ct = length(qtrials(1).time)/2 + 1;
         x_tick = [-50 0 50]' + x_ct;
         x_ticklabel = cell(size(x_tick)); 
-            for tt = 1:length(x_tick), 
+            for tt = 1:length(x_tick) 
                 x_ticklabel{tt,1} = num2str((x_tick(tt)-x_ct)*SAMPLE_T); 
             end
         xticks(x_tick); xticklabels(x_ticklabel);
-        if (1),% plot each line
-            for kk = 1:length(qtrials),
+        if (1) % plot each line
+            for kk = 1:length(qtrials)
                 plot(qtrials(kk).positionAct(1,:),'r');
                 plot(qtrials(kk).positionAct(2,:),'g');
                 plot(qtrials(kk).positionAct(3,:),'b');
             end
-        else, % plot mean
+        else % plot mean
             p_mat = [qtrials.positionAct]; 
             p_matr = reshape(p_mat', size(qtrials(1).positionAct,2), length(qtrials), size(qtrials(1).positionAct,1));
             plot(mean(p_matr(:,:,1)'),'r');
@@ -133,8 +135,8 @@ suptitle('position with task');
 
 %% show velocity on each condition
 f_h3 = figure;
-for ii = 1:fth_num, % force threshold
-    for jj = 1:tar_num, % target
+for ii = 1:fth_num % force threshold
+    for jj = 1:tar_num % target
         % plot force here
         subplot(fth_num,tar_num,(ii-1)*tar_num+jj);
         hold on;
@@ -146,17 +148,17 @@ for ii = 1:fth_num, % force threshold
         x_ct = length(qtrials(1).time)/2 + 1;
         x_tick = [-50 0 50]' + x_ct;
         x_ticklabel = cell(size(x_tick)); 
-            for tt = 1:length(x_tick), 
+            for tt = 1:length(x_tick) 
                 x_ticklabel{tt,1} = num2str((x_tick(tt)-x_ct)*SAMPLE_T); 
             end
         xticks(x_tick); xticklabels(x_ticklabel);
-        if (1),% plot each line
-            for kk = 1:length(qtrials),
+        if (1)% plot each line
+            for kk = 1:length(qtrials)
                 plot(qtrials(kk).velocity(1,:),'r');
                 plot(qtrials(kk).velocity(2,:),'g');
                 % plot(qtrials(kk).velocity(3,:),'b');
             end
-        else, % plot mean
+        else % plot mean
             v_mat = [qtrials.velocity]; 
             v_matr = reshape(v_mat', size(qtrials(1).velocity,2), length(qtrials), size(qtrials(1).velocity,1));
             plot(mean(v_matr(:,:,1)'),'r');
