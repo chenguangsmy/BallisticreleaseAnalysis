@@ -12,16 +12,16 @@ classdef sessionScan < handle
         force           % force in the force transducer
         FTrot_M = ...   % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
             [0          0           cosd(180)
-            cosd(135)   cosd(45)    0
-            cosd(45)    cosd(45)    0];
+            cosd(75)    -sind(75)    0
+            sind(75)    cosd(75)    0];
     end
     
     methods
         
-        function obj = sessionScan(fname) %(inputArg1,inputArg2)
+        function obj = sessionScan(ss_num) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
             %   Detailed explanation goes here
-            file_name = 'KingKong.01545.mat'; % an examplary trial
+            file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
             file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
             fname0 = ([file_dir '/' file_name]);
             try 
@@ -44,9 +44,9 @@ classdef sessionScan < handle
             forceFTconvert(obj);
             % plots
             taskForceData(obj);
-            taskEndpointPosition(obj);
-            % taskStateMuskFig(obj);
-            % taskJointPosition(obj);
+            %taskEndpointPosition(obj);
+            %taskStateMuskFig(obj);
+            taskJointPosition(obj);
         end
         
         function trialTimeAverage(obj)
@@ -95,9 +95,32 @@ classdef sessionScan < handle
             axish(1) = subplot(2,1,1);
             % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
             plot(obj.Data.Position.JointPosition');
+            legend('J1', 'J2', 'J3', 'J4');
             axish(2) = subplot(2,1,2);
             % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
             plot(obj.Data.Position.JointVelocity');
+            legend('J1', 'J2', 'J3', 'J4');
+            % notation
+            %set(axish(1), 'Ylim', [-0.02 0.02]);
+            ylabel(axish(1), 'joints positions');
+            %set(axish(2), 'Ylim', [-0.3 0.3]);
+            ylabel(axish(2), 'joints velocities');
+            xlabel(axish(2), 'time points');
+            
+        end
+        function taskJointPosition_relateve(obj) % Plot relative position. 
+            % plot 
+            figure();
+            axish(1) = subplot(2,1,1);
+            % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
+            position_offset = obj.Data.Position.JointPosition(:,~isnan(obj.Data.Position.JointPosition(1,:)));
+            position_offset = repmat(position_offset(:,1),1,size(obj.Data.Position.JointPosition,2));
+            plot((obj.Data.Position.JointPosition - position_offset)');
+            legend('J1', 'J2', 'J3', 'J4');
+            axish(2) = subplot(2,1,2);
+            % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
+            plot(obj.Data.Position.JointVelocity');
+            legend('J1', 'J2', 'J3', 'J4');
             % notation
             %set(axish(1), 'Ylim', [-0.02 0.02]);
             ylabel(axish(1), 'joints positions');
@@ -119,7 +142,7 @@ classdef sessionScan < handle
         function forceFTconvert(obj) % convert from select into world axis
             obj.force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
         end
-        function taskEndpointPosition(obj)
+        function taskEndpointPosition_relative(obj)
             figure();
             position = obj.Data.Position.Actual'; 
             % Use first element as offset
@@ -130,7 +153,16 @@ classdef sessionScan < handle
             ylabel('relative endpoint positions');
             xlabel('time points');
             legend('x', 'y', 'z');
-            title('relative positions');
+            title('relative endpoint positions');
+        end
+        function taskEndpointPosition(obj)
+            figure();
+            position = obj.Data.Position.Actual'; 
+            plot((position)');  
+            ylabel('endpoint positions');
+            xlabel('time points');
+            legend('x', 'y', 'z');
+            title('relative endpoint positions');
         end
     end
 
