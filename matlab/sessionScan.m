@@ -12,8 +12,8 @@ classdef sessionScan < handle
         force           % force in the force transducer
         FTrot_M = ...   % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
             [0          0           cosd(180)
-            cosd(75)    -sind(75)    0
-            sind(75)    cosd(75)    0];
+            -sind(45)   cosd(45)    0
+            cosd(45)    sind(45)    0];
     end
     
     methods
@@ -44,9 +44,9 @@ classdef sessionScan < handle
             forceFTconvert(obj);
             % plots
             taskForceData(obj);
-            %taskEndpointPosition(obj);
+            taskEndpointPosition_relative(obj);
             %taskStateMuskFig(obj);
-            taskJointPosition(obj);
+            taskJointPosition_relateve(obj);
         end
         
         function trialTimeAverage(obj)
@@ -108,25 +108,25 @@ classdef sessionScan < handle
             xlabel(axish(2), 'time points');
             
         end
-        function taskJointPosition_relateve(obj) % Plot relative position. 
+        function axh = taskJointPosition_relateve(obj) % Plot relative position. 
             % plot 
             figure();
-            axish(1) = subplot(2,1,1);
+            axh(1) = subplot(2,1,1);
             % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
             position_offset = obj.Data.Position.JointPosition(:,~isnan(obj.Data.Position.JointPosition(1,:)));
             position_offset = repmat(position_offset(:,1),1,size(obj.Data.Position.JointPosition,2));
             plot((obj.Data.Position.JointPosition - position_offset)');
             legend('J1', 'J2', 'J3', 'J4');
-            axish(2) = subplot(2,1,2);
+            axh(2) = subplot(2,1,2);
             % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
             plot(obj.Data.Position.JointVelocity');
             legend('J1', 'J2', 'J3', 'J4');
             % notation
             %set(axish(1), 'Ylim', [-0.02 0.02]);
-            ylabel(axish(1), 'joints positions');
+            ylabel(axh(1), 'joints positions');
             %set(axish(2), 'Ylim', [-0.3 0.3]);
-            ylabel(axish(2), 'joints velocities');
-            xlabel(axish(2), 'time points');
+            ylabel(axh(2), 'joints velocities');
+            xlabel(axh(2), 'time points');
             
         end
         function taskForceData(obj)
@@ -163,6 +163,57 @@ classdef sessionScan < handle
             xlabel('time points');
             legend('x', 'y', 'z');
             title('relative endpoint positions');
+        end 
+        function axh = taskEPP_FToverlap_ns(obj) % overlapping endpoint position and FT in one axis, non-scale
+            figure(); hold on;
+            position = obj.Data.Position.Actual'; 
+            % Use first element as offset
+            % position_offset = position(:,~isnan(position(1,:)));
+            position_offset = obj.hand_pos_offset;
+            position_offset = repmat(position_offset(:,1),1,size(position,2));
+            % normalize the (position - position_offset)/range
+            position_centered = position - position_offset;
+            position_nan_idx = isnan(position_centered(1,:));
+            position_range = range(position_centered(:,~position_nan_idx)');
+            position_norm = position_centered./repmat(position_range,size(position_centered,2),1)';
+            % normalize the force data
+            force = obj.force;
+            force_nan_idx = isnan(force(1,:));
+            force_range = range(force(:,~force_nan_idx)');
+            force_norm = force./repmat(force_range,size(force,2),1)';
+            % convert the force data into nan when position is nan. 
+            force_norm(:, position_nan_idx) = nan; % convert same size as position
+            % plot(([position_norm; force_norm])');  
+            ylabel_str = 'xy';
+            for ii = 1:2 % x- and y- axis
+                axh(ii) = subplot(2,1,ii); hold on;
+                plot(position_centered(ii,:)' * 10); % in-acurate maxium values. 
+                plot(force_norm(ii,:)', '--'); 
+                ylabel(ylabel_str(ii)); 
+                legend(['P' ylabel_str(ii)], ['F' ylabel_str(ii)]);
+            end
+            xlabel('time points');
+            
+            title('norm Positions and Forces');
+            
+        end
+        function axh = addmark_STMOV(obj, axh) % add lines showing mov state. 
+            % how to addline without add the legend???
+            mov_mask = obj.Data.TaskStateMasks.Move;
+            mov_diff = [0 diff(mov_mask)]; 
+            mov_idx = find((mov_diff == 1) & (mov_mask == 1));
+            % plot bars in the axh
+            for axh_i = 1:length(axh)
+                ylim_range = get(axh(axh_i), 'ylim');
+                v= ver('MATLAB'); 
+                for ii = 1:length(mov_idx)
+                    if str2double(v.Version) <= 9.0 % less than matlab 2018
+                        line(axh(axh_i), [mov_idx(ii) mov_idx(ii)], [ylim_range(1) ylim_range(2)]);
+                    else
+                        xline(axh(axh_i), mov_idx(ii));
+                    end
+                end
+            end
         end
     end
 
