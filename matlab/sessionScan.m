@@ -1,9 +1,10 @@
-classdef sessionScan < handle
+classdef SessionScan < handle
     %VARSCAN scanning some variables in the formatted data
     %   Detailed explanation goes here
 
     properties
         Data
+        time
         trials_num
         duration
         duration_avg
@@ -18,7 +19,7 @@ classdef sessionScan < handle
     
     methods
         
-        function obj = sessionScan(ss_num) %(inputArg1,inputArg2)
+        function obj = SessionScan(ss_num) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
             %   Detailed explanation goes here
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
@@ -30,9 +31,9 @@ classdef sessionScan < handle
                 load(fname0);
             end
             
-            Time = Data.Time;
+            obj.time = Data.Time;
             TrialNo = Data.TrialNo;
-            obj.duration = max(Time);
+            obj.duration = max(obj.time);
             obj.trials_num = max(TrialNo);
             obj.Data = Data;
             obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
@@ -46,7 +47,7 @@ classdef sessionScan < handle
             taskForceData(obj);
             taskEndpointPosition_relative(obj);
             %taskStateMuskFig(obj);
-            taskJointPosition_relateve(obj);
+            %taskJointPosition_relateve(obj);
         end
         
         function trialTimeAverage(obj)
@@ -94,7 +95,7 @@ classdef sessionScan < handle
             figure();
             axish(1) = subplot(2,1,1);
             % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
-            plot(obj.Data.Position.JointPosition');
+            plot(obj.time, obj.Data.Position.JointPosition');
             legend('J1', 'J2', 'J3', 'J4');
             axish(2) = subplot(2,1,2);
             % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
@@ -115,7 +116,7 @@ classdef sessionScan < handle
             % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
             position_offset = obj.Data.Position.JointPosition(:,~isnan(obj.Data.Position.JointPosition(1,:)));
             position_offset = repmat(position_offset(:,1),1,size(obj.Data.Position.JointPosition,2));
-            plot((obj.Data.Position.JointPosition - position_offset)');
+            plot(obj.time, (obj.Data.Position.JointPosition - position_offset)');
             legend('J1', 'J2', 'J3', 'J4');
             axh(2) = subplot(2,1,2);
             % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
@@ -133,7 +134,7 @@ classdef sessionScan < handle
             figure();
             % force = obj.Data.Force.Sensor(1:3,:); 
             force = obj.force;
-            plot(force');
+            plot(obj.time, force');
             ylabel('force (N)');
             xlabel('time points');
             legend('x', 'y', 'z'); % remember to alter the axis 
@@ -149,7 +150,7 @@ classdef sessionScan < handle
             % position_offset = position(:,~isnan(position(1,:)));
             position_offset = obj.hand_pos_offset;
             position_offset = repmat(position_offset(:,1),1,size(position,2));
-            plot((position - position_offset)');  
+            plot(obj.time, (position - position_offset)');  
             ylabel('relative endpoint positions');
             xlabel('time points');
             legend('x', 'y', 'z');
@@ -158,7 +159,7 @@ classdef sessionScan < handle
         function taskEndpointPosition(obj)
             figure();
             position = obj.Data.Position.Actual'; 
-            plot((position)');  
+            plot(obj.time, (position)');  
             ylabel('endpoint positions');
             xlabel('time points');
             legend('x', 'y', 'z');
@@ -183,12 +184,12 @@ classdef sessionScan < handle
             force_norm = force./repmat(force_range,size(force,2),1)';
             % convert the force data into nan when position is nan. 
             force_norm(:, position_nan_idx) = nan; % convert same size as position
-            % plot(([position_norm; force_norm])');  
+            % plot(obj.time, ([position_norm; force_norm])');  
             ylabel_str = 'xy';
             for ii = 1:2 % x- and y- axis
                 axh(ii) = subplot(2,1,ii); hold on;
-                plot(position_centered(ii,:)' * 10); % in-acurate maxium values. 
-                plot(force_norm(ii,:)', '--'); 
+                plot(obj.time, position_centered(ii,:)' * 10); % in-acurate maxium values. 
+                plot(obj.time, force_norm(ii,:)', '--'); 
                 ylabel(ylabel_str(ii)); 
                 legend(['P' ylabel_str(ii)], ['F' ylabel_str(ii)]);
             end
@@ -214,6 +215,19 @@ classdef sessionScan < handle
                     end
                 end
             end
+        end
+        function alignForce(obj, ft_obj)
+            % align force to higher resolution according to a seperate
+            % ft_obj file. the seperate ft_obj file should extract from
+            % FTseperateDat.m
+        end
+        function alignBURT(obj, ft_obj)
+            % align robot movement to higher resolution according to a
+            % seperate wam.obj file. the seperate wam.obj file should
+            % extract from WAMseperateDat.m (not write yet).
+        end
+        function plotMeantrial(obj)
+            % plot the meaned trial according to the task condition
         end
     end
 
