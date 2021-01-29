@@ -1,0 +1,114 @@
+classdef TrialScan
+    %TRIALSCAN Summary of this class goes here
+    %   Detailed explanation goes here
+    
+    properties
+        
+        %%% trial variables
+         %  general for all tasks
+        tNo     % trial number
+        bNo     % block number
+        bgn     % bgn_idx in sessionScanObj 
+        edn     % end_idx, avlid confliction
+        bgn_t   % time for high_sample
+        edn_t 
+        outcome
+        comboNo
+        states
+        tarR    % target-rotation
+        tarL    % target-length
+        tarP    % target-position 
+         % state indexes
+        idx_bgn
+        idx_prt
+        idx_fcr
+        idx_mov
+        idx_hld
+        idx_end
+        idx_rst
+        time_aln        % time after aligned 
+         % specific ballistic-realease
+        fTh             % force-threshold
+        force           % 
+        force_h         % from NetFT
+        force_t
+        position
+        position_h      % from WAM
+        position_t
+        
+    end
+    
+    methods
+        function obj = TrialScan(sessionScanObj,trialNo)
+            %TRIALSCAN Construct an instance of this class
+            %   Construct a trial instance from the SessionScan class
+            %   object, and trialNo
+            %   asign all general variables, and specific ballistic-release
+            %   variables from the trial
+                    %%% task states, is it useful?
+            ST_BGN = 1; 
+            ST_PRT = 2;
+            ST_FCR = 3; % force ramp
+            ST_MOV = 4;
+            ST_HLD = 5;
+            ST_END = 6;
+            ST_RST = 7;
+
+            obj.tNo = trialNo;
+            idx = find(sessionScanObj.Data.TrialNo == trialNo);
+            obj.bgn = idx(1);
+            obj.edn = idx(end);                             % end_idx, avlid confliction
+            obj.bgn_t = sessionScanObj.Data.Time(obj.bgn);  % time for high_sample
+            obj.edn_t = sessionScanObj.Data.Time(obj.edn);
+            obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
+            obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
+            obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
+            obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, obj.bgn:obj.edn));          % target-rotation
+            obj.tarL    = sort(unique(sessionScanObj.Data.TaskJudging.Target(6, obj.bgn:obj.edn)));    % target-length
+            [x, y]      = pol2cart(obj.tarR, obj.tarL);                       % TODO: consider the tarR convert to degree 
+            obj.tarP    = [x, y];
+             % state indexes, if multile there, select the first one
+            tSCV = sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn); % taskStateCodeValues
+            obj.idx_bgn = find_first_safe(tSCV, ST_BGN); % the first value
+            obj.idx_prt = find_first_safe(tSCV, ST_PRT);
+            obj.idx_fcr = find_first_safe(tSCV, ST_FCR); 
+            obj.idx_mov = find_first_safe(tSCV, ST_MOV); 
+            obj.idx_hld = find_first_safe(tSCV, ST_HLD); 
+            obj.idx_end = find_first_safe(tSCV, ST_END); 
+            obj.idx_rst = find_first_safe(tSCV, ST_RST); 
+            obj.time_aln = [];       % time after aligned 
+             % specific ballistic-realease
+            obj.fTh = unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(4, obj.bgn:obj.edn)));          % force-threshold
+            obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
+            obj.position = sessionScanObj.Data.Position.Center(:,obj.bgn:obj.edn);
+            
+            forceh_idx   = sessionScanObj.force_t >= obj.bgn_t & sessionScanObj.force_t <= obj.edn_t;
+            obj.force_h  = sessionScanObj.force_h(forceh_idx);      % from NetFT
+            obj.force_t  = sessionScanObj.force_t(forceh_idx);      % time aligned with session start, Do we need is start from trial start?
+
+            positionh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
+            obj.position_h  = sessionScanObj.wamp_h(positionh_idx);     % from WAM
+            obj.position_t  = sessionScanObj.wamt_h(positionh_idx);     % time aligned with session start, Do we need is start from trial start?
+
+        end
+        
+        function outputArg = method1(obj,inputArg)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            outputArg = obj.Property1 + inputArg;
+        end
+    end
+end
+
+function rlt = find_first_safe(dat, mark)
+    if (isempty(dat))
+        rlt = [];
+    end
+    find_all = find(dat == mark);
+    if (isempty(find_all))
+        rlt = [];
+    else
+        rlt = find_all(1);
+    end
+    
+end

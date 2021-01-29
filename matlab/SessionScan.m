@@ -3,11 +3,13 @@ classdef SessionScan < handle
     %   Detailed explanation goes here
 
     properties
+        %%% session stat
         Data
         time
         trials_num
         duration
         duration_avg
+        %%% task variables 
         hand_pos        % position read from WAM endpoint
         hand_pos_offset % the center_pos for WAM endpoint
         force           % force in the force transducer
@@ -15,7 +17,8 @@ classdef SessionScan < handle
             [0          0           cosd(180)
             -sind(45)   cosd(45)    0
             cosd(45)    sind(45)    0];
-        
+        taskState
+        %%% other modules
         ft              % object of force
         wam             % object of wam
         force_h         % time for wam seperate data
@@ -51,6 +54,9 @@ classdef SessionScan < handle
             obj.Data = Data;
             obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
             obj.hand_pos_offset = obj.hand_pos_offset(:,1); 
+            obj.taskState.Values = obj.Data.TaskStateCodes.Values;
+            obj.taskState.Outcome = obj.Data.OutcomeMasks;
+            obj.taskState.trialNo = obj.Data.TrialNo;
             % execution functions 
             % trialTimeAverage(obj); % how to use class function?
 
@@ -61,8 +67,12 @@ classdef SessionScan < handle
             obj = wamHighSample(obj, obj.wam);
             %
             % plots
-            %taskForceData(obj);
-            %taskEndpointPosition_relative(obj);
+            axh = taskForceData(obj);
+            axh = taskForceDatah(obj, axh);
+            
+            axh = taskEndpointPosition(obj);
+            axh = taskEndpointPositionh(obj, axh);
+            % taskEndpointPosition_relative(obj);
             % taskStateMuskFig(obj);
             % taskJointPosition_relateve(obj);
             
