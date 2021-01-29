@@ -32,7 +32,7 @@ classdef SessionScanFT
             obj.FT = [Data.FT];             % FT sequence
             obj.elapse = [Data.elapse];     % read time elapse
             obj = forceFTconvert(obj);
-            plotForce(obj)
+            %plotForce(obj)
 
         end
         

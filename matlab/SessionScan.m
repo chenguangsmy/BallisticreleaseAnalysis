@@ -15,10 +15,20 @@ classdef SessionScan < handle
             [0          0           cosd(180)
             -sind(45)   cosd(45)    0
             cosd(45)    sind(45)    0];
+        
+        ft              % object of force
+        wam             % object of wam
+        force_h         % time for wam seperate data
+        force_t         % time for ft seperate data
+        wamp_h          % highly sampled from wam
+        wamv_h
+        wamt_h
+        wam_t
+        
     end
     
     methods
-        
+        %%% process
         function obj = SessionScan(ss_num) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
             %   Detailed explanation goes here
@@ -30,7 +40,10 @@ classdef SessionScan < handle
             catch 
                 load(fname0);
             end
-            
+            % objects
+            obj.ft = SessionScanFT(ss_num);
+            obj.wam = SessionScanWam(ss_num);
+            % other data
             obj.time = Data.Time;
             TrialNo = Data.TrialNo;
             obj.duration = max(obj.time);
@@ -42,19 +55,106 @@ classdef SessionScan < handle
             % trialTimeAverage(obj); % how to use class function?
 
             % processing 
+            obj = convert0toNan(obj);
             forceFTconvert(obj);
+            obj = forceHighSample(obj, obj.ft);
+            obj = wamHighSample(obj, obj.wam);
+            %
             % plots
-            taskForceData(obj);
-            taskEndpointPosition_relative(obj);
-            %taskStateMuskFig(obj);
-            %taskJointPosition_relateve(obj);
+            %taskForceData(obj);
+            %taskEndpointPosition_relative(obj);
+            % taskStateMuskFig(obj);
+            % taskJointPosition_relateve(obj);
+            
+
+            
         end
-        
+        function obj = convert0toNan(obj) % dealing with some Nan-int confliction
+            rdt = double(obj.Data.Position.RDT);
+            rdt_idx = find([rdt==0]);
+            rdt(rdt_idx) = NaN;
+            obj.Data.Position.RDT = rdt;
+            
+            rdt = double(obj.Data.Force.RDTSeq);
+            rdt_idx = find([rdt==0]);
+            rdt(rdt_idx) = NaN;
+            obj.Data.Force.RDTSeq = rdt;
+        end
         function trialTimeAverage(obj)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             obj.duration_avg = obj.duration/double(obj.trials_num);
         end
+        function obj = forceHighSample(obj, force_obj)
+            % align force to higher resolution according to a seperate
+            % ft_obj file. the seperate ft_obj file should extract from
+            % object of SessionScanFT
+            % check variable 
+            align_frdt = obj.Data.Force.RDTSeq;
+            align_Frdt = force_obj.RDT;
+            align_time = obj.time;
+            % aim: find the max and min non-NaN value of frdt, and time, 
+            %       Apply interval to all align_Frdt
+            align_frdt_min = double(min(align_frdt(~isnan(align_frdt))));
+            align_frdt_max = double(max(align_frdt(~isnan(align_frdt))));
+            if (align_frdt_min == align_frdt_max)
+                msg = 'Data error: not enough sample, aborted!';
+                error(msg);
+            end
+            align_time_min = align_time(align_frdt_min == align_frdt);
+            align_time_max = align_time(align_frdt_max == align_frdt);
+            align_time_int = (align_time_max - align_time_min)/(align_frdt_max - align_frdt_min); %each interval == 1 rdt
+            % now we have align_Time two values and interval, linear-resample
+            % them to all
+            align_Frdt_lidx = align_frdt_min;
+            align_Frdt_ridx = align_frdt_max;
+            align_Time = zeros(1, length(align_Frdt));
+            %size(align_Time)
+            align_Time_left = align_time_min - align_time_int * (align_Frdt_lidx - min(align_Frdt));
+            align_Time_right = align_time_max + align_time_int * (max(align_Frdt) - align_Frdt_ridx);
+            rdt_int = mode(unique(diff(align_Frdt)));
+            align_Time = align_Time_left : rdt_int*align_time_int : align_Time_right;
+            %size(align_Time)
+            obj.force_h = force_obj.force;
+            obj.force_t = align_Time;
+        end
+        function obj = wamHighSample(obj, wam_obj)
+            % align robot movement to higher resolution according to a
+            % seperate wam.obj file. the seperate wam.obj file should
+            % extract from SessionScanWam
+            wam_obj = convert0tonan_RDT(wam_obj);
+            align_wrdt = obj.Data.Position.RDT;
+             
+            align_Wrdt = wam_obj.rdt;
+            align_time = obj.time;
+            % aim: find the max and min non-NaN value of wrdt, and time, 
+            %       Apply interval to all align_Wrdt
+            align_wrdt_min = double(min(align_wrdt(~isnan(align_wrdt))));
+            align_wrdt_max = double(max(align_wrdt(~isnan(align_wrdt))));
+            if (align_wrdt_min == align_wrdt_max)
+                msg = 'Data error: not enough sample, aborted!';
+                error(msg);
+            end
+            align_time_min = align_time(align_wrdt_min == align_wrdt);
+            align_time_max = align_time(align_wrdt_max == align_wrdt);
+            align_time_int = (align_time_max - align_time_min)/(align_wrdt_max - align_wrdt_min); %each interval == 1 rdt
+            % now we have align_Time two values and interval, linear-resample
+            % them to all
+            align_Wrdt_lidx = align_wrdt_min;
+            align_Wrdt_ridx = align_wrdt_max;
+            align_Time = zeros(1, length(align_Wrdt));
+            %size(align_Time)
+            align_Time_left = align_time_min - align_time_int * (align_Wrdt_lidx - min(align_Wrdt));
+            align_Time_right = align_time_max + align_time_int * (max(align_Wrdt) - align_Wrdt_ridx);
+            rdt_int = mode(unique(diff(align_Wrdt)));
+            align_Time = align_Time_left : rdt_int*align_time_int : align_Time_right;
+            %size(align_Time)
+            obj.wamp_h = wam_obj.tp;
+            obj.wamv_h = wam_obj.tv;
+            obj.wamt_h = wam_obj.jt;
+            obj.wam_t = align_Time;
+        end
+        %%% plot
         function taskStateMuskFig(obj)
             % display task masks in y-axis, blue: suceed, red: failure
             fields_t = fieldnames(obj.Data.TaskStateMasks); 
@@ -130,15 +230,33 @@ classdef SessionScan < handle
             xlabel(axh(2), 'time points');
             
         end
-        function taskForceData(obj)
-            figure();
+        function axh = taskForceData(obj, axh)
+            if nargin<2
+                axh = figure();
+            else
+                figure(axh); hold on;
+            end
             % force = obj.Data.Force.Sensor(1:3,:); 
             force = obj.force;
             plot(obj.time, force');
             ylabel('force (N)');
-            xlabel('time points');
+            xlabel('time');
             legend('x', 'y', 'z'); % remember to alter the axis 
-            title('Force data before convert axis');
+            title('Force data');
+        end
+        function axh = taskForceDatah(obj, axh)
+            if nargin<2
+                axh = figure();
+            else
+                figure(axh); hold on;
+            end
+            % force = obj.Data.Force.Sensor(1:3,:); 
+            force = obj.force_h;
+            plot(obj.force_t, force');
+            ylabel('force (N)');
+            xlabel('time');
+            legend('x', 'y', 'z'); % remember to alter the axis 
+            title('Force data high sample');
         end
         function forceFTconvert(obj) % convert from select into world axis
             obj.force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
@@ -156,10 +274,23 @@ classdef SessionScan < handle
             legend('x', 'y', 'z');
             title('relative endpoint positions');
         end
-        function taskEndpointPosition(obj)
-            figure();
+        function axh = taskEndpointPosition(obj)
+            axh = figure();
             position = obj.Data.Position.Actual'; 
             plot(obj.time, (position)');  
+            ylabel('endpoint positions');
+            xlabel('time points');
+            legend('x', 'y', 'z');
+            title('relative endpoint positions');
+        end 
+        function axh = taskEndpointPositionh(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else 
+                figure(axh); hold on;
+            end
+            position = obj.wamp_h'; 
+            plot(obj.wam_t, (position)');  
             ylabel('endpoint positions');
             xlabel('time points');
             legend('x', 'y', 'z');
@@ -215,16 +346,6 @@ classdef SessionScan < handle
                     end
                 end
             end
-        end
-        function alignForce(obj, ft_obj)
-            % align force to higher resolution according to a seperate
-            % ft_obj file. the seperate ft_obj file should extract from
-            % FTseperateDat.m
-        end
-        function alignBURT(obj, ft_obj)
-            % align robot movement to higher resolution according to a
-            % seperate wam.obj file. the seperate wam.obj file should
-            % extract from WAMseperateDat.m (not write yet).
         end
         function plotMeantrial(obj)
             % plot the meaned trial according to the task condition
