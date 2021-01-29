@@ -1,4 +1,4 @@
-classdef SessionScan < handle
+classdef (HandleCompatible)SessionScan < handle
     %VARSCAN scanning some variables in the formatted data
     %   Detailed explanation goes here
 
@@ -18,6 +18,7 @@ classdef SessionScan < handle
             -sind(45)   cosd(45)    0
             cosd(45)    sind(45)    0];
         taskState
+        trials TrialScan% member function
         %%% other modules
         ft              % object of force
         wam             % object of wam
@@ -65,6 +66,12 @@ classdef SessionScan < handle
             forceFTconvert(obj);
             obj = forceHighSample(obj, obj.ft);
             obj = wamHighSample(obj, obj.wam);
+            trials_all = setdiff(unique(TrialNo), 0);
+            for trial_i = 1:length(trials_all)
+                obj.trials(trial_i) = TrialScan(obj, trial_i);
+                % align to mov
+                obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
+            end
             %
             % plots
             axh = taskForceData(obj);
@@ -356,6 +363,36 @@ classdef SessionScan < handle
                     end
                 end
             end
+        end
+        function axh = plotTrialfyPosition(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            hold on;
+            trials = obj.trials;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).time, trials(trial_i).position);
+            end
+            xlabel('time');
+            ylabel('position');
+            title('all trials position');
+        end
+        function axh = plotTrialfyForce(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            hold on;
+            trials = obj.trials;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).time, trials(trial_i).force);
+            end
+            xlabel('time');
+            ylabel('force');
+            title('all trials force');
         end
         function plotMeantrial(obj)
             % plot the meaned trial according to the task condition

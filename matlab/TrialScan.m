@@ -26,7 +26,8 @@ classdef TrialScan
         idx_hld
         idx_end
         idx_rst
-        time_aln        % time after aligned 
+        time_orn        % time origin
+        time            % time after aligned 
          % specific ballistic-realease
         fTh             % force-threshold
         force           % 
@@ -76,11 +77,12 @@ classdef TrialScan
             obj.idx_hld = find_first_safe(tSCV, ST_HLD); 
             obj.idx_end = find_first_safe(tSCV, ST_END); 
             obj.idx_rst = find_first_safe(tSCV, ST_RST); 
-            obj.time_aln = [];       % time after aligned 
+            obj.time_orn= sessionScanObj.time(obj.bgn:obj.edn);
+            obj.time    = sessionScanObj.time(obj.bgn:obj.edn) - sessionScanObj.time(obj.bgn);       % time after aligned 
              % specific ballistic-realease
             obj.fTh = unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(4, obj.bgn:obj.edn)));          % force-threshold
             obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
-            obj.position = sessionScanObj.Data.Position.Center(:,obj.bgn:obj.edn);
+            obj.position = sessionScanObj.Data.Position.Actual(obj.bgn:obj.edn,:);
             
             forceh_idx   = sessionScanObj.force_t >= obj.bgn_t & sessionScanObj.force_t <= obj.edn_t;
             obj.force_h  = sessionScanObj.force_h(forceh_idx);      % from NetFT
@@ -92,10 +94,15 @@ classdef TrialScan
 
         end
         
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
+        function obj = alignMOV(obj)
+            %alignMOV align all trials at ST_MOV
+            %   Just do linear shift, do NOT skew time
+            time = obj.time_orn;
+            time_offset = time(obj.idx_mov);
+            % if no ST_MOV, abort align
+            if (~isempty(time_offset))
+                obj.time = time-time_offset;
+            end
         end
     end
 end
