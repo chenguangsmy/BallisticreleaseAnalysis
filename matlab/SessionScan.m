@@ -83,8 +83,6 @@ classdef (HandleCompatible)SessionScan < handle
             % taskStateMuskFig(obj);
             % taskJointPosition_relateve(obj);
             
-
-            
         end
         function obj = convert0toNan(obj) % dealing with some Nan-int confliction
             rdt = double(obj.Data.Position.RDT);
@@ -412,10 +410,92 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('force');
             title('all trials force');
         end
+        function axh = plotTrialfyPositionh(obj, axh)
+
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            hold on;
+            trials = obj.trials;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).position_t, trials(trial_i).position_h);
+            end
+            xlabel('time');
+            ylabel('position');
+            title('all trials position');
+        end
+        function axh = plotTrialfyPositionh_xy(obj, axh)
+
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            trials = obj.trials;
+
+            subplot(2,1,1); hold on;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).position_t, trials(trial_i).position_h(1,:));
+            end
+            xlim([-1 1]);
+            xlabel('time');
+            ylabel('position');
+            title('position x (m)');
+            subplot(2,1,2); hold on;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).position_t, trials(trial_i).position_h(2,:));
+            end
+            xlim([-1 1]);
+            title('position y');
+            xlabel('time');
+            ylabel('position y (m)');
+            % title('all trials position');
+        end
+        function axh = plotTrialfyForceh(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            hold on;
+            trials = obj.trials;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).force_t, trials(trial_i).force_h);
+            end
+            xlabel('time');
+            ylabel('force');
+            title('all trials force raw');
+        end
+        function axh = plotTrialfyForceh_xy(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            hold on;
+            trials = obj.trials;
+            subplot(2,1,1); hold on;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).force_t, trials(trial_i).force_h);
+            end
+            xlabel('time');
+            ylabel('force x (N)');
+            title('force x ');
+            xlim([-1 1]);
+            subplot(2,1,2); hold on;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).force_t, trials(trial_i).force_h);
+            end
+            xlabel('time');
+            ylabel('force y (N)');
+            title('force y ');
+            xlim([-1 1]);
+        end
         function plotMeantrial(obj)
             % plot the meaned trial according to the task condition
         end
     end
 
 end
-
