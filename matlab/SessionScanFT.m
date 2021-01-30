@@ -16,18 +16,19 @@ classdef SessionScanFT
     end
     
     methods
-        function obj = SessionScanFT(inputArg1)
+        function obj = SessionScanFT(ss_num)
             %FTSEPERATEDAT Construct an instance of this class
             %   Detailed explanation goes here
             fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/FT.data';
-            fname = 'KingKong.FT.01857.csv';
+            %fname = 'KingKongFT01865.csv';
+            fname = sprintf('KingKongFT%05d.csv', ss_num);
             Data = readtable([fdir '/' fname]);
-            obj.force_origin = [Data.Fx' - Data.Fx0'
-                                Data.Fy' - Data.Fy0'
-                                Data.Fz' - Data.Fz0'];
-            obj.torque_origin = [Data.Tx' - Data.Tx0'
-                                Data.Ty'  - Data.Ty0'
-                                Data.Tz'  - Data.Tz0'];
+            obj.force_origin = [Data.Fx' + Data.Fx0'
+                                Data.Fy' + Data.Fy0'
+                                Data.Fz' + Data.Fz0'];
+            obj.torque_origin = [Data.Tx' + Data.Tx0'
+                                Data.Ty'  + Data.Ty0'
+                                Data.Tz'  + Data.Tz0'];
             obj.RDT = [Data.RDT];           % read-time sequence
             obj.FT = [Data.FT];             % FT sequence
             obj.elapse = [Data.elapse];     % read time elapse

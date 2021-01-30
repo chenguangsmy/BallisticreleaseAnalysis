@@ -18,14 +18,15 @@ classdef SessionScanWam
     end
     
     methods
-        function obj = SessionScanWam(inputArg1,inputArg2)
+        function obj = SessionScanWam(ss_num)
             %SESSIONSCANWAM scan from the file and get a variable
             %   read from file, the file do not have form head. The file
             %   header read from %DT sequence% described above.
             %FTSEPERATEDAT Construct an instance of this class
             %   read file according to the data sequence
             fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/WAM.data';
-            fname = '20210127aft00.csv';
+            %fname = '20210127aft00.csv';
+            fname = sprintf('KingKongWAM%05d.csv', ss_num);
             filename = [fdir '/' fname];
             Data = readmatrix(filename);
             obj.Data = Data;    % consider remove this due to memory taking?
