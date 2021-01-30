@@ -110,28 +110,35 @@ classdef (HandleCompatible)SessionScan < handle
             align_frdt = obj.Data.Force.RDTSeq;
             align_Frdt = force_obj.RDT;
             align_time = obj.time;
-            align_Time = resample(align_time,length(align_Frdt),length(align_frdt));
+            %plot(align_frdt, align_time, '*', align_Frdt, align_Time, 'o');
             % aim: find all non-NaN value of frdts, fill the corresponding
             %      time to align_Time, and linearly fill each interval 
             %%% use each interval seperately
-% %             if (length(align_frdt)<2)
-% %                 msg = 'Data error: not enough sample, aborted!';
-% %                 error(msg);
-% %             end
-% %             align_time_= align_time(~isnan(align_frdt));
-% %             [sharedvals,idxFrdt] = intersect(align_Frdt,align_frdt,'stable'); %??? check this line
-% %             [sharedvals,idxfrdt] = intersect(align_frdt,sharedvals,'stable');
-% %             align_Time = nan(1, length(align_Frdt));           % ??? can this work
-% %             align_Time(idxFrdt) = align_time(idxfrdt);
-% %             % loop each interval
-% %             for i = 1:length(idxFrdt)
-% %                 idx_l = idxFrdt(i); 
-% %                 idx_r = idxFrdt(i+1);
-% %                 time_intv = (align_Time(idx_r) - align_Time(idx_l)) / (align_Frdt(idx_r) - align_Frdt(idx_l));
-% %                 
-% %                 align_Time(idx_l:idx_r) = resample([align_Time(idx_l),align_Time(idx_r)], 2, (idx_r-idx_l+1), 'linear');
-% %             end
-% %             %size(align_Time)
+             if (length(align_frdt)<2)
+                 msg = 'Data error: not enough sample, aborted!';
+                 error(msg);
+            end
+            %align_time_= align_time(~isnan(align_frdt));
+            [~,idxFrdt] = intersect(align_Frdt,align_frdt,'stable'); %??? check this line
+            [~,idxfrdt]          = intersect(align_frdt,align_Frdt,'stable'); %??? check this line
+            align_Time = nan(1, length(align_Frdt));           % ??? can this work
+            align_Time(idxFrdt) = align_time(idxfrdt);
+            % loop each interval
+            for i = 1:length(idxFrdt)-1
+                idx_l = idxFrdt(i); 
+                idx_r = idxFrdt(i+1);
+                aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
+                %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
+                %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
+                align_Time(idx_l:idx_r) = aligned_tmp';
+            end
+            if(0) % validation figure
+                figure();
+                plot(align_frdt, align_time, 'o', align_Frdt, align_Time, '*');
+                legend('RTMA time', 'forceT time'); 
+                xlabel('RDT seq num'); ylabel('time'); 
+                title('validation interp');
+            end
              obj.force_h = force_obj.force;
              obj.force_t = align_Time;
         end
@@ -143,33 +150,39 @@ classdef (HandleCompatible)SessionScan < handle
             align_wrdt = obj.Data.Position.RDT;
             align_Wrdt = wam_obj.rdt;
             align_time = obj.time;
-            align_Time = resample(align_time,length(align_Wrdt),length(align_wrdt));
-% %             wam_obj = convert0tonan_RDT(wam_obj);
-% %             align_wrdt = obj.Data.Position.RDT;
-% %              
-% %             align_Wrdt = wam_obj.rdt;
-% %             align_time = obj.time;
-% %             % aim: find the max and min non-NaN value of wrdt, and time, 
-% %             %       Apply interval to all align_Wrdt
-% %             align_wrdt_min = double(min(align_wrdt(~isnan(align_wrdt))));
-% %             align_wrdt_max = double(max(align_wrdt(~isnan(align_wrdt))));
-% %             if (align_wrdt_min == align_wrdt_max)
-% %                 msg = 'Data error: not enough sample, aborted!';
-% %                 error(msg);
-% %             end
-% %             align_time_min = align_time(align_wrdt_min == align_wrdt);
-% %             align_time_max = align_time(align_wrdt_max == align_wrdt);
-% %             align_time_int = (align_time_max - align_time_min)/(align_wrdt_max - align_wrdt_min); %each interval == 1 rdt
-% %             % now we have align_Time two values and interval, linear-resample
-% %             % them to all
-% %             align_Wrdt_lidx = align_wrdt_min;
-% %             align_Wrdt_ridx = align_wrdt_max;
-% %             align_Time = zeros(1, length(align_Wrdt));
-% %             %size(align_Time)
-% %             align_Time_left = align_time_min - align_time_int * (align_Wrdt_lidx - min(align_Wrdt));
-% %             align_Time_right = align_time_max + align_time_int * (max(align_Wrdt) - align_Wrdt_ridx);
-% %             rdt_int = mode(unique(diff(align_Wrdt)));
-% %             align_Time = align_Time_left : rdt_int*align_time_int : align_Time_right;
+
+             wam_obj = convert0tonan_RDT(wam_obj);
+             align_wrdt = obj.Data.Position.RDT;
+  
+             align_Wrdt = wam_obj.rdt;
+             align_time = obj.time;
+            % aim: find the max and min non-NaN value of wrdt, and time, 
+            %       Apply interval to all align_Wrdt
+
+            if (length(align_wrdt)<2)
+                 msg = 'Data error: not enough sample, aborted!';
+                 error(msg);
+            end
+            [~,idxWrdt] = intersect(align_Wrdt,align_wrdt,'stable'); %??? check this line
+            [~,idxwrdt]          = intersect(align_wrdt,align_Wrdt,'stable'); %??? check this line
+            align_Time = nan(1, length(align_Wrdt));           % ??? can this work
+            align_Time(idxWrdt) = align_time(idxwrdt);
+            % loop each interval
+            for i = 1:length(idxWrdt)-1
+                idx_l = idxWrdt(i); 
+                idx_r = idxWrdt(i+1);
+                aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
+                %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
+                %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
+                align_Time(idx_l:idx_r) = aligned_tmp';
+            end
+            if(0) % validation figure
+                figure();
+                plot(align_wrdt, align_time, 'o', align_Wrdt, align_Time, '*');
+                legend('RTMA time', 'WAM time'); 
+                xlabel('RDT seq num'); ylabel('time'); 
+                title('validation interp');
+            end
             %size(align_Time)
             obj.wamp_h = wam_obj.tp;
             obj.wamv_h = wam_obj.tv;
