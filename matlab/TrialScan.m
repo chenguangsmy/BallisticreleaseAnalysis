@@ -83,15 +83,17 @@ classdef TrialScan
             obj.fTh = unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(4, obj.bgn:obj.edn)));          % force-threshold
             obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
             obj.position = sessionScanObj.Data.Position.Actual(obj.bgn:obj.edn,:);
+            if (~isempty(sessionScanObj.force_h))
+                forceh_idx   = sessionScanObj.force_t >= obj.bgn_t & sessionScanObj.force_t <= obj.edn_t;
+                obj.force_h  = sessionScanObj.force_h(:,forceh_idx);      % from NetFT
+                obj.force_t  = sessionScanObj.force_t(forceh_idx) - sessionScanObj.time(obj.bgn);      % time aligned with trial 
+            end
+            if (~isempty(sessionScanObj.wamp_h))
+                positionh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
+                obj.position_h  = sessionScanObj.wamp_h(positionh_idx,:)';     % from WAM
+                obj.position_t  = sessionScanObj.wam_t(positionh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
+            end
             
-            forceh_idx   = sessionScanObj.force_t >= obj.bgn_t & sessionScanObj.force_t <= obj.edn_t;
-            obj.force_h  = sessionScanObj.force_h(:,forceh_idx);      % from NetFT
-            obj.force_t  = sessionScanObj.force_t(forceh_idx) - sessionScanObj.time(obj.bgn);      % time aligned with trial 
-
-            positionh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
-            obj.position_h  = sessionScanObj.wamp_h(positionh_idx,:)';     % from WAM
-            obj.position_t  = sessionScanObj.wam_t(positionh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
-
         end
         
         function obj = alignMOV(obj)
@@ -102,8 +104,13 @@ classdef TrialScan
             % if no ST_MOV, abort align
             if (~isempty(time_offset))
                 obj.time = time - time_offset;
-                obj.position_t = obj.position_t - time_offset;
-                obj.force_t = obj.force_t - time_offset;
+                
+                if(~isempty(obj.position_t))
+                    obj.position_t = obj.position_t - time_offset;
+                end
+                if(~isempty(obj.force_t))
+                    obj.force_t = obj.force_t - time_offset;
+                end
             end
         end
     end

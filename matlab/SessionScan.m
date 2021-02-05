@@ -45,43 +45,62 @@ classdef (HandleCompatible)SessionScan < handle
                 load(fname0);
             end
             % objects
+            noFW_data = 0;
+            try
             obj.ft = SessionScanFT(ss_num);
             obj.wam = SessionScanWam(ss_num);
+            catch 
+                display('no ft and wam data here! ');
+                noFW_data = 1;
+            end
             % other data
+
+            obj.Data = Data;
             obj.time = Data.Time;
             TrialNo = Data.TrialNo;
-            obj.duration = max(obj.time);
             obj.trials_num = max(TrialNo);
-            obj.Data = Data;
             obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
             obj.hand_pos_offset = obj.hand_pos_offset(:,1); 
-            obj.taskState.Values = obj.Data.TaskStateCodes.Values;
-            obj.taskState.Outcome = obj.Data.OutcomeMasks;
-            obj.taskState.trialNo = obj.Data.TrialNo;
+            obj.taskState.Values = Data.TaskStateCodes.Values;
+            obj.taskState.Outcome = Data.OutcomeMasks;
+            obj.taskState.trialNo = Data.TrialNo;
+            obj.force = forceFTconvert(obj);
+            obj.duration = max(obj.time);
+
+            
             % execution functions 
             % trialTimeAverage(obj); % how to use class function?
 
             % processing 
             obj = convert0toNan(obj);
-            forceFTconvert(obj);
-            obj = forceHighSample(obj, obj.ft);
-            obj = wamHighSample(obj, obj.wam);
             trials_all = setdiff(unique(TrialNo), 0);
+            if (~isempty(obj.ft))
+                obj = forceHighSample(obj, obj.ft);
+            end
+            if (~isempty(obj.wam))
+                obj = wamHighSample(obj, obj.wam);
+            end
             for trial_i = 1:length(trials_all)
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
             end
             %
-            % plots
+            % plots:
+            %   whole session plot
             axh = taskForceData(obj);
-            axh = taskForceDatah(obj, axh);
+            % axh = taskForceDatah(obj, axh);
             
             axh = taskEndpointPosition(obj);
-            axh = taskEndpointPositionh(obj, axh);
+            %axh = taskEndpointPositionh(obj, axh);
             % taskEndpointPosition_relative(obj);
             % taskStateMuskFig(obj);
             % taskJointPosition_relateve(obj);
+            %   trialfy plot
+            % axh = plotTrialfyPositionh_xy(obj);
+            axh = plotTrialfyForce_xy(obj);
+            axh = plotTrialfyForceh_xy(obj);
+            
             
         end
         function obj = convert0toNan(obj) % dealing with some Nan-int confliction
@@ -285,14 +304,14 @@ classdef (HandleCompatible)SessionScan < handle
             end
             % force = obj.Data.Force.Sensor(1:3,:); 
             force = obj.force_h;
-            plot(obj.force_t, force');
+            plot(obj.force_t, force', '.');
             ylabel('force (N)');
             xlabel('time');
             legend('x', 'y', 'z'); % remember to alter the axis 
             title('Force data high sample');
         end
-        function forceFTconvert(obj) % convert from select into world axis
-            obj.force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
+        function force = forceFTconvert(obj) % convert from select into world axis
+            force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
         end
         function taskEndpointPosition_relative(obj)
             figure();
@@ -323,7 +342,7 @@ classdef (HandleCompatible)SessionScan < handle
                 figure(axh); hold on;
             end
             position = obj.wamp_h'; 
-            plot(obj.wam_t, (position)');  
+            plot(obj.wam_t, (position)', '.');  
             ylabel('endpoint positions');
             xlabel('time points');
             legend('x', 'y', 'z');
@@ -410,6 +429,32 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('force');
             title('all trials force');
         end
+        function axh = plotTrialfyForce_xy(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            
+            hold on;
+            trials = obj.trials;
+            subplot(2,1,1); hold on;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).time, trials(trial_i).force(1,:));
+            end
+            xlim([-1 1]);
+            xlabel('time');
+            ylabel('force x');
+            title('force xy (m)');
+            subplot(2,1,2); hold on;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).time, trials(trial_i).force(2,:));
+            end
+            xlim([-1 1]);
+            title('force y');
+            xlabel('time');
+            ylabel('position y (m)');
+        end
         function axh = plotTrialfyPositionh(obj, axh)
 
             if nargin < 2
@@ -478,7 +523,7 @@ classdef (HandleCompatible)SessionScan < handle
             trials = obj.trials;
             subplot(2,1,1); hold on;
             for trial_i = 1:length(trials)
-                plot(trials(trial_i).force_t, trials(trial_i).force_h);
+                plot(trials(trial_i).force_t, trials(trial_i).force_h(1,:));
             end
             xlabel('time');
             ylabel('force x (N)');
@@ -486,7 +531,7 @@ classdef (HandleCompatible)SessionScan < handle
             xlim([-1 1]);
             subplot(2,1,2); hold on;
             for trial_i = 1:length(trials)
-                plot(trials(trial_i).force_t, trials(trial_i).force_h);
+                plot(trials(trial_i).force_t, trials(trial_i).force_h(2,:));
             end
             xlabel('time');
             ylabel('force y (N)');
