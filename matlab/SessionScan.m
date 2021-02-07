@@ -257,9 +257,11 @@ classdef (HandleCompatible)SessionScan < handle
                 resample_t = Ty;  % still have 1ms variance between different trials, why?
             end
         end
-        function [resample_t, resample_p, resample_v] = trialDataResampleWAM(obj, trial_idx)
-            % for all trials resample the original data and time
-            % origin data and time are Nonuniformly sampled
+        function [resample_t, resample_p, resample_v] = trialDataAlignWAM(obj, trial_idx)
+            % for all trials align the original data and time into one
+            % matrix
+            % Assuming they are uniformlly sampled within one trial
+            % pick correct ones and save them in the matrix
             if nargin<2
                 trial_idx = [obj.trials.outcome]==1;
             end
@@ -267,67 +269,44 @@ classdef (HandleCompatible)SessionScan < handle
             trials = (obj.trials(trial_idx));
             display(['Enter function Resample;']);
             tz_bgn = -0.5; %time-zone
-            tz_edn =  1.5;
-            resample_freq = 500;   % 500Hz
+            tz_edn =  1.0;
+            resample_freq = 500;   % 500Hz, same with WAM
             resample_t = [tz_bgn: (1/resample_freq): tz_edn];
-            resample_t = resample_t(2:end); % looks like this one is loger 1 element than Ty? how to deal withit?
-            resample_p = zeros(length(trials), length(resample_t), 3); % position, respectively, x, y, z
-            resample_v = zeros(length(trials), length(resample_t), 3); % velocity, respectively, x, y, z
+            [~,idx_tmp] = sort(abs(resample_t - 0),2,'ascend'); 
+            resample_p = nan(length(trials), length(resample_t), 3); % x, y z
+            resample_v = nan(length(trials), length(resample_t), 3); % x, y z
+            resample_left_num = sum(resample_t<=0);         % left contain zero
+            %resample_left_idx = -resample_left_num+1:0;
+            resample_right_num = sum(resample_t>0);
+            %resample_right_idx = 1:resample_right_num;
             % resample for all the positions
+
             for trial_i = 1:length(trials) % for all trials
-                % select specific timezone
-                idx_t = trials(trial_i).position_t > tz_bgn & trials(trial_i).position_t <= tz_edn;
-                irregTx = trials(trial_i).position_t(idx_t); 
-                
-                
-                for dim_i = 1:3 % x, y, z seperately
-                    x = trials(trial_i).position_h(dim_i,idx_t);
-                    [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
-                    %[y, Ty] = resample(y,irregTx,resample_freq);
-                    if (0) % visualize the resample result
-                        figure(); 
-                        hold on;
-                        plot(irregTx,x,'.-', Ty,y,'o-')
-                        legend('Original','Resampled')
-                    plot(Ty);
-                    end
-                    try
-                        resample_p(trial_i,:,dim_i) = y;
-                    catch
-                        %display(['trial:' num2str(trial_idx_num(trial_i))]);
-                        [y, Ty] = resample(y,size(resample_p,2),length(y));         % may cause time skew here!
-                        resample_p(trial_i,:,dim_i) = y;
-                    end
-                end
-                %resample_t = resample_t;  % still have 1ms variance between different trials, why?
-            end
-            % resample for all the velocities
-            for trial_i = 1:length(trials) % for all trials
-                % select specific timezone
-                idx_t = trials(trial_i).position_t > tz_bgn & trials(trial_i).position_t <= tz_edn;
-                irregTx = trials(trial_i).position_t(idx_t); 
-                
-                
-                for dim_i = 1:3 % x, y, z seperately
-                    x = trials(trial_i).velocity_h(dim_i,idx_t);
-                    [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
-                    %[y, Ty] = resample(y,irregTx,resample_freq);
-                    if (0) % visualize the resample result
-                        figure(); 
-                        hold on;
-                        plot(irregTx,x,'.-', Ty,y,'o-')
-                        legend('Original','Resampled')
-                    plot(Ty);
-                    end
-                    try
-                        resample_v(trial_i,:,dim_i) = y;
-                    catch
-                        %display(['trial:' num2str(trial_idx_num(trial_i))]);
-                        y = resample(y,size(resample_v,2),length(y));         % may cause time skew here!
-                        resample_v(trial_i,:,dim_i) = y;
-                    end
-                end
-                %resample_t = Ty;  % already have in resample positions
+                wam_t = trials(trial_i).position_t;
+                % find the cloest to zero 1
+                [~,idx_Tmp] = sort(abs(wam_t - 0),2,'ascend');
+                resample_Left_num = idx_Tmp(1); 
+                resample_Right_num = length(wam_t) - idx_Tmp(1);
+                % pair index
+                left_num = min(resample_left_num, resample_Left_num);
+                right_num = min(resample_right_num, resample_Right_num);
+                resample_left_idx = -left_num + idx_tmp(1)+1;     % avoid 0
+                resample_right_idx= right_num + idx_tmp(1);
+                resample_Left_idx = -left_num + idx_Tmp(1)+1;
+                resample_Right_idx= right_num + idx_Tmp(1);
+                % put index in the resampe_p and resample_v
+                resample_p(trial_i,resample_left_idx:resample_right_idx,1) = ...
+                    trials(trial_i).position_h(1,resample_Left_idx:resample_Right_idx);
+                resample_p(trial_i,resample_left_idx:resample_right_idx,2) = ...
+                    trials(trial_i).position_h(2,resample_Left_idx:resample_Right_idx);
+                resample_p(trial_i,resample_left_idx:resample_right_idx,3) = ...
+                    trials(trial_i).position_h(3,resample_Left_idx:resample_Right_idx);
+                resample_v(trial_i,resample_left_idx:resample_right_idx,1) = ...
+                    trials(trial_i).velocity_h(1,resample_Left_idx:resample_Right_idx);
+                resample_v(trial_i,resample_left_idx:resample_right_idx,2) = ...
+                    trials(trial_i).velocity_h(2,resample_Left_idx:resample_Right_idx);
+                resample_v(trial_i,resample_left_idx:resample_right_idx,3) = ...
+                    trials(trial_i).velocity_h(3,resample_Left_idx:resample_Right_idx);
             end
 
         end
