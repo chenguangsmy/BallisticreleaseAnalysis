@@ -29,6 +29,8 @@ classdef (HandleCompatible)SessionScan < handle
         wamt_h
         wam_t
         
+        col_vec = ['rgbcmyk']   % color for plot
+        badTrials = [1, 278];       % bad trial, cull in data
     end
     
     methods
@@ -85,22 +87,25 @@ classdef (HandleCompatible)SessionScan < handle
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
             end
+            for trial_i = obj.badTrials
+                obj.trials(trial_i).outcome = 0;
+            end
             %
             % plots:
             %   whole session plot
-            axh = taskForceData(obj);
+%             axh = taskForceData(obj);
             % axh = taskForceDatah(obj, axh);
             
-            axh = taskEndpointPosition(obj);
+%             axh = taskEndpointPosition(obj);
             %axh = taskEndpointPositionh(obj, axh);
             % taskEndpointPosition_relative(obj);
-            % taskStateMuskFig(obj);
+%             taskStateMuskFig(obj);
             % taskJointPosition_relateve(obj);
             %   trialfy plot
             % axh = plotTrialfyPositionh_xy(obj);
-            axh = plotTrialfyForce_xy(obj);
-            axh = plotTrialfyForceh_xy(obj);
-            
+%             axh = plotTrialfyForce_xy(obj);
+%             axh = plotTrialfyForceh_xy(obj);
+            %[axhF, axhP] = plotSameTrial(obj);
             
         end
         function obj = convert0toNan(obj) % dealing with some Nan-int confliction
@@ -206,6 +211,127 @@ classdef (HandleCompatible)SessionScan < handle
             obj.wamt_h = wam_obj.jt;
             obj.wam_t = align_Time;
         end
+        function force = forceFTconvert(obj) % convert from select into world axis
+            force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
+        end
+        function [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx)
+            % for all trials resample the original data and time
+            % origin data and time are Nonuniformly sampled
+            if nargin<2
+                trial_idx = [obj.trials.outcome]==1;
+            end
+            trial_idx_num = find(trial_idx);
+            trials = (obj.trials(trial_idx));
+            display(['Enter function Resample;']);
+            tz_bgn = -1.0;
+            tz_edn =  0.5;
+            resample_freq = 500;   % 500Hz
+            resample_t = [tz_bgn: (1/resample_freq): tz_edn];
+            resample_t = resample_t(2:end); % looks like this one is loger 1 element than Ty? how to deal withit?
+            resample_f = zeros(length(trials), length(resample_t), 3); % resample_value, respectively, x, y, z
+
+            for trial_i = 1:length(trials) % for all trials
+                % select specific timezone
+                idx_t = trials(trial_i).force_t > tz_bgn & trials(trial_i).force_t <= tz_edn;
+                irregTx = trials(trial_i).force_t(idx_t); % problem here, not wanted force_t
+                
+                for dim_i = 1:3 % x, y, z seperately
+                    x = trials(trial_i).force_h(dim_i,idx_t);
+                    [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
+                    %[y, Ty] = resample(y,irregTx,resample_freq);
+                    if (0) % visualize the resample result
+                        figure(); 
+                        hold on;
+                        plot(irregTx,x,'.-', Ty,y,'o-')
+                        legend('Original','Resampled')
+                        plot(Ty);
+                    end
+                    try
+                        resample_f(trial_i,:,dim_i) = y;
+                    catch
+                        display(['trial:' num2str(trial_idx_num(trial_i))]);
+                        y = resample(y,size(resample_f,2),length(y));         % may cause time skew here!
+                        resample_f(trial_i,:,dim_i) = y;
+                    end
+                end
+                resample_t = Ty;  % still have 1ms variance between different trials, why?
+            end
+        end
+        function [resample_t, resample_p, resample_v] = trialDataResampleWAM(obj, trial_idx)
+            % for all trials resample the original data and time
+            % origin data and time are Nonuniformly sampled
+            if nargin<2
+                trial_idx = [obj.trials.outcome]==1;
+            end
+            trial_idx_num = find(trial_idx);
+            trials = (obj.trials(trial_idx));
+            display(['Enter function Resample;']);
+            tz_bgn = -0.5; %time-zone
+            tz_edn =  1.5;
+            resample_freq = 500;   % 500Hz
+            resample_t = [tz_bgn: (1/resample_freq): tz_edn];
+            resample_t = resample_t(2:end); % looks like this one is loger 1 element than Ty? how to deal withit?
+            resample_p = zeros(length(trials), length(resample_t), 3); % position, respectively, x, y, z
+            resample_v = zeros(length(trials), length(resample_t), 3); % velocity, respectively, x, y, z
+            % resample for all the positions
+            for trial_i = 1:length(trials) % for all trials
+                % select specific timezone
+                idx_t = trials(trial_i).position_t > tz_bgn & trials(trial_i).position_t <= tz_edn;
+                irregTx = trials(trial_i).position_t(idx_t); 
+                
+                
+                for dim_i = 1:3 % x, y, z seperately
+                    x = trials(trial_i).position_h(dim_i,idx_t);
+                    [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
+                    %[y, Ty] = resample(y,irregTx,resample_freq);
+                    if (0) % visualize the resample result
+                        figure(); 
+                        hold on;
+                        plot(irregTx,x,'.-', Ty,y,'o-')
+                        legend('Original','Resampled')
+                    plot(Ty);
+                    end
+                    try
+                        resample_p(trial_i,:,dim_i) = y;
+                    catch
+                        %display(['trial:' num2str(trial_idx_num(trial_i))]);
+                        [y, Ty] = resample(y,size(resample_p,2),length(y));         % may cause time skew here!
+                        resample_p(trial_i,:,dim_i) = y;
+                    end
+                end
+                %resample_t = resample_t;  % still have 1ms variance between different trials, why?
+            end
+            % resample for all the velocities
+            for trial_i = 1:length(trials) % for all trials
+                % select specific timezone
+                idx_t = trials(trial_i).position_t > tz_bgn & trials(trial_i).position_t <= tz_edn;
+                irregTx = trials(trial_i).position_t(idx_t); 
+                
+                
+                for dim_i = 1:3 % x, y, z seperately
+                    x = trials(trial_i).velocity_h(dim_i,idx_t);
+                    [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
+                    %[y, Ty] = resample(y,irregTx,resample_freq);
+                    if (0) % visualize the resample result
+                        figure(); 
+                        hold on;
+                        plot(irregTx,x,'.-', Ty,y,'o-')
+                        legend('Original','Resampled')
+                    plot(Ty);
+                    end
+                    try
+                        resample_v(trial_i,:,dim_i) = y;
+                    catch
+                        %display(['trial:' num2str(trial_idx_num(trial_i))]);
+                        y = resample(y,size(resample_v,2),length(y));         % may cause time skew here!
+                        resample_v(trial_i,:,dim_i) = y;
+                    end
+                end
+                %resample_t = Ty;  % already have in resample positions
+            end
+
+        end
+
         %%% plot
         function taskStateMuskFig(obj)
             % display task masks in y-axis, blue: suceed, red: failure
@@ -309,9 +435,6 @@ classdef (HandleCompatible)SessionScan < handle
             xlabel('time');
             legend('x', 'y', 'z'); % remember to alter the axis 
             title('Force data high sample');
-        end
-        function force = forceFTconvert(obj) % convert from select into world axis
-            force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
         end
         function taskEndpointPosition_relative(obj)
             figure();
@@ -538,9 +661,117 @@ classdef (HandleCompatible)SessionScan < handle
             title('force y ');
             xlim([-1 1]);
         end
-        function plotMeantrial(obj)
-            % plot the meaned trial according to the task condition
+        function axh = plotMeantrialForce(obj)
+            % plot the meaned trial Force according to the task condition
+            % if did not calculate the mean and var, calculate
+                % calculate function BLABLABLA
+                        % resample each 
+            
+        end
+        function axh = plotMeantrialPosition(obj)
+            % plot the meaned trial Position according to the task condition
+            % if did not calculate the mean and var, calculate
+        end
+        function [axhF, axhP] = plotSameTrial(obj)
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            outcome = [obj.trials.outcome];
+            % fTH now only have 2 vals
+            % tarL now only have 2 vals
+            axhF = figure(); % force figure
+            set(axhF, 'Visible', 'off');
+            axhP = figure(); % position figure
+            set(axhP, 'Visible', 'off');
+            axhV = figure(); % velocity figure
+            set(axhV, 'Visible', 'off');
+            for fTH_i = 1:length(all_fTH)
+                fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
+                for tarL_i = 1:length(all_tarL)
+                    fprintf('target: %0.2f', all_tarL(tarL_i));
+                    trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
+                    trial_num = sum(trials_idx);
+                    trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==1); %succeed
+                    %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
+                    col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
+                    if col_i>=7
+                        col_i = mod(col_i,8);
+                    end
+                    for trial_i = find(trialsS_idx)
+                        % plot force
+                        % data
+                        try
+                            force = obj.trials(trial_i).force_h;
+                            time = obj.trials(trial_i).force_t;
+                        catch
+                            force = obj.trials(trial_i).force;
+                            time = obj.trials(trial_i).time;
+                        end
+                        % figure
+                        set(0, 'CurrentFigure', axhF);
+                        % x, y seperately
+                        subplot(2,1,1); hold on; plot(time, force(1,:), obj.col_vec(col_i));
+                        subplot(2,1,2); hold on; plot(time, force(2,:), obj.col_vec(col_i));
+                        % plot position
+                        % data
+                        try
+                            position = obj.trials(trial_i).position_h;
+                            time = obj.trials(trial_i).position_t;
+                        catch
+                            position = obj.trials(trial_i).position;
+                            time = obj.trials(trial_i).time;
+                        end
+                        set(0, 'CurrentFigure', axhP);
+                        % x, y seperately
+                        subplot(2,1,1); hold on; plot(time, position(1,:), obj.col_vec(col_i));
+                        subplot(2,1,2); hold on; plot(time, position(2,:), obj.col_vec(col_i));
+                        try
+                            velocity = obj.trials(trial_i).velocity_h;
+                            time = obj.trials(trial_i).position_t;
+                        catch
+                            velocity = obj.trials(trial_i).velocity;
+                            time = obj.trials(trial_i).time;
+                        end
+                        set(0, 'CurrentFigure', axhV);
+                        subplot(2,1,1); hold on; plot(time, velocity(1,:), obj.col_vec(col_i));
+                        subplot(2,1,2); hold on; plot(time, velocity(2,:), obj.col_vec(col_i));
+                    end
+                end
+            end
+            
+            xrangeF = [-0.5, 0.5];
+            figure(axhF); 
+            subplot(2,1,1);
+            title('force data x');
+            xlim(xrangeF);
+            subplot(2,1,2);
+            title('force data y');
+            xlim(xrangeF);
+            
+            xrangeP = [-0.2, 0.8];
+            figure(axhP);
+            subplot(2,1,1);
+            title('robot position x');
+            xlim(xrangeP);
+            subplot(2,1,2);
+            title('robot position y');
+            xlim(xrangeP);
+            
+            xrangeV = [-0.2, 0.8];
+            figure(axhV);
+            subplot(2,1,1);
+            title('robot velocity x');
+            xlim(xrangeV);
+            subplot(2,1,2);
+            title('robot velocity y');
+            xlim(xrangeV);
+            
+            set(axhF, 'Visible', 'on');
+            set(axhP, 'Visible', 'on');
+            set(axhV, 'Visible', 'on');
         end
     end
 
 end
+
