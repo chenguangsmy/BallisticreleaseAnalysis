@@ -29,7 +29,13 @@ classdef (HandleCompatible)SessionScan < handle
         wamt_h
         wam_t
         
-        col_vec = ['rgbcmyk']   % color for plot
+        col_vec = [1 0 0
+                    0 1 0
+                    0 0 1 
+                    0 1 1
+                    1 0 1
+                    1 1 0
+                    1 1 1]   % color for plot, rgb cmyk
         badTrials = [1, 278];       % bad trial, cull in data
     end
     
@@ -249,12 +255,12 @@ classdef (HandleCompatible)SessionScan < handle
                     try
                         resample_f(trial_i,:,dim_i) = y;
                     catch
-                        display(['trial:' num2str(trial_idx_num(trial_i))]);
+                    %    display(['trial:' num2str(trial_idx_num(trial_i))]);
                         y = resample(y,size(resample_f,2),length(y));         % may cause time skew here!
                         resample_f(trial_i,:,dim_i) = y;
                     end
                 end
-                resample_t = Ty;  % still have 1ms variance between different trials, why?
+                %resample_t = Ty;  % still have 1ms variance between different trials, why?
             end
         end
         function [resample_t, resample_p, resample_v] = trialDataAlignWAM(obj, trial_idx)
@@ -642,14 +648,92 @@ classdef (HandleCompatible)SessionScan < handle
         end
         function axh = plotMeantrialForce(obj)
             % plot the meaned trial Force according to the task condition
-            % if did not calculate the mean and var, calculate
-                % calculate function BLABLABLA
-                        % resample each 
-            
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            axh = figure();
+            l_h = [];
+            for fTH_i = 1:length(all_fTH)
+                for tarL_i = 1:length(all_tarL)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
+                    force_mean = mean(resample_f(:,:,2)); %only y direction
+                    force_std = std(resample_f(:,:,2));  
+                    % mean line
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
+                    % 1std shade
+                    force_up = force_mean + force_std/2;
+                    force_dn = force_mean - force_std/2;
+                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+            end
+            xlabel('time aligned at MOV signal');
+            ylabel('y dir force');
+            xlim([-0.5 0.4]);
+            title('Force signal');
+            legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
         end
-        function axh = plotMeantrialPosition(obj)
+        function [axhp, axhv] = plotMeantrialPosVel(obj)
             % plot the meaned trial Position according to the task condition
             % if did not calculate the mean and var, calculate
+            % plot the meaned trial Force according to the task condition
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            
+            % plot position
+            axhp = figure('visible', 'on');
+            l_h = [];
+            for fTH_i = 1:length(all_fTH)
+                for tarL_i = 1:length(all_tarL)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
+                    force_mean = mean(resample_p(:,:,2), 'omitnan'); %only y direction
+                    force_std = std(resample_p(:,:,2), 'omitnan');  
+                    % mean line
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
+                    % 1std shade
+                    force_up = force_mean + force_std/2;
+                    force_dn = force_mean - force_std/2;
+                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+            end
+            xlabel('time aligned at MOV signal');
+            ylabel('y dir position m');
+            xlim([-0.2 0.5]);
+            title('Position signal');
+            legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            
+            % plot velocity
+            axhv = figure('visible', 'on');
+            l_h = [];
+            for fTH_i = 1:length(all_fTH)
+                for tarL_i = 1:length(all_tarL)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
+                    force_mean = mean(resample_v(:,:,2), 'omitnan'); %only y direction
+                    force_std = std(resample_v(:,:,2), 'omitnan');  
+                    % mean line
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
+                    % 1std shade
+                    force_up = force_mean + force_std/2;
+                    force_dn = force_mean - force_std/2;
+                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+            end
+            xlabel('time aligned at MOV signal');
+            ylabel('y dir velocity m/s');
+            xlim([-0.2 0.5]);
+            title('Velocity signal');
+            legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
         end
         function [axhF, axhP] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
@@ -690,8 +774,8 @@ classdef (HandleCompatible)SessionScan < handle
                         % figure
                         set(0, 'CurrentFigure', axhF);
                         % x, y seperately
-                        subplot(2,1,1); hold on; plot(time, force(1,:), obj.col_vec(col_i));
-                        subplot(2,1,2); hold on; plot(time, force(2,:), obj.col_vec(col_i));
+                        subplot(2,1,1); hold on; plot(time, force(1,:), 'Color', obj.col_vec(col_i,:));
+                        subplot(2,1,2); hold on; plot(time, force(2,:), 'COlor', obj.col_vec(col_i,:));
                         % plot position
                         % data
                         try
@@ -703,8 +787,8 @@ classdef (HandleCompatible)SessionScan < handle
                         end
                         set(0, 'CurrentFigure', axhP);
                         % x, y seperately
-                        subplot(2,1,1); hold on; plot(time, position(1,:), obj.col_vec(col_i));
-                        subplot(2,1,2); hold on; plot(time, position(2,:), obj.col_vec(col_i));
+                        subplot(2,1,1); hold on; plot(time, position(1,:), 'Color', obj.col_vec(col_i,:));
+                        subplot(2,1,2); hold on; plot(time, position(2,:), 'Color', obj.col_vec(col_i,:));
                         try
                             velocity = obj.trials(trial_i).velocity_h;
                             time = obj.trials(trial_i).position_t;
@@ -713,8 +797,8 @@ classdef (HandleCompatible)SessionScan < handle
                             time = obj.trials(trial_i).time;
                         end
                         set(0, 'CurrentFigure', axhV);
-                        subplot(2,1,1); hold on; plot(time, velocity(1,:), obj.col_vec(col_i));
-                        subplot(2,1,2); hold on; plot(time, velocity(2,:), obj.col_vec(col_i));
+                        subplot(2,1,1); hold on; plot(time, velocity(1,:), 'Color', obj.col_vec(col_i,:));
+                        subplot(2,1,2); hold on; plot(time, velocity(2,:), 'Color', obj.col_vec(col_i,:));
                     end
                 end
             end

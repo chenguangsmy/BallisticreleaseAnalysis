@@ -13,7 +13,7 @@ classdef TrialScan
         bgn_t   % time for high_sample
         edn_t 
         outcome
-        comboNo
+        comboNo % get from intermediate data
         states
         tarR    % target-rotation
         tarL    % target-length
