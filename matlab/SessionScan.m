@@ -9,6 +9,10 @@ classdef (HandleCompatible)SessionScan < handle
         trials_num
         duration
         duration_avg
+        %%% task targets
+        tarRs
+        tarLs
+        fThs
         %%% task variables 
         hand_pos        % position read from WAM endpoint
         hand_pos_offset % the center_pos for WAM endpoint
@@ -28,7 +32,7 @@ classdef (HandleCompatible)SessionScan < handle
         wamv_h
         wamt_h
         wam_t
-        
+        endpoint0 = [-0.517 0.483 0.001]
         col_vec = [1 0 0
                     0 1 0
                     0 0 1 
@@ -36,7 +40,8 @@ classdef (HandleCompatible)SessionScan < handle
                     1 0 1
                     1 1 0
                     1 1 1]   % color for plot, rgb cmyk
-        badTrials = [1, 278];       % bad trial, cull in data
+        %badTrials = [1];       % bad trial, cull in data
+        badTrials = [1, 278];       % FOR SS1898
     end
     
     methods
@@ -47,6 +52,7 @@ classdef (HandleCompatible)SessionScan < handle
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
             file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
             fname0 = ([file_dir '/' file_name]);
+            flag_progress = 1;      % show something to make me less anxious
             try 
                 load(fname);
             catch 
@@ -55,8 +61,11 @@ classdef (HandleCompatible)SessionScan < handle
             % objects
             noFW_data = 0;
             try
-            obj.ft = SessionScanFT(ss_num);
-            obj.wam = SessionScanWam(ss_num);
+                if (flag_progress)
+                    display('Loading raw FT and WAM...');
+                end
+                obj.ft = SessionScanFT(ss_num);
+                obj.wam = SessionScanWam(ss_num);
             catch 
                 display('no ft and wam data here! ');
                 noFW_data = 1;
@@ -74,6 +83,10 @@ classdef (HandleCompatible)SessionScan < handle
             obj.taskState.trialNo = Data.TrialNo;
             obj.force = forceFTconvert(obj);
             obj.duration = max(obj.time);
+            targets_idx = ~isnan(obj.Data.TaskJudging.Target(1,:));
+            obj.tarRs = unique(obj.Data.TaskJudging.Target(5,targets_idx)); %have 0
+            obj.tarLs = setdiff(unique(obj.Data.TaskJudging.Target(6,targets_idx)),0); % deviate 0
+            obj.fThs  = setdiff(unique(obj.Data.TaskJudging.Target(4,targets_idx)),0); % deviate 0
 
             
             % execution functions 
@@ -83,15 +96,34 @@ classdef (HandleCompatible)SessionScan < handle
             obj = convert0toNan(obj);
             trials_all = setdiff(unique(TrialNo), 0);
             if (~isempty(obj.ft))
+                if (flag_progress)
+                    display('FT High Sample...');
+                end
                 obj = forceHighSample(obj, obj.ft);
             end
             if (~isempty(obj.wam))
+                if (flag_progress)
+                    display('WAM High Sample...');
+                end
                 obj = wamHighSample(obj, obj.wam);
             end
+            if (flag_progress)
+                    display('Trialfy...');
+            end
+            
+            percent_prev = 0;
             for trial_i = 1:length(trials_all)
+                trial_percent = floor(trial_i/length(trials_all) * 20)*5;
+                if ~(trial_percent == percent_prev) % avoid showing a lot.
+                    fprintf('  %02d%%...', trial_percent);
+                    percent_prev = trial_percent;
+                end
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
+                if (trial_i == length(trials_all)) % last trial
+                    fprintf('  100%%  FINISHED!\n');
+                end
             end
             for trial_i = obj.badTrials
                 obj.trials(trial_i).outcome = 0;
@@ -221,14 +253,17 @@ classdef (HandleCompatible)SessionScan < handle
             force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
         end
         function [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx)
+            % [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx)
             % for all trials resample the original data and time
             % origin data and time are Nonuniformly sampled
+            % due to the FT is non-normally distributed (code bug of
+            % FTmodule -cg), I used resample to get code data
             if nargin<2
                 trial_idx = [obj.trials.outcome]==1;
             end
             trial_idx_num = find(trial_idx);
             trials = (obj.trials(trial_idx));
-            display(['Enter function Resample;']);
+            %display(['Enter function Resample;']);
             tz_bgn = -1.0;
             tz_edn =  0.5;
             resample_freq = 500;   % 500Hz
@@ -275,7 +310,7 @@ classdef (HandleCompatible)SessionScan < handle
             trials = (obj.trials(trial_idx));
             display(['Enter function Resample;']);
             tz_bgn = -0.5; %time-zone
-            tz_edn =  1.0;
+            tz_edn =  0.8;
             resample_freq = 500;   % 500Hz, same with WAM
             resample_t = [tz_bgn: (1/resample_freq): tz_edn];
             [~,idx_tmp] = sort(abs(resample_t - 0),2,'ascend'); 
@@ -318,6 +353,42 @@ classdef (HandleCompatible)SessionScan < handle
         end
 
         %%% plot
+        function taskScanTrials(obj)
+            % I need true combo here! see the ProcessRawData
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            % for each task condition, print the fin_trials/all_trials
+            for fTH_i = 1:length(all_fTH)
+                for tarL_i = 1:length(all_tarL)
+                    trial_all_idx = ([obj.trials.fTh] == all_fTH(fTH_i) ...
+                        & [obj.trials.tarL] == all_tarL(tarL_i));
+                    trial_fin_idx = ([obj.trials.fTh] == all_fTH(fTH_i) ...
+                        & [obj.trials.tarL] == all_tarL(tarL_i) ...
+                        & [obj.trials.outcome] == 1);
+                    fprintf('FT: %02.0fN, Dist: %.02fm, trials: %02d / %02d\n', ...
+                        all_fTH(fTH_i), all_tarL(tarL_i), ...
+                        sum(trial_fin_idx), sum(trial_all_idx));
+                end
+            end
+        end
+        function axh = plotTaskTrialFinish(obj)
+            combo_array = [obj.trials.comboTT];
+            combo_all = unique(combo_array(~isnan([combo_array])));
+            combo_min = min(combo_all);
+            trial_sucess_idx = ([obj.trials.outcome]==1);
+            trial_failure_idx= ([obj.trials.outcome]==0);
+            axh = figure();
+            hold on;
+            plot(find(trial_sucess_idx), ...
+                [obj.trials(trial_sucess_idx).comboTT]-combo_min+1, 'go'); %suceed trials
+            plot(find(trial_failure_idx), ...
+                [obj.trials(trial_failure_idx).comboTT]-combo_min+1, 'r*'); %failure trials
+            xlabel('trial number');
+            ylabel('target type number');
+            title('Task trials finish condition');
+        end
         function taskStateMuskFig(obj)
             % display task masks in y-axis, blue: suceed, red: failure
             fields_t = fieldnames(obj.Data.TaskStateMasks); 
@@ -646,13 +717,13 @@ classdef (HandleCompatible)SessionScan < handle
             title('force y ');
             xlim([-1 1]);
         end
-        function axh = plotMeantrialForce(obj)
+        function axhf = plotMeantrialForce(obj)
             % plot the meaned trial Force according to the task condition
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
             all_tarL = all_tarL(~isnan(all_tarL));
-            axh = figure();
+            axhf = figure();
             l_h = [];
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
@@ -667,11 +738,11 @@ classdef (HandleCompatible)SessionScan < handle
                     % 1std shade
                     force_up = force_mean + force_std/2;
                     force_dn = force_mean - force_std/2;
-                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                    [axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
                 end
             end
             xlabel('time aligned at MOV signal');
-            ylabel('y dir force');
+            ylabel('y dir force (N)');
             xlim([-0.5 0.4]);
             title('Force signal');
             legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
@@ -694,7 +765,7 @@ classdef (HandleCompatible)SessionScan < handle
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_p(:,:,2), 'omitnan'); %only y direction
+                    force_mean = mean(resample_p(:,:,2), 'omitnan') - obj.endpoint0(2); %only y direction
                     force_std = std(resample_p(:,:,2), 'omitnan');  
                     % mean line
                     l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
@@ -705,7 +776,7 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
             xlabel('time aligned at MOV signal');
-            ylabel('y dir position m');
+            ylabel('y dir position (m)');
             xlim([-0.2 0.5]);
             title('Position signal');
             legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
@@ -730,12 +801,12 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
             xlabel('time aligned at MOV signal');
-            ylabel('y dir velocity m/s');
+            ylabel('y dir velocity (m/s)');
             xlim([-0.2 0.5]);
             title('Velocity signal');
             legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
         end
-        function [axhF, axhP] = plotSameTrial(obj)
+        function [axhf, axhp, axhv] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
@@ -743,12 +814,12 @@ classdef (HandleCompatible)SessionScan < handle
             outcome = [obj.trials.outcome];
             % fTH now only have 2 vals
             % tarL now only have 2 vals
-            axhF = figure(); % force figure
-            set(axhF, 'Visible', 'off');
-            axhP = figure(); % position figure
-            set(axhP, 'Visible', 'off');
-            axhV = figure(); % velocity figure
-            set(axhV, 'Visible', 'off');
+            axhf = figure(); % force figure
+            set(axhf, 'Visible', 'off');
+            axhp = figure(); % position figure
+            set(axhp, 'Visible', 'off');
+            axhv = figure(); % velocity figure
+            set(axhv, 'Visible', 'off');
             for fTH_i = 1:length(all_fTH)
                 fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
                 for tarL_i = 1:length(all_tarL)
@@ -772,7 +843,7 @@ classdef (HandleCompatible)SessionScan < handle
                             time = obj.trials(trial_i).time;
                         end
                         % figure
-                        set(0, 'CurrentFigure', axhF);
+                        set(0, 'CurrentFigure', axhf);
                         % x, y seperately
                         subplot(2,1,1); hold on; plot(time, force(1,:), 'Color', obj.col_vec(col_i,:));
                         subplot(2,1,2); hold on; plot(time, force(2,:), 'COlor', obj.col_vec(col_i,:));
@@ -785,7 +856,7 @@ classdef (HandleCompatible)SessionScan < handle
                             position = obj.trials(trial_i).position;
                             time = obj.trials(trial_i).time;
                         end
-                        set(0, 'CurrentFigure', axhP);
+                        set(0, 'CurrentFigure', axhp);
                         % x, y seperately
                         subplot(2,1,1); hold on; plot(time, position(1,:), 'Color', obj.col_vec(col_i,:));
                         subplot(2,1,2); hold on; plot(time, position(2,:), 'Color', obj.col_vec(col_i,:));
@@ -796,7 +867,7 @@ classdef (HandleCompatible)SessionScan < handle
                             velocity = obj.trials(trial_i).velocity;
                             time = obj.trials(trial_i).time;
                         end
-                        set(0, 'CurrentFigure', axhV);
+                        set(0, 'CurrentFigure', axhv);
                         subplot(2,1,1); hold on; plot(time, velocity(1,:), 'Color', obj.col_vec(col_i,:));
                         subplot(2,1,2); hold on; plot(time, velocity(2,:), 'Color', obj.col_vec(col_i,:));
                     end
@@ -804,7 +875,7 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             xrangeF = [-0.5, 0.5];
-            figure(axhF); 
+            figure(axhf); 
             subplot(2,1,1);
             title('force data x');
             xlim(xrangeF);
@@ -813,7 +884,7 @@ classdef (HandleCompatible)SessionScan < handle
             xlim(xrangeF);
             
             xrangeP = [-0.2, 0.8];
-            figure(axhP);
+            figure(axhp);
             subplot(2,1,1);
             title('robot position x');
             xlim(xrangeP);
@@ -822,7 +893,7 @@ classdef (HandleCompatible)SessionScan < handle
             xlim(xrangeP);
             
             xrangeV = [-0.2, 0.8];
-            figure(axhV);
+            figure(axhv);
             subplot(2,1,1);
             title('robot velocity x');
             xlim(xrangeV);
@@ -830,9 +901,9 @@ classdef (HandleCompatible)SessionScan < handle
             title('robot velocity y');
             xlim(xrangeV);
             
-            set(axhF, 'Visible', 'on');
-            set(axhP, 'Visible', 'on');
-            set(axhV, 'Visible', 'on');
+            set(axhf, 'Visible', 'on');
+            set(axhp, 'Visible', 'on');
+            set(axhv, 'Visible', 'on');
         end
     end
 

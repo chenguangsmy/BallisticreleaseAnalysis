@@ -32,24 +32,33 @@ classdef SessionScanWam
             filename = [fdir '/' fname];
             Data = readmatrix(filename);
             obj.Data = Data;    % consider remove this due to memory taking?
-            if (size(Data,2) ~= 24)
-                msg = 'Data dimension is not 24, check!';
-                error(msg);
-            end
+            %if (size(Data,2) ~= 24)
+            %    msg = 'Data dimension is not 24, check!';
+            %    error(msg);
+            %end
             DOF = obj.DOF;
+            if (ss_num>=1898)
             %%%% after ss1898
-            idx_time = 1;
-            idx_jp   = 2         :   2-1+DOF;        % 2 : 5
-            idx_jv   = 2+DOF     :   2-1+2*DOF;      % 6 : 9
-            idx_tp   = 2+2*DOF   :   2+2*DOF+2;      % 10: 12
-            idx_tv   = 2+2*DOF+3 :   2+2*DOF+5;      % 13: 15
-            idx_jt   = 2+2*DOF+6 :   2+3*DOF+6-1;    % 16: 19
-           % idx_rdt  = 2+3*DOF+6;                    % 20
-            idx_cf   = 2+3*DOF+6 :   2+3*DOF+9-1;    % 20: 22
-            idx_it   = 2+3*DOF+9;                    % 23
-            idx_rdt  = 2+3*DOF+10;                   % 24
+                idx_time = 1;
+                idx_jp   = 2         :   2-1+DOF;        % 2 : 5
+                idx_jv   = 2+DOF     :   2-1+2*DOF;      % 6 : 9
+                idx_tp   = 2+2*DOF   :   2+2*DOF+2;      % 10: 12
+                idx_tv   = 2+2*DOF+3 :   2+2*DOF+5;      % 13: 15
+                idx_jt   = 2+2*DOF+6 :   2+3*DOF+6-1;    % 16: 19
+               % idx_rdt  = 2+3*DOF+6;                    % 20
+                idx_cf   = 2+3*DOF+6 :   2+3*DOF+9-1;    % 20: 22
+                idx_it   = 2+3*DOF+9;                    % 23
+                idx_rdt  = 2+3*DOF+10;                   % 24
             %%% before ss1898
-            
+            else
+                idx_time = 1;
+                idx_jp   = 2         :   2-1+DOF;        % 2 : 5
+                idx_jv   = 2+DOF     :   2-1+2*DOF;      % 6 : 9
+                idx_tp   = 2+2*DOF   :   2+2*DOF+2;      % 10: 12
+                idx_tv   = 2+2*DOF+3 :   2+2*DOF+5;      % 13: 15
+                idx_jt   = 2+2*DOF+6 :   2+3*DOF+6-1;    % 16: 19
+                idx_rdt  = 2+3*DOF+6;                    % 20
+            end
             
             
             try

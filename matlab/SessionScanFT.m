@@ -13,6 +13,7 @@ classdef SessionScanFT
         RDT
         FT
         elapse
+        force0
     end
     
     methods
@@ -29,6 +30,9 @@ classdef SessionScanFT
             obj.torque_origin = [Data.Tx' + Data.Tx0'
                                 Data.Ty'  + Data.Ty0'
                                 Data.Tz'  + Data.Tz0'];
+            obj.force0 = [  Data.Fx0';
+                            Data.Fy0';
+                            Data.Fz0'];
             obj.RDT = [Data.RDT];           % read-time sequence
             obj.FT = [Data.FT];             % FT sequence
             obj.elapse = [Data.elapse];     % read time elapse
@@ -39,7 +43,7 @@ classdef SessionScanFT
         
         function plotForceOrigin(obj)
            figure();
-           SAMPLE_R = 1; % plot from every 100 data points
+           SAMPLE_R = 700; % plot from every 700 data points
            plot(obj.force_origin(:,1:SAMPLE_R:end)');
            legend('x','y','z');
            xlabel('read_timepints');
@@ -49,18 +53,33 @@ classdef SessionScanFT
         function plotForce(obj, sample_r)
            figure();
            if (nargin < 2)
-            sample_r = 5; % plot from every 100 data points
+            sample_r = 100; % plot from every 100 data points
            end
            plot(obj.force(:,1:sample_r:end)');
            legend('x','y','z');
            xlabel('read timepints');
            ylabel('force / N'); 
-           title('original force');
+           title(['converted force every ' num2str(sample_r) ' pts']);
         end
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
+        function plotForceOffset(obj, sample_r)
+           figure();
+           if (nargin < 2)
+            sample_r = 700; % plot from every 700 data points (now using 700Hz)
+           end
+           plot(obj.force0(:,1:sample_r:end)');
+           legend('x','y','z');
+           xlabel('seconds s');
+           ylabel('force / N'); 
+           title(['force offset every ' num2str(sample_r) ' pts']);
+        end
+        function plotForceOffsetTrial(obj)
+           figure();
+           force_idx = find(diff(obj.force0(1,:),1,2)~=0);
+           plot(obj.force0(force_idx,1:sample_r:end)');
+           legend('x','y','z');
+           xlabel('trial');
+           ylabel('force / N'); 
+           title(['force offset every trial']);
         end
         function obj = forceFTconvert(obj) % convert from select into world axis
             obj.force = obj.FTrot_M * obj.force_origin;
