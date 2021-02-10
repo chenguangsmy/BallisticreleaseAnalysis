@@ -14,6 +14,7 @@ classdef TrialScan
         edn_t 
         outcome
         comboNo % get from intermediate data
+        comboTT % combo of task targets
         states
         tarR    % target-rotation
         tarL    % target-length
@@ -90,6 +91,7 @@ classdef TrialScan
             if isempty(obj.fTh)
                 obj.fTh = nan;
             end
+            obj.comboTT = getComboTT(obj,sessionScanObj);
             obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
             obj.position = sessionScanObj.Data.Position.Actual(obj.bgn:obj.edn,:);
             if (~isempty(sessionScanObj.force_h))
@@ -131,6 +133,27 @@ classdef TrialScan
         function obj = cleanData(obj)
             % TODO: clean the trials only in specific part, avoid
             % un-related information.
+        end
+        
+                    
+        function comboTT = getComboTT(obj,sessionScanObj)
+        	% defined: targets = [obj.tarR, obj.tarL, obj.fTh];
+            tarR = max(obj.tarR);
+            tarL = obj.tarL;
+            fTh  = obj.fTh;
+            tarR_all = sessionScanObj.tarRs; 
+            tarL_all = sessionScanObj.tarLs; 
+            fTh_all  = sessionScanObj.fThs; 
+            
+            tarR_idx = find(tarR == tarR_all);
+            tarL_idx = find(tarL == tarL_all);
+            fTh_idx  = find(fTh  == fTh_all );
+            comboTT = (tarR_idx-1) * length(tarL_all) * length(fTh_all) + ...
+                      (tarL_idx-1) * length(fTh_all) + ...
+                      fTh_idx;
+            if isempty(comboTT)
+                comboTT = nan;
+            end
         end
     end
 end
