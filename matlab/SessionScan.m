@@ -46,7 +46,7 @@ classdef (HandleCompatible)SessionScan < handle
     
     methods
         %%% process
-        function obj = SessionScan(ss_num) %(inputArg1,inputArg2)
+        function obj = SessionScan(ss_num, badTrials) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
             %   Detailed explanation goes here
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
@@ -125,8 +125,12 @@ classdef (HandleCompatible)SessionScan < handle
                     fprintf('  100%%  FINISHED!\n');
                 end
             end
-            for trial_i = obj.badTrials
-                obj.trials(trial_i).outcome = 0;
+            if (nargin>1) %specify bad trials
+                for trial_i = badTrials
+                    obj.trials(trial_i).outcome = 0;
+                end
+            else
+                obj.trials(1).outcome = 0; % 1st trials are bad for force align.
             end
             %
             % plots:
@@ -278,8 +282,15 @@ classdef (HandleCompatible)SessionScan < handle
                 
                 for dim_i = 1:3 % x, y, z seperately
                     x = trials(trial_i).force_h(dim_i,idx_t);
+                    try
                     [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
                     %[y, Ty] = resample(y,irregTx,resample_freq);
+                    catch
+                        y = [];
+                        Ty = [];
+                        display(['Unable to resample trial' num2str(trial_i) ' dim' num2str(dim_i)]);
+                    end
+                    
                     if (0) % visualize the resample result
                         figure(); 
                         hold on;
@@ -723,16 +734,28 @@ classdef (HandleCompatible)SessionScan < handle
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
             all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
             axhf = figure();
             l_h = [];
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) ...
+                        & [obj.trials.tarL]==all_tarL(tarL_i)...
+                        & [obj.trials.outcome]==1; 
                     [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
-                    force_mean = mean(resample_f(:,:,2)); %only y direction
-                    force_std = std(resample_f(:,:,2));  
+                    force_mean = mean(resample_f(:,:,xyi)); %only y direction
+                    force_std = std(resample_f(:,:,xyi));  
                     % mean line
                     l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
                     % 1std shade
@@ -742,22 +765,29 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
             xlabel('time aligned at MOV signal');
-            ylabel('y dir force (N)');
+            ylabel([xy_char(xyi) ' dir force (N)']);
             xlim([-0.5 0.4]);
             title('Force signal');
             legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
         end
-        function [axhp, axhv] = plotMeantrialPosVel(obj)
+        function axhp = plotMeantrialPos(obj)
             % plot the meaned trial Position according to the task condition
             % if did not calculate the mean and var, calculate
-            % plot the meaned trial Force according to the task condition
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
             all_tarL = all_tarL(~isnan(all_tarL));
-            
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
             % plot position
-            axhp = figure('visible', 'on');
+            axhp = figure();
             l_h = [];
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
@@ -765,8 +795,8 @@ classdef (HandleCompatible)SessionScan < handle
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_p(:,:,2), 'omitnan') - obj.endpoint0(2); %only y direction
-                    force_std = std(resample_p(:,:,2), 'omitnan');  
+                    force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
+                    force_std = std(resample_p(:,:,xyi), 'omitnan');  
                     % mean line
                     l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
                     % 1std shade
@@ -776,13 +806,29 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
             xlabel('time aligned at MOV signal');
-            ylabel('y dir position (m)');
+            ylabel([xy_char(xyi) 'dir position (m)']);
             xlim([-0.2 0.5]);
             title('Position signal');
             legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            
+        end
+        function axhv = plotMeantrialVel(obj)
+            % plot the meaned trial Velocity according to the task condition
+            % if did not calculate the mean and var, calculate
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
             % plot velocity
-            axhv = figure('visible', 'on');
+            axhv = figure();
             l_h = [];
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
@@ -790,8 +836,8 @@ classdef (HandleCompatible)SessionScan < handle
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_v(:,:,2), 'omitnan'); %only y direction
-                    force_std = std(resample_v(:,:,2), 'omitnan');  
+                    force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
+                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
                     % mean line
                     l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
                     % 1std shade
@@ -801,7 +847,7 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
             xlabel('time aligned at MOV signal');
-            ylabel('y dir velocity (m/s)');
+            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
             xlim([-0.2 0.5]);
             title('Velocity signal');
             legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});

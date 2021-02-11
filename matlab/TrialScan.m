@@ -41,9 +41,18 @@ classdef TrialScan
         velocity_h
         velocity_t
         
+        % predicted varialbes:
+          % predicted linear variables just as Scott Did in thesis::pg44
+        pred_x0
+        pred_K
+        pred_D
+        pred_A
+        pred_J
+        
     end
     
     methods
+        %%% process
         function obj = TrialScan(sessionScanObj,trialNo)
             %TRIALSCAN Construct an instance of this class
             %   Construct a trial instance from the SessionScan class
@@ -110,6 +119,17 @@ classdef TrialScan
                 obj.velocity_t  = sessionScanObj.wam_t(velocityh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
             end
             
+            % other process
+            if obj.tNo == 1
+                obj.outcome = 0;
+            end
+            if obj.outcome==1 
+                try
+                    predictImpedanceLinDev(obj);
+                catch
+                    display(['unable to calculate in trial' num2str(tNo)]);
+                end
+            end
         end
         
         function obj = alignMOV(obj)
@@ -135,6 +155,85 @@ classdef TrialScan
             % un-related information.
         end
         
+        function obj = predictImpedanceLinDev(obj)
+            % obj = predictImpedanceLinDev(obj)
+            % predict 1D dynamic parameters for simplicity
+            % predict the Impedance using a linear derivative module, just
+            % as Scott did in thesis pg27. Where:
+            % F(t) = K(x0-x(t)) - Dx`(t) - Ax``(t) - Jx```(t)
+            % solution:
+            % Using matrix least squre regression:
+            %  F = X*b
+            %  b = inv(X'X)*X'*F
+            %  where:
+            %  b = [-Kx0, -K, -D, -A, -J]';         % 5-by-1
+            %  X = [1 x(1) x`(1) x``(1) x```(1) ...
+            %       1 x(2) x`(2) x``(2) x```(2) ...
+            %       ...
+            %       1 x(n) x`(n) x``(n) x```(n)];   % n-by-5
+            %  F = [F(1) F(2) ... F(n)]';           % n-by-1
+            
+            % check if the time aligned, if not, re-align
+            t_bgn = 0;
+            t_edn = 0.4;
+            freq = 500;     % 500Hz, the same as WAM
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            fce_t = obj.force_t(fce_t_idx);
+            pos = obj.position_h(2,pos_t_idx);
+            fce = obj.force_h(2,fce_t_idx);
+            try
+                ifsame = min(pos_t == fce_t); % one 0, all 0
+            catch 
+                ifsame = 0;
+            end
+            
+            
+            if (~ifsame)
+                t_all = t_bgn:(1/freq):t_edn;
+                % resample at time t
+                pos_ = interp1(pos_t, pos, t_all); % .... process here
+                fce_ = interp1(fce_t, fce, t_all); 
+                % chances the last pos_ and fce_ is nan
+                pos_ = pos_(1:end-1);
+                fce_ = fce_(1:end-1);
+                t_all= t_all(1:end-1);
+                if sum(isnan(pos_) | isnan(fce_)) % if still have force
+                    display('pos_ and fce_ have nan values, abort!');
+                    return
+                end
+                
+                if(0) % see the interp result
+                    fh = figure();
+                    subplot(2,1,1);
+                    plot(pos_t, pos, 'o', t_all, pos_, ':.');
+                    ylabel('position interp');
+                    subplot(2,1,2);
+                    plot(fce_t, fce, 'o', t_all, fce_, ':.');
+                    ylabel('foece interp');
+                end
+                
+            end
+            x      = pos_;
+            dx     = diff(x)*(1/freq);
+            ddx    = diff(dx)*(1/freq);
+            dddx   = diff(ddx)*(1/freq);
+            
+            n = length(dddx);
+            F = reshape(fce_(1:n),n,1);
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
+                reshape(ddx(1:n),n,1), reshape(dddx(1:n),n,1)];
+            b = [];
+            % calculate 
+            b = (pinv(X'*X)*X'*F);
+            % asign values
+            obj.pred_K = -b(2);
+            obj.pred_D = -b(3);
+            obj.pred_A = -b(4);
+            obj.pred_J = -b(5);
+            obj.pred_x0 = b(1)/obj.pred_K;
+        end
                     
         function comboTT = getComboTT(obj,sessionScanObj)
         	% defined: targets = [obj.tarR, obj.tarL, obj.fTh];
@@ -154,6 +253,68 @@ classdef TrialScan
             if isempty(comboTT)
                 comboTT = nan;
             end
+        end
+        
+        %%% plot
+        function axh = plotPredictedForceOnPosition(obj)
+            % use regression terms to get the predicted force
+            t_bgn = 0;
+            t_edn = 0.4;
+            freq = 500;     % 500Hz, the same as WAM
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            fce_t = obj.force_t(fce_t_idx);
+            pos = obj.position_h(2,pos_t_idx);
+            fce = obj.force_h(2,fce_t_idx);
+            try
+                ifsame = min(pos_t == fce_t); % one 0, all 0
+            catch 
+                ifsame = 0;
+            end
+            
+            
+            if (~ifsame)
+                t_all = t_bgn:(1/freq):t_edn;
+                % resample at time t
+                pos_ = interp1(pos_t, pos, t_all); % .... process here
+                fce_ = interp1(fce_t, fce, t_all); 
+                % chances the last pos_ and fce_ is nan
+                pos_ = pos_(1:end-1);
+                fce_ = fce_(1:end-1);
+                t_all= t_all(1:end-1);
+                if sum(isnan(pos_) | isnan(fce_)) % if still have force
+                    err('pos_ and fce_ have nan values, abort!');
+                end
+            end
+            x      = pos_;
+            dx     = diff(x)*(1/freq);
+            ddx    = diff(dx)*(1/freq);
+            dddx   = diff(ddx)*(1/freq);
+            
+            n = length(dddx);
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
+                reshape(ddx(1:n),n,1), reshape(dddx(1:n),n,1)];
+            b = [obj.pred_x0*obj.pred_K;
+                -obj.pred_K;
+                -obj.pred_D;
+                -obj.pred_A;
+                -obj.pred_J];
+            F = X*b;
+            t_all_ = t_all(1:length(F));
+            axh = figure();
+            hold on;
+            plot(t_all, fce_, 'b', 'LineWidth', 3); 
+            plot(t_all_, F, 'r--', 'LineWidth', 3); 
+            xlabel('time (s)');
+            ylabel('force (N)');
+            legend('origin force', 'regressed force');
+            title(['origin and regress force trial' num2str(obj.tNo)]);
+            
+        end
+        
+        function axh = plotPredictedForceODE(obj)
+            % solve the force using differential equation
         end
     end
 end
