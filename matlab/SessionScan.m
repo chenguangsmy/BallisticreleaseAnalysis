@@ -383,15 +383,15 @@ classdef (HandleCompatible)SessionScan < handle
                     i = i+1;
                     trials_idx = [obj.trials.tarL] == tarLi &...
                                     [obj.trials.fTh] == fThi &...
-                                    [obj.trials.outcome] == 1;
+                                    [obj.trials.outcome] == 1;      % only sucessful trials
                     rdt_ranges = [obj.trials(trials_idx).pert_rdt_bgn;...
                                     obj.trials(trials_idx).pert_rdt_edn];
                     tarL_list = [tarL_list tarLi];
-                    fTh_list  = [fTh_list tarLi];
+                    fTh_list  = [fTh_list fThi];
                     rdt_ranges_all{i} = rdt_ranges;
                 end
             end
-            obj.wam.concatinateFiles(tarL_list, fTh_list, rdt_ranges);
+            obj.wam = obj.wam.concatinateTrials2File(tarL_list, fTh_list, rdt_ranges);
             % for each trial condition, concatinate a structure
             
              % call generateWamPertData()
