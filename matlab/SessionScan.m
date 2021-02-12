@@ -23,6 +23,10 @@ classdef (HandleCompatible)SessionScan < handle
             cosd(45)    sind(45)    0];
         taskState
         trials TrialScan% member function
+        %%% perturbation variables
+        pert_state = 3  % only perturb at force ramp pert_state == 3
+        pert_time       % perturbation start and end time
+        pert_rdt        % perturbation start read time, (same with wam)
         %%% other modules
         ft              % object of force
         wam             % object of wam
@@ -32,6 +36,8 @@ classdef (HandleCompatible)SessionScan < handle
         wamv_h
         wamt_h
         wam_t
+        
+        %%% other variables
         endpoint0 = [-0.517 0.483 0.001]
         col_vec = [1 0 0
                     0 1 0
@@ -42,6 +48,8 @@ classdef (HandleCompatible)SessionScan < handle
                     1 1 1]   % color for plot, rgb cmyk
         %badTrials = [1];       % bad trial, cull in data
         badTrials = [1, 278];       % FOR SS1898
+        stateNames = {'Begin', 'Present', 'FrcRamp', 'Move', 'Hold', 'End', 'Reset'};
+        
     end
     
     methods
@@ -362,7 +370,32 @@ classdef (HandleCompatible)SessionScan < handle
             end
 
         end
-
+        %%% communicate 
+        function obj = generateWamPertData(obj)
+            % send data into wam function to help SessionScanWam generate perturbation-only data
+            % perturbation rdt already saved in TrialScan
+            tarL_list = [];
+            fTh_list = [];
+            rdt_ranges_all = {};
+            i = 0;
+            for tarLi = obj.tarLs
+                for fThi = obj.fThs
+                    i = i+1;
+                    trials_idx = [obj.trials.tarL] == tarLi &...
+                                    [obj.trials.fTh] == fThi &...
+                                    [obj.trials.outcome] == 1;
+                    rdt_ranges = [obj.trials(trials_idx).pert_rdt_bgn;...
+                                    obj.trials(trials_idx).pert_rdt_edn];
+                    tarL_list = [tarL_list tarLi];
+                    fTh_list  = [fTh_list tarLi];
+                    rdt_ranges_all{i} = rdt_ranges;
+                end
+            end
+            obj.wam.concatinateFiles(tarL_list, fTh_list, rdt_ranges);
+            % for each trial condition, concatinate a structure
+            
+             % call generateWamPertData()
+        end
         %%% plot
         function taskScanTrials(obj)
             % I need true combo here! see the ProcessRawData

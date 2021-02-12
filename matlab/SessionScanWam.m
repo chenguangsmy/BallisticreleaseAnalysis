@@ -6,17 +6,21 @@ classdef SessionScanWam
         % DT sequence:
         %   time, jpOutput, jvOutput, toolPositionOutput,
         %   toolVelocityOutput, wamJTOutput, wamRDTOutput
-        DOF = 4 % WAM4
-        Data
-        time    % time from starting? the wam
-        jp      % joint position
-        jv      % joint velocity 
-        tp      % tool position
-        tv      % tool velocity
-        jt      % joint torque
-        rdt     % read-time sequence
-        it      % iteration_number
-        cf      % perturbation force
+        DOF = 4         % WAM4
+        Data            % raw data reading
+        time            % time from starting? the wam
+        jp              % joint position
+        jv              % joint velocity 
+        tp              % tool position
+        tv              % tool velocity
+        jt              % joint torque
+        rdt             % read-time sequence
+        it              % iteration_number
+        cf              % perturbation force
+        Data_pert       % perturbation dataset, have:
+                        %       datMat  % perturbation data Frame
+                        %       FT      % force Threshold
+                        %       x0      % endpoint
     end
     
     methods
@@ -45,7 +49,6 @@ classdef SessionScanWam
                 idx_tp   = 2+2*DOF   :   2+2*DOF+2;      % 10: 12
                 idx_tv   = 2+2*DOF+3 :   2+2*DOF+5;      % 13: 15
                 idx_jt   = 2+2*DOF+6 :   2+3*DOF+6-1;    % 16: 19
-               % idx_rdt  = 2+3*DOF+6;                    % 20
                 idx_cf   = 2+3*DOF+6 :   2+3*DOF+9-1;    % 20: 22
                 idx_it   = 2+3*DOF+9;                    % 23
                 idx_rdt  = 2+3*DOF+10;                   % 24
@@ -76,7 +79,18 @@ classdef SessionScanWam
             end
             obj = convert0tonan_RDT(obj);
         end
-        
+        function obj = concatinateFiles(obj, tarL_list, fTh_list, rdt_ranges)
+            % do something here! 
+            % tarL_list, fTh_list, rdt_ranges, have same length
+            for conditioni = 1:length(tarL_list)
+                Data_pert(conditioni).FT = fTh_list(conditioni);
+                Data_pert(conditioni).x0 = tarL_list(conditioni);
+                Data_pert(conditioni).FT = obj.Data(rdt_ranges);
+            end
+            obj.Data_pert = Data_pert;
+            % contatinate according to the rdt_ranges
+            display('Finished, data in wam_obj.Data_pert');
+        end
         function obj = convert0tonan_RDT(obj)
             rdt = double(obj.rdt);
             rdt_idx = find([rdt==0]);

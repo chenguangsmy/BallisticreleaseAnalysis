@@ -29,6 +29,8 @@ classdef TrialScan
         idx_rst
         time_orn        % time origin
         time            % time after aligned 
+        xyi             % xy index
+        xyn             % xy name
          % specific ballistic-realease
         fTh             % force-threshold
         force           % 
@@ -48,6 +50,12 @@ classdef TrialScan
         pred_D
         pred_A
         pred_J
+        
+        % perturbation related variables
+        pert_t_bgn                      % perturbation time start
+        pert_t_edn                      % perturbation time end
+        pert_rdt_bgn                    % perturbation ReadTime bgn, RDT is SessionScanWam::rdt 
+        pert_rdt_edn                    % perturbation ReadTime edn
         
     end
     
@@ -130,8 +138,33 @@ classdef TrialScan
                     display(['unable to calculate in trial' num2str(tNo)]);
                 end
             end
+            
+            % find perturbation time
+            obj = findPerterbTime(obj, sessionScanObj);
         end
-        
+        function obj = findPerterbTime(obj, sessionScanObj)
+            % find perturbation based on we only perturb on ForceRamp
+             idx = obj.idx_fcr:obj.idx_mov;
+             pert_t = obj.time_orn(idx);
+            % find time  
+            try
+             obj.pert_t_bgn = pert_t(1);
+             obj.pert_t_edn = pert_t(end);
+            catch
+                return
+            end
+              %if not bigger than 6s, abort.
+             if length(pert_t) < 50*6 % 6s
+                 display(['Not enough long in trial' num2str(obj.tNo)]);
+                 return
+             end
+             % find RDT?
+             pert_idx = sessionScanObj.time >= obj.pert_t_bgn & ...
+                        sessionScanObj.time <= obj.pert_t_edn;
+             pert_rdt = sessionScanObj.Data.Position.RDT(pert_idx);
+             obj.pert_rdt_bgn = pert_rdt(1);
+             obj.pert_rdt_edn = pert_rdt(end);
+        end
         function obj = alignMOV(obj)
             %alignMOV align all trials at ST_MOV
             %   Just do linear shift, do NOT skew time
@@ -181,8 +214,8 @@ classdef TrialScan
             fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
             pos_t = obj.position_t(pos_t_idx);
             fce_t = obj.force_t(fce_t_idx);
-            pos = obj.position_h(2,pos_t_idx);
-            fce = obj.force_h(2,fce_t_idx);
+            pos = obj.position_h(1,pos_t_idx);
+            fce = obj.force_h(1,fce_t_idx);
             try
                 ifsame = min(pos_t == fce_t); % one 0, all 0
             catch 
@@ -265,8 +298,8 @@ classdef TrialScan
             fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
             pos_t = obj.position_t(pos_t_idx);
             fce_t = obj.force_t(fce_t_idx);
-            pos = obj.position_h(2,pos_t_idx);
-            fce = obj.force_h(2,fce_t_idx);
+            pos = obj.position_h(1,pos_t_idx);
+            fce = obj.force_h(1,fce_t_idx);
             try
                 ifsame = min(pos_t == fce_t); % one 0, all 0
             catch 
