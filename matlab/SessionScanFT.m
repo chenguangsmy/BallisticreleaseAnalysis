@@ -4,6 +4,7 @@ classdef SessionScanFT
     
     properties
         force_origin
+        force_net
         force
         torque_origin
         FTrot_M = ...   % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
@@ -27,6 +28,9 @@ classdef SessionScanFT
             obj.force_origin = [Data.Fx' + Data.Fx0'
                                 Data.Fy' + Data.Fy0'
                                 Data.Fz' + Data.Fz0'];
+            obj.force_net    = [Data.Fx'
+                                Data.Fy'
+                                Data.Fz'];
             obj.torque_origin = [Data.Tx' + Data.Tx0'
                                 Data.Ty'  + Data.Ty0'
                                 Data.Tz'  + Data.Tz0'];

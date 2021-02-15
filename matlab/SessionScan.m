@@ -3,6 +3,8 @@ classdef (HandleCompatible)SessionScan < handle
     %   Detailed explanation goes here
 
     properties
+        %%% marking vars
+        ssnum
         %%% session stat
         Data
         time
@@ -56,6 +58,7 @@ classdef (HandleCompatible)SessionScan < handle
         %%% process
         function obj = SessionScan(ss_num, badTrials) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
+            obj.ssnum = ss_num;
             %   Detailed explanation goes here
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
             file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
@@ -369,6 +372,19 @@ classdef (HandleCompatible)SessionScan < handle
                     trials(trial_i).velocity_h(3,resample_Left_idx:resample_Right_idx);
             end
 
+        end
+        function [obj, axh_list] = batchPredImpedanceLinDev(obj)
+            axh_list = zeros(size(obj.trials));
+            for trial_i = 1:length(obj.trials)
+                if obj.trials(trial_i).outcome==1 
+                    try
+                        obj.trials(trial_i) = obj.trials(trial_i).predictImpedanceLinDev();
+                        axh_list(trial_i) = obj.trials(trial_i).plotPredictedForceOnPosition();
+                    catch
+                        display(['unable to calculate in trial' num2str(obj.trials(trial_i).tNo)]);
+                    end
+                end
+            end
         end
         %%% communicate 
         function obj = generateWamPertData(obj)
@@ -983,6 +999,62 @@ classdef (HandleCompatible)SessionScan < handle
             set(axhf, 'Visible', 'on');
             set(axhp, 'Visible', 'on');
             set(axhv, 'Visible', 'on');
+        end
+        function axh = plotEndPointvsX0(obj)
+            combos = unique([obj.trials.comboTT]);
+            combos = combos(~isnan(combos));
+            axh = figure(); hold on;
+            hist_h = zeros(1, length(combos));
+            for i = 1:length(combos)
+                combo_i = combos(i);
+                trials_idx = ([obj.trials.comboTT] == combo_i);
+                x0 = [obj.trials(trials_idx).pred_x0];
+                hist_h(i) = histogram(x0);
+            end
+            tarL_all = [];
+            fTH_all  = [];
+            for combo_i = combos
+                trials_idx = ([obj.trials.comboTT] == combo_i);
+                tarL = unique([obj.trials(trials_idx).tarL]);
+                tarL_all = [tarL_all tarL];
+                fTh = unique([obj.trials(trials_idx).fTh]);
+                fTH_all = [fTH_all fTh];
+            end
+            legend(hist_h, [num2str(tarL_all(1)) 'm, ' num2str(fTH_all(1)) 'N'], ...
+                [num2str(tarL_all(2)) 'm, ' num2str(fTH_all(2)) 'N'], ...
+                [num2str(tarL_all(3)) 'm, ' num2str(fTH_all(3)) 'N'], ...
+                [num2str(tarL_all(4)) 'm, ' num2str(fTH_all(4)) 'N']);
+            title(['Session' num2str(obj.ssnum) 'x0 prediction with different task setting']);
+            ylabel('count');
+            xlabel('x0 prediction');
+        end
+        function axh = plotPredStiffness_LinDev(obj)
+            combos = unique([obj.trials.comboTT]);
+            combos = combos(~isnan(combos));
+            axh = figure(); hold on;
+            hist_h = zeros(1, length(combos));
+            for i = 1:length(combos)
+                combo_i = combos(i);
+                trials_idx = ([obj.trials.comboTT] == combo_i);
+                pred_K = [obj.trials(trials_idx).pred_K];
+                hist_h(i) = histogram(pred_K);
+            end
+            tarL_all = [];
+            fTH_all  = [];
+            for combo_i = combos
+                trials_idx = ([obj.trials.comboTT] == combo_i);
+                tarL = unique([obj.trials(trials_idx).tarL]);
+                tarL_all = [tarL_all tarL];
+                fTh = unique([obj.trials(trials_idx).fTh]);
+                fTH_all = [fTH_all fTh];
+            end
+            legend(hist_h, [num2str(tarL_all(1)) 'm, ' num2str(fTH_all(1)) 'N'], ...
+                [num2str(tarL_all(2)) 'm, ' num2str(fTH_all(2)) 'N'], ...
+                [num2str(tarL_all(3)) 'm, ' num2str(fTH_all(3)) 'N'], ...
+                [num2str(tarL_all(4)) 'm, ' num2str(fTH_all(4)) 'N']);
+            title(['Session' num2str(obj.ssnum) 'K prediction with different task setting']);
+            ylabel('count');
+            xlabel('K prediction');
         end
     end
 

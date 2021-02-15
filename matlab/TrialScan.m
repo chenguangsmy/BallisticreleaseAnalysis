@@ -85,8 +85,13 @@ classdef TrialScan
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
-            obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, obj.bgn:obj.edn));          % target-rotation
-            obj.tarL    = sort(unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(6, obj.bgn:obj.edn))));    % target-length
+            maskMov     = sessionScanObj.Data.TaskStateMasks.Move;
+            maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
+            maskTrial(obj.bgn:obj.edn) = 1;   
+            obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, maskMov & maskTrial));          % target-rotation
+            %obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, obj.bgn:obj.edn));          % target-rotation
+            obj.tarL    = unique(sessionScanObj.Data.TaskJudging.Target(6, maskMov & maskTrial));    % target-length
+            %obj.tarL    = sort(unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(6, obj.bgn:obj.edn))));    % target-length
             if isempty(obj.tarL)
                 obj.tarL = nan;
             end
@@ -126,19 +131,17 @@ classdef TrialScan
                 obj.velocity_h  = sessionScanObj.wamv_h(velocityh_idx,:)';     % from WAM
                 obj.velocity_t  = sessionScanObj.wam_t(velocityh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
             end
-            
+            if isempty(setdiff(obj.tarR, [0,4])) %only y direction
+                obj.xyi = 1;
+            elseif isempty(setdiff(obj.tarR, [2, 6]))
+                obj.xyi = 2;
+            end
+            xy_char = 'xy';
+            obj.xyn = xy_char(obj.xyi);
             % other process
-            if obj.tNo == 1
-                obj.outcome = 0;
-            end
-            if obj.outcome==1 
-                try
-                    predictImpedanceLinDev(obj);
-                catch
-                    display(['unable to calculate in trial' num2str(tNo)]);
+                if obj.tNo == 1
+                    obj.outcome = 0;
                 end
-            end
-            
             % find perturbation time
             obj = findPerterbTime(obj, sessionScanObj);
         end
@@ -199,7 +202,7 @@ classdef TrialScan
             %  F = X*b
             %  b = inv(X'X)*X'*F
             %  where:
-            %  b = [-Kx0, -K, -D, -A, -J]';         % 5-by-1
+            %  b = [Kx0, -K, -D, -A, -J]';         % 5-by-1
             %  X = [1 x(1) x`(1) x``(1) x```(1) ...
             %       1 x(2) x`(2) x``(2) x```(2) ...
             %       ...
@@ -214,14 +217,13 @@ classdef TrialScan
             fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
             pos_t = obj.position_t(pos_t_idx);
             fce_t = obj.force_t(fce_t_idx);
-            pos = obj.position_h(1,pos_t_idx);
-            fce = obj.force_h(1,fce_t_idx);
+            pos = obj.position_h(obj.xyi,pos_t_idx);
+            fce = obj.force_h(obj.xyi,fce_t_idx);
             try
                 ifsame = min(pos_t == fce_t); % one 0, all 0
             catch 
                 ifsame = 0;
             end
-            
             
             if (~ifsame)
                 t_all = t_bgn:(1/freq):t_edn;
@@ -248,10 +250,10 @@ classdef TrialScan
                 end
                 
             end
-            x      = pos_;
-            dx     = diff(x)*(1/freq);
-            ddx    = diff(dx)*(1/freq);
-            dddx   = diff(ddx)*(1/freq);
+            x      = pos_ - pos(1);
+            dx     = diff(x,1,2)/(1/freq);
+            ddx    = diff(x,2,2)/(1/freq);
+            dddx   = diff(x,3,2)/(1/freq);
             
             n = length(dddx);
             F = reshape(fce_(1:n),n,1);
@@ -266,10 +268,17 @@ classdef TrialScan
             obj.pred_A = -b(4);
             obj.pred_J = -b(5);
             obj.pred_x0 = b(1)/obj.pred_K;
+            if(0)
+                fprintf('trial%03d, K=%.3f, B=%.3f, M=%.3f, J=%.3f, x0=%.3f', ...
+                    obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_J, obj.pred_x0 );
+            end
         end
                     
         function comboTT = getComboTT(obj,sessionScanObj)
         	% defined: targets = [obj.tarR, obj.tarL, obj.fTh];
+            if length(unique(obj.tarR)) > 1
+                display(['trial' num2str(obj.tNo) ' have more than 1 tarR']);
+            end
             tarR = max(obj.tarR);
             tarL = obj.tarL;
             fTh  = obj.fTh;
@@ -277,13 +286,14 @@ classdef TrialScan
             tarL_all = sessionScanObj.tarLs; 
             fTh_all  = sessionScanObj.fThs; 
             
-            tarR_idx = find(tarR == tarR_all);
-            tarL_idx = find(tarL == tarL_all);
-            fTh_idx  = find(fTh  == fTh_all );
-            comboTT = (tarR_idx-1) * length(tarL_all) * length(fTh_all) + ...
-                      (tarL_idx-1) * length(fTh_all) + ...
-                      fTh_idx;
-            if isempty(comboTT)
+            try % sometrials do not have tarR
+                tarR_idx = find(tarR == tarR_all);
+                tarL_idx = find(tarL == tarL_all);
+                fTh_idx  = find(fTh  == fTh_all );
+                comboTT = (tarR_idx-1) * length(tarL_all) * length(fTh_all) + ...
+                          (tarL_idx-1) * length(fTh_all) + ...
+                          fTh_idx;
+            catch
                 comboTT = nan;
             end
         end
@@ -298,8 +308,9 @@ classdef TrialScan
             fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
             pos_t = obj.position_t(pos_t_idx);
             fce_t = obj.force_t(fce_t_idx);
-            pos = obj.position_h(1,pos_t_idx);
-            fce = obj.force_h(1,fce_t_idx);
+            pos = obj.position_h(obj.xyi,pos_t_idx);
+            pos = pos - pos(1); % remove the offset
+            fce = obj.force_h(obj.xyi,fce_t_idx);
             try
                 ifsame = min(pos_t == fce_t); % one 0, all 0
             catch 
@@ -321,9 +332,9 @@ classdef TrialScan
                 end
             end
             x      = pos_;
-            dx     = diff(x)*(1/freq);
-            ddx    = diff(dx)*(1/freq);
-            dddx   = diff(ddx)*(1/freq);
+            dx     = diff(x,1,2)/(1/freq);
+            ddx    = diff(x,2,2)/(1/freq);
+            dddx   = diff(x,3,2)/(1/freq);
             
             n = length(dddx);
             X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
@@ -335,7 +346,7 @@ classdef TrialScan
                 -obj.pred_J];
             F = X*b;
             t_all_ = t_all(1:length(F));
-            axh = figure();
+            axh = figure('Visible', 'off');
             hold on;
             plot(t_all, fce_, 'b', 'LineWidth', 3); 
             plot(t_all_, F, 'r--', 'LineWidth', 3); 
