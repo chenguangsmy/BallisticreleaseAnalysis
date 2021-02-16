@@ -107,7 +107,7 @@ classdef SessionScanWam
                 idx_rdt  = 2+3*DOF+6;                    % 20
             end
             
-            figure;
+%             figure;
             
             % tarL_list, fTh_list, rdt_ranges, have same length
             saveSepFile_flag = 1;   % if a seperate file needed
@@ -115,6 +115,7 @@ classdef SessionScanWam
                 rdt_ranges = rdt_ranges_all{conditioni};
                 % get rdt_idx from rdt_ranges
                 rdt_idx = [];
+                rdt_ranges = rdt_ranges_all{conditioni};
                 for pair_i = 1:size(rdt_ranges,2)
                     rdt_idx = [rdt_ranges(1,pair_i)+2*500: ...
                                         rdt_ranges(2,pair_i)];
