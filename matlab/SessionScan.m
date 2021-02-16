@@ -408,7 +408,7 @@ classdef (HandleCompatible)SessionScan < handle
                     rdt_ranges_all{i} = rdt_ranges;
                 end
             end
-            obj.wam = obj.wam.concatinateTrials2File(tarL_list, fTh_list, rdt_ranges);
+            obj.wam = obj.wam.concatinateTrials2File(tarL_list, fTh_list, rdt_ranges_all);
             % for each trial condition, concatinate a structure
             
              % call generateWamPertData()

@@ -226,19 +226,19 @@ classdef get_Z_spectral < handle
             
             %% Mag & Phase calculation for Impedance plot
             for j=1:nFreq
-                Z11_s_mag(j,1) = 20*log10(abs(Z11_s(j,1)));
-                Z22_s_mag(j,1) = 20*log10(abs(Z22_s(j,1)));
-                Z12_s_mag(j,1) = 20*log10(abs(Z12_s(j,1)));
-                Z21_s_mag(j,1) = 20*log10(abs(Z21_s(j,1)));
+                Z11_s_mag(j,1) = abs(Z11_s(j,1));
+                Z22_s_mag(j,1) = abs(Z22_s(j,1));
+                Z12_s_mag(j,1) = abs(Z12_s(j,1));
+                Z21_s_mag(j,1) = abs(Z21_s(j,1));
                 Z11_s_phi(j,1) = 180/pi*unwrap2(angle(Z11_s(j,1)),unwrapThreshold,'up');
                 Z22_s_phi(j,1) = 180/pi*unwrap2(angle(Z22_s(j,1)),unwrapThreshold,'up');
                 Z12_s_phi(j,1) = 180/pi*unwrap2(angle(Z12_s(j,1)),unwrapThreshold,'up');
                 Z21_s_phi(j,1) = 180/pi*unwrap2(angle(Z21_s(j,1)),unwrapThreshold,'up');
                 
-                Z11_l_mag(j,1) = 20*log10(abs(Z11_l(j,1)));
-                Z22_l_mag(j,1) = 20*log10(abs(Z22_l(j,1)));
-                Z12_l_mag(j,1) = 20*log10(abs(Z12_l(j,1)));
-                Z21_l_mag(j,1) = 20*log10(abs(Z21_l(j,1)));
+                Z11_l_mag(j,1) = abs(Z11_l(j,1));
+                Z22_l_mag(j,1) = abs(Z22_l(j,1));
+                Z12_l_mag(j,1) = abs(Z12_l(j,1));
+                Z21_l_mag(j,1) = abs(Z21_l(j,1));
                 Z11_l_phi(j,1) = 180/pi*unwrap2(angle(Z11_l(j,1)),unwrapThreshold,'up');
                 Z22_l_phi(j,1) = 180/pi*unwrap2(angle(Z22_l(j,1)),unwrapThreshold,'up');
                 Z12_l_phi(j,1) = 180/pi*unwrap2(angle(Z12_l(j,1)),unwrapThreshold,'up');
@@ -248,138 +248,131 @@ classdef get_Z_spectral < handle
             %% Impedance plot (Diagonal)
             xLowerLim = 0.5;
             xUpperLim = 50.0;
-            yLowerLim = 0.0;
-            yUpperLim = 100.0;
+            yLowerLim11 = 2e+3;
+            yUpperLim11 = 1e+6;
+            yLowerLim22 = 2e+3;
+            yUpperLim22 = 3e+4;
             
-            fullscreen = get(0,'ScreenSize');
-            %             figure('Position',[0 0 fullscreen(3) fullscreen(4)]);
             figure(1); hold on;
-            set(gcf,'Color',[1,1,1]);
-            
             % Magnitude plot of ankle impedance
-            ax1 = subplot(2,2,1,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            %plot(TF_freq,Z11_abot_mag(:,1),'k');
-%             hold on;
-%             plot(TF_freq,Z11_s_mag(:,1),'b');
-            hold on;
-            plot(TF_freq,Z11_l_mag(:,1),'LineWidth',2); % plot(TF_freq,Z11_l_mag(:,1),'r','LineWidth',2);
-            grid on;box on;
-            % axis([xLowerLim xUpperLim yLowerLim yUpperLim]);
-            xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('magnitude (dB)','fontWeight','bold','fontSize',14);
-            title('Z11(t-IE/d-IE)','fontWeight','bold','fontSize',16);
+            ax1 = subplot(2,2,1,'XScale','log','YScale','log');
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,Z11_l_mag(:,1),'LineWidth',2); grid on; box on;
+            axis([xLowerLim xUpperLim yLowerLim11 yUpperLim11]);
+            xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
+            ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
+            title('Z11','fontWeight','bold','fontSize',16);
             
-            ax2 = subplot(2,2,2,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            %plot(TF_freq,Z22_abot_mag(:,1),'k');
-%             hold on;
-%             plot(TF_freq,Z22_s_mag(:,1),'b');
-            hold on;
-            plot(TF_freq,Z22_l_mag(:,1),'LineWidth',2); % plot(TF_freq,Z22_l_mag(:,1),'r','LineWidth',2);
-            grid on;box on;
-            % axis([xLowerLim xUpperLim yLowerLim yUpperLim]);
-            xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('magnitude (dB)','fontWeight','bold','fontSize',14);
-            title('Z22(t-DP/d-DP)','fontWeight','bold','fontSize',16);
+            ax2 = subplot(2,2,2,'XScale','log','YScale','log');
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,Z22_l_mag(:,1),'LineWidth',2); grid on; box on;
+            axis([xLowerLim xUpperLim yLowerLim22 yUpperLim22]);
+            xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
+            ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
+            title('Z22','fontWeight','bold','fontSize',16);
             
             ax3 = subplot(2,2,3,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            %plot(TF_freq,Z11_abot_phi(:,1),'k');
-%             hold on;
-%             plot(TF_freq,Z11_s_phi(:,1),'b');
-            hold on;
-            plot(TF_freq,Z11_l_phi(:,1),'LineWidth',2); % plot(TF_freq,Z11_l_phi(:,1),'r','LineWidth',2);
-
-            grid on;box on;
-            % axis([xLowerLim xUpperLim 0 180]);
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,Z11_l_phi(:,1),'LineWidth',2); grid on; box on;
+            axis([xLowerLim xUpperLim 0 180]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
             ax4 = subplot(2,2,4,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            %plot(TF_freq,Z22_abot_phi(:,1),'k');
-%             hold on;
-%             plot(TF_freq,Z22_s_phi(:,1),'b');
-            hold on;
-            plot(TF_freq,Z22_l_phi(:,1),'LineWidth',2); % plot(TF_freq,Z22_l_phi(:,1),'r','LineWidth',2);
-            grid on;box on;
-            % axis([xLowerLim xUpperLim 0 180]);
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,Z22_l_phi(:,1),'LineWidth',2); grid on; box on;
+            axis([xLowerLim xUpperLim 0 180]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
             linkaxes([ax1,ax2,ax3,ax4],'x');
             
             %% Partial Coherence Plot
             xLowerLim = 0.5;
-            fullscreen = get(0,'ScreenSize');
-            %             figure('Position',[0 0 fullscreen(3) fullscreen(4)]);
             figure(2); hold on;
             set(gcf,'Color',[1,1,1]);
             
             ax1 = subplot(2,2,1,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            plot(TF_freq,PC11_s(:,1),'LineWidth',2); % plot(TF_freq,PC11_s(:,1),'b','LineWidth',2);
-
-            grid on;box on; ylim([0 1]);
-            % axis([xLowerLim xUpperLim 0 1]);
-            xlabel('Hz','fontWeight','bold','fontSize',14); title('Y11 PC','fontWeight','bold','fontSize',16);
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,PC11_s(:,1),'LineWidth',2);
+            grid on;box on; ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
+            xlabel('Hz','fontWeight','bold','fontSize',14); 
+            title('Y11 PC','fontWeight','bold','fontSize',16);
             
             ax2 = subplot(2,2,2,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            plot(TF_freq,PC12_s(:,1),'LineWidth',2); % plot(TF_freq,PC12_s(:,1),'b','LineWidth',2);
-            hold off;
-            grid on;box on;ylim([0 1]);
-            % axis([xLowerLim xUpperLim 0 1]);
-            xlabel('Hz','fontWeight','bold','fontSize',14); title('Y12 PC','fontWeight','bold','fontSize',16);
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,PC12_s(:,1),'LineWidth',2); hold off;
+            grid on; box on; ylim([0 1]);
+            axis([xLowerLim xUpperLim 0 1]);
+            xlabel('Hz','fontWeight','bold','fontSize',14); 
+            title('Y12 PC','fontWeight','bold','fontSize',16);
             
             ax3 = subplot(2,2,3,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            plot(TF_freq,PC21_s(:,1),'LineWidth',2); % plot(TF_freq,PC21_s(:,1),'b','LineWidth',2);
-            hold off;
-            grid on;box on;ylim([0 1]);
-            % axis([xLowerLim xUpperLim 0 1]);
-            xlabel('Hz','fontWeight','bold','fontSize',14); title('Y21 PC','fontWeight','bold','fontSize',16);
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,PC21_s(:,1),'LineWidth',2); hold off;
+            grid on;box on;ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
+            xlabel('Hz','fontWeight','bold','fontSize',14);
+            title('Y21 PC','fontWeight','bold','fontSize',16);
             
             ax4 = subplot(2,2,4,'XScale','log');
-            set(gca,'fontWeight','bold','fontSize',12);
-            hold on;
-            plot(TF_freq,PC22_s(:,1),'LineWidth',2); % plot(TF_freq,PC22_s(:,1),'b','LineWidth',2);
-            hold off;
-            grid on;box on;ylim([0 1]);
-            % axis([xLowerLim xUpperLim 0 1]);
-            xlabel('Hz','fontWeight','bold','fontSize',14); title('Y22 PC','fontWeight','bold','fontSize',16);
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,PC22_s(:,1),'LineWidth',2); hold off;
+            grid on;box on;ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
+            xlabel('Hz','fontWeight','bold','fontSize',14); 
+            title('Y22 PC','fontWeight','bold','fontSize',16);
             
             linkaxes([ax1,ax2,ax3,ax4],'x');
             
-            %             % Sanity check
-            %             opts = bodeoptions('cstprefs');
-            %             opts.MagUnits = 'abs';
-            %             opts.MagScale = 'log';
-            %             s = tf('s');
-            %
-            %             figure;
-            %             m = 5;
-            %             b = 1;
-            %             k = 2500;
-            %             [MAG,PHASE,W] = bode(m*s^2 + b*s + k);
-            %             MAG = squeeze(MAG);
-            %             PHASE = squeeze(PHASE);
-            %             subplot(2,1,1);loglog(W,MAG,'-','linewidth',2.5); grid on; %xlim([W(2) W(end)]); ylim([10^-6 10^-1]);
-            %             ylabel('Amplitude (abs)'); set(gca,'fontsize',18);
-            %             yticks([1e-5,1e-3,1e-1]);
-            %
-            %             subplot(2,1,2); semilogx(W,PHASE,'linewidth',2.5); grid on;
-            %             ylabel('Phase (deg)'); xlabel('Frequency ()'); set(gca,'fontsize',18);
+            %% Subtract Robot
+            xLowerLim = 0.5;
+            xUpperLim = 45.0;
+            yLowerLim_sub = 5e+2;
+            yUpperLim_sub = 1e+4;
             
+            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/model_robot.mat');
+            model_mag = interp1(model_robot(:,1),model_robot(:,2),TF_freq,'linear')';
+            model_phi = interp1(model_robot(:,1),model_robot(:,3),TF_freq,'linear')';
+
+            figure(3); hold on;
+            set(gcf,'Color',[1,1,1]);
+                        
+            ax2 = subplot(2,1,1,'XScale','log','YScale','log');
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,Z22_l_mag(:,1)-model_mag,'LineWidth',2); 
+            grid on; box on;
+            axis([xLowerLim xUpperLim yLowerLim_sub yUpperLim_sub]);
+            xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
+            ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
+            title('Z22','fontWeight','bold','fontSize',16);
             
+            ax4 = subplot(2,1,2,'XScale','log');
+            set(gca,'fontWeight','bold','fontSize',12); hold on;
+            plot(TF_freq,Z22_l_phi(:,1)-model_phi,'LineWidth',2); grid on; box on;
+            axis([xLowerLim xUpperLim -90 45 ]); yticks([-90: 45 :45])
+            xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
+            ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
+            linkaxes([ax2,ax4],'x');
             
+%             % Sanity check
+%             opts = bodeoptions('cstprefs');
+%             opts.MagUnits = 'abs';
+%             opts.MagScale = 'log';
+%             s = tf('s');
+%             
+%             figure;
+%             m = 5;
+%             b = 10;
+%             k = 2500;
+%             [MAG,PHASE,W] = bode(m*s^2 + b*s + k);
+%             MAG = squeeze(MAG);
+%             PHASE = squeeze(PHASE);
+%             subplot(2,1,1);loglog(W,MAG,'-','linewidth',2.5); grid on; %xlim([W(2) W(end)]); ylim([10^-6 10^-1]);
+%             ylabel('Amplitude (abs)'); set(gca,'fontsize',18);
+% %             yticks([1e-5,1e-3,1e-1]);
+%             
+%             subplot(2,1,2); semilogx(W,PHASE,'linewidth',2.5); grid on;
+%             ylabel('Phase (deg)'); xlabel('Frequency ()'); set(gca,'fontsize',18);
             
-            
+
             
         end
     end
