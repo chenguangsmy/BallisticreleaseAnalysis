@@ -3,3 +3,4 @@ KingKongData/*
 rawdata/*
 DataAnalysis/forcedata/*
 matlab/*.mat
+matlab/data/*

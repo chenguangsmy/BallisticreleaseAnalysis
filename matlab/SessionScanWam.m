@@ -32,7 +32,8 @@ classdef SessionScanWam
             %FTSEPERATEDAT Construct an instance of this class
             %   read file according to the data sequence
             obj.ss_num = ss_num;
-            fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/WAM.data';
+%             fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/WAM.data';
+            fdir = ['data/'];
             %fname = '20210127aft00.csv';
             fname = sprintf('KingKongWAM%05d.csv', ss_num);
             filename = [fdir '/' fname];
@@ -81,37 +82,64 @@ classdef SessionScanWam
             end
             obj = convert0tonan_RDT(obj);
         end
-        function obj = concatinateTrials2File(obj, tarL_list, fTh_list, rdt_ranges)
-            % do something here! 
+        function obj = concatinateTrials2File(obj, tarL_list, fTh_list, rdt_ranges_all)
+            % Define which pararamiters are at which index
+            DOF = obj.DOF;
+            if (obj.ss_num>=1898)
+            %%%% after ss1898
+                idx_time = 1;
+                idx_jp   = 2         :   2-1+DOF;        % 2 : 5
+                idx_jv   = 2+DOF     :   2-1+2*DOF;      % 6 : 9
+                idx_tp   = 2+2*DOF   :   2+2*DOF+2;      % 10: 12
+                idx_tv   = 2+2*DOF+3 :   2+2*DOF+5;      % 13: 15
+                idx_jt   = 2+2*DOF+6 :   2+3*DOF+6-1;    % 16: 19
+                idx_cf   = 2+3*DOF+6 :   2+3*DOF+9-1;    % 20: 22
+                idx_it   = 2+3*DOF+9;                    % 23
+                idx_rdt  = 2+3*DOF+10;                   % 24
+            %%% before ss1898
+            else
+                idx_time = 1;
+                idx_jp   = 2         :   2-1+DOF;        % 2 : 5
+                idx_jv   = 2+DOF     :   2-1+2*DOF;      % 6 : 9
+                idx_tp   = 2+2*DOF   :   2+2*DOF+2;      % 10: 12
+                idx_tv   = 2+2*DOF+3 :   2+2*DOF+5;      % 13: 15
+                idx_jt   = 2+2*DOF+6 :   2+3*DOF+6-1;    % 16: 19
+                idx_rdt  = 2+3*DOF+6;                    % 20
+            end
+            
+            figure;
+            
             % tarL_list, fTh_list, rdt_ranges, have same length
             saveSepFile_flag = 1;   % if a seperate file needed
             for conditioni = 1:length(tarL_list)
+                rdt_ranges = rdt_ranges_all{conditioni};
                 % get rdt_idx from rdt_ranges
                 rdt_idx = [];
                 for pair_i = 1:size(rdt_ranges,2)
-                    rdt_idx = [rdt_idx, rdt_ranges(1,pair_i): ...
+                    rdt_idx = [rdt_ranges(1,pair_i)+2*500: ...
                                         rdt_ranges(2,pair_i)];
-                end
-                Data_pert(conditioni).FT     = fTh_list(conditioni);
-                Data_pert(conditioni).x0     = tarL_list(conditioni);
-                Data_pert(conditioni).datMat = obj.Data(rdt_idx,:);
-            end
-            obj.Data_pert = Data_pert;
-            % contatinate according to the rdt_ranges
-            display('Finished, data in wam_obj.Data_pert');
-            ss_num = obj.ss_num;
-            if (saveSepFile_flag)
-                file_dir = 'NotTrack';
-                file_name = sprintf('WAM_perturbed_KingKong%05d.mat', ss_num);
-                try 
-                    save([file_dir '/' file_name], 'Data_pert');
-                    save([file_dir '/' file_name], 'ss_num', '-append');
-                catch
-                    display(['Filename' file_dir '/' file_name...
-                        'does not exist, ABORTED! ']);
-                end
-            end
                 
+                Data_pert(conditioni,pair_i).FT     = fTh_list(conditioni);
+                Data_pert(conditioni,pair_i).x0     = tarL_list(conditioni);
+%                 Data_pert(conditioni).datMat = obj.Data(rdt_idx,:);
+                Data_pert(conditioni,pair_i).time = obj.Data(rdt_idx,idx_time);
+                Data_pert(conditioni,pair_i).tp = obj.Data(rdt_idx,idx_tp);
+                Data_pert(conditioni,pair_i).tv = obj.Data(rdt_idx,idx_tv);
+                Data_pert(conditioni,pair_i).cf = obj.Data(rdt_idx,idx_cf);
+                Data_pert(conditioni,pair_i).it = obj.Data(rdt_idx,idx_it);
+                Data_pert(conditioni,pair_i).rdt = obj.Data(rdt_idx,idx_rdt);
+                
+%                 tmp = Data_pert(conditioni,pair_i).tp(:,2);
+%                 plot(tmp);hold on;
+%                 plot([1,1].*length(tmp)-500*5,[0, 1],'-k','linewidth',2.5); xlim([0 length(tmp)]); ylim([0.49 0.5]);hold off;
+%                 pause();
+
+                end
+            end
+
+            obj.Data_pert = Data_pert;
+            
+
         end
         function obj = convert0tonan_RDT(obj)
             rdt = double(obj.rdt);

@@ -61,7 +61,8 @@ classdef (HandleCompatible)SessionScan < handle
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
-            file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
+%             file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
+            file_dir = ['data/'];
             fname0 = ([file_dir '/' file_name]);
             flag_progress = 1;      % show something to make me less anxious
             try 
@@ -407,7 +408,7 @@ classdef (HandleCompatible)SessionScan < handle
                     rdt_ranges_all{i} = rdt_ranges;
                 end
             end
-            obj.wam = obj.wam.concatinateTrials2File(tarL_list, fTh_list, rdt_ranges);
+            obj.wam = obj.wam.concatinateTrials2File(tarL_list, fTh_list, rdt_ranges_all);
             % for each trial condition, concatinate a structure
             
              % call generateWamPertData()
