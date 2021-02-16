@@ -81,13 +81,14 @@ classdef SessionScanWam
             end
             obj = convert0tonan_RDT(obj);
         end
-        function obj = concatinateTrials2File(obj, tarL_list, fTh_list, rdt_ranges)
+        function obj = concatinateTrials2File(obj, tarL_list, fTh_list, rdt_ranges_all)
             % do something here! 
             % tarL_list, fTh_list, rdt_ranges, have same length
             saveSepFile_flag = 1;   % if a seperate file needed
             for conditioni = 1:length(tarL_list)
                 % get rdt_idx from rdt_ranges
                 rdt_idx = [];
+                rdt_ranges = rdt_ranges_all{conditioni};
                 for pair_i = 1:size(rdt_ranges,2)
                     rdt_idx = [rdt_idx, rdt_ranges(1,pair_i): ...
                                         rdt_ranges(2,pair_i)];
