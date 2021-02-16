@@ -61,7 +61,8 @@ classdef (HandleCompatible)SessionScan < handle
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
-            file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
+%             file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
+            file_dir = ['data/'];
             fname0 = ([file_dir '/' file_name]);
             flag_progress = 1;      % show something to make me less anxious
             try 
