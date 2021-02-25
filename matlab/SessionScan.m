@@ -552,6 +552,21 @@ classdef (HandleCompatible)SessionScan < handle
             legend('x', 'y', 'z'); % remember to alter the axis 
             title('Force data');
         end
+        function axh = taskForceDataMag(obj, axh)
+            if nargin<2
+                axh = figure();
+            else
+                figure(axh); hold on;
+            end
+            % force = obj.Data.Force.Sensor(1:3,:); 
+            force = obj.force;
+            forceMag = sqrt(force(1,:).^2 + force(2,:).^2);
+            plot(obj.time, forceMag');
+            ylabel('force (N)');
+            xlabel('time');
+            legend('x', 'y', 'z'); % remember to alter the axis 
+            title('Force data');
+        end
         function axh = taskForceDatah(obj, axh)
             if nargin<2
                 axh = figure();
@@ -579,7 +594,7 @@ classdef (HandleCompatible)SessionScan < handle
             legend('x', 'y', 'z');
             title('relative endpoint positions');
         end
-        function axh = taskEndpointPosition(obj)
+        function axh = plotTaskEndpointPosition(obj)
             axh = figure();
             position = obj.Data.Position.Actual'; 
             plot(obj.time, (position)');  
@@ -588,7 +603,7 @@ classdef (HandleCompatible)SessionScan < handle
             legend('x', 'y', 'z');
             title('relative endpoint positions');
         end 
-        function axh = taskEndpointPositionh(obj, axh)
+        function axh = plotTaskEndpointPositionh(obj, axh)
             if nargin < 2
                 axh = figure();
             else 
@@ -601,6 +616,257 @@ classdef (HandleCompatible)SessionScan < handle
             legend('x', 'y', 'z');
             title('relative endpoint positions');
         end 
+        function axh = plotRecordedEndPointPosition(obj)
+            % for testing if the recorded endpoint position is the actual
+            % endpoint position.  
+            if obj.ssnum == 1931
+            % Moving endpoint +y direction seperately +2cm and +4cm in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-19
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y2cm = ...
+                [17518	30069	41191	51895	61208	
+                76916	97865	108529	121239	132379	
+                149379	160977	171482	182723	195245
+                209273	220054	230728	244754	258236	
+                274799	286833	299005	315583	329559	
+                345472	359380	372882	386543	400317	];
+            idx_y2cm0= ...
+                [15169	27988	37924	49741	58777	
+                71535	94548	106463	118717	130513	
+                146341	158098	169219	180817	193081
+                207714	216974	228342	241758	255598	
+                271838	284246	296775	312843	327006	
+                342348	356617	370249	383523	398407	];
+            idx_y4cm = ...
+                [24318  35789   46173   55960    67382 
+                86651	103401	114704  126840  138965 
+                154638	166043	176801	188376	200769 
+                214114	225145	237655	251155	265044 
+                280841  292825	306851  322512	336332	
+                353173	366509	379671	394934	409571	];
+            idx_y4cm0 = ...
+                [19720  32640   42790   53780   62890 
+                80827	101112  111708  122994  135267 
+                152425	163047	174486	185108	197908 
+                212059	222592	233587	247945	262185 
+                277513	289391	302883	318693	333144 
+                349605	363426	376401	390174	406454 ];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y2cm',2) - obj.wamp_h(idx_y2cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y4cm',2) - obj.wamp_h(idx_y4cm0',2))/0.01;
+            y2cm_= (2 - y2cm);
+            y4cm_= (4 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=4cm', 'x=2cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.5, 1.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+            
+            if obj.ssnum == 1934
+            % Moving endpoint +y direction seperately +0.5cm and +1cm in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-23
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y_5cm0= ...
+                [[43166,53354,63125,72204,81101]	
+                [89780,106318,116129,124344,132576]	
+                [143097,161871,171277,179980,190026]
+                [200306,217437,225979,234183,242343]	
+                [250829,264622,272934,281923,292109]	
+                [304025,314258,322328,331534,340066]	];
+            idx_y_5cm = ...
+                [[46052,55908,65660,74400,83165]	
+                [91784,107985,117586,125554,134182]	
+                [144755,163484,172414,181250,191748]
+                [202181,218802,227254,234940,243731]	
+                [253131,265462,274172,282870,293272]	
+                [305771,315204,323240,332306,340835]	];
+            idx_y1cm0 = ...
+                [[49192,58610,67509,76634,85295] 
+                [100851,111147,119954,128350,138854] 
+                [156048,166584,175455,184630,194119] 
+                [212717,221631,230274,238428,246602] 
+                [259946,268730,277192,287910,296635] 
+                [309366,318166,326597,335150,343811] ];
+            idx_y1cm = ...
+                [[51273,61318,69998,78522,87425] 
+                [103086,113438,121879,130060,140598] 
+                [158274,167181,176712,185685,195731] 
+                [214212,222956,231080,239580,247831] 
+                [261365,269693,277854,288737,297834]	
+                [310857,319299,328166,336458,345126]	];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
+            y2cm_= (0.5 - y2cm);
+            y4cm_= (1 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.2, 0.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+            
+            if obj.ssnum == 1935
+            % Moving endpoint +y direction using force measurement in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-23
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y_5cm0= ...
+                [[43166,53354,63125,72204,81101]	
+                [89780,106318,116129,124344,132576]	
+                [143097,161871,171277,179980,190026]
+                [200306,217437,225979,234183,242343]	
+                [250829,264622,272934,281923,292109]	
+                [304025,314258,322328,331534,340066]	];
+            idx_y_5cm = ...
+                [[46052,55908,65660,74400,83165]	
+                [91784,107985,117586,125554,134182]	
+                [144755,163484,172414,181250,191748]
+                [202181,218802,227254,234940,243731]	
+                [253131,265462,274172,282870,293272]	
+                [305771,315204,323240,332306,340835]	];
+            idx_y1cm0 = ...
+                [[49192,58610,67509,76634,85295] 
+                [100851,111147,119954,128350,138854] 
+                [156048,166584,175455,184630,194119] 
+                [212717,221631,230274,238428,246602] 
+                [259946,268730,277192,287910,296635] 
+                [309366,318166,326597,335150,343811] ];
+            idx_y1cm = ...
+                [[51273,61318,69998,78522,87425] 
+                [103086,113438,121879,130060,140598] 
+                [158274,167181,176712,185685,195731] 
+                [214212,222956,231080,239580,247831] 
+                [261365,269693,277854,288737,297834]	
+                [310857,319299,328166,336458,345126]	];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
+            y2cm_= (0.5 - y2cm);
+            y4cm_= (1 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.2, 0.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+            
+            if obj.ssnum == 1937 % ........ remember to do it later today-cg, tell the difference of force 
+            % Moving endpoint +y direction using force measurement in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-24
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y_5cm0= ...
+                [[43166,53354,63125,72204,81101]	
+                [89780,106318,116129,124344,132576]	
+                [143097,161871,171277,179980,190026]
+                [200306,217437,225979,234183,242343]	
+                [250829,264622,272934,281923,292109]	
+                [304025,314258,322328,331534,340066]	];
+            idx_y_5cm = ...
+                [[46052,55908,65660,74400,83165]	
+                [91784,107985,117586,125554,134182]	
+                [144755,163484,172414,181250,191748]
+                [202181,218802,227254,234940,243731]	
+                [253131,265462,274172,282870,293272]	
+                [305771,315204,323240,332306,340835]	];
+            idx_y1cm0 = ...
+                [[49192,58610,67509,76634,85295] 
+                [100851,111147,119954,128350,138854] 
+                [156048,166584,175455,184630,194119] 
+                [212717,221631,230274,238428,246602] 
+                [259946,268730,277192,287910,296635] 
+                [309366,318166,326597,335150,343811] ];
+            idx_y1cm = ...
+                [[51273,61318,69998,78522,87425] 
+                [103086,113438,121879,130060,140598] 
+                [158274,167181,176712,185685,195731] 
+                [214212,222956,231080,239580,247831] 
+                [261365,269693,277854,288737,297834]	
+                [310857,319299,328166,336458,345126]	];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
+            y2cm_= (0.5 - y2cm);
+            y4cm_= (1 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.2, 0.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+        end
         function axh = taskEPP_FToverlap_ns(obj) % overlapping endpoint position and FT in one axis, non-scale
             figure(); hold on;
             position = obj.Data.Position.Actual'; 

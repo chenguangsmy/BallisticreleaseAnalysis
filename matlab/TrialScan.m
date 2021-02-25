@@ -253,8 +253,8 @@ classdef TrialScan
             end
             x      = pos_ - pos(1);
             dx     = diff(x,1,2)/(1/freq);
-            ddx    = diff(x,2,2)/(1/freq);
-            dddx   = diff(x,3,2)/(1/freq);
+            ddx    = diff(x,2,2)/((1/freq).^2);
+            dddx   = diff(x,3,2)/((1/freq).^3);
             
             n = length(dddx);
             F = reshape(fce_(1:n),n,1);
@@ -335,9 +335,9 @@ classdef TrialScan
             end
             x      = pos_ - pos(1);
             dx     = diff(x,1,2)/(1/freq);
-            ddx    = diff(x,2,2)/(1/freq);
-            dddx   = diff(x,3,2)/(1/freq);
-            ddddx  = diff(x,4,2)/(1/freq);
+            ddx    = diff(x,2,2)/((1/freq).^2);
+            dddx   = diff(x,3,2)/((1/freq).^3);
+            ddddx  = diff(x,4,2)/((1/freq).^4);
             
             n = length(ddddx);
             F = reshape(fce_(1:n),n,1);
@@ -422,8 +422,8 @@ classdef TrialScan
             end
             x      = pos_;
             dx     = diff(x,1,2)/(1/freq);
-            ddx    = diff(x,2,2)/(1/freq);
-            dddx   = diff(x,3,2)/(1/freq);
+            ddx    = diff(x,2,2)/((1/freq).^2);
+            dddx   = diff(x,3,2)/((1/freq).^3);
             
             n = length(dddx);
             X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
@@ -480,9 +480,9 @@ classdef TrialScan
             end
             x      = pos_;
             dx     = diff(x,1,2)/(1/freq);
-            ddx    = diff(x,2,2)/(1/freq);
-            dddx   = diff(x,3,2)/(1/freq);
-            ddddx  = diff(x,4,2)/(1/freq);
+            ddx    = diff(x,2,2)/((1/freq).^2);
+            dddx   = diff(x,3,2)/((1/freq).^3);
+            ddddx  = diff(x,4,2)/((1/freq).^4);
             n = length(ddddx);
             X = [ones(n,1), ...
                 reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
@@ -506,7 +506,103 @@ classdef TrialScan
             title(['origin and regress force trial' num2str(obj.tNo)]);
             
         end
-        
+        function axh = plotPredictedForceOnPosition_lowsample(obj, sampleRate)
+            % only plot, but not generate data here
+            % predict and plot the Force and Position on a low sample rate
+            % for example, FT runs at 500Hz whereas RTMA runs 50Hz if we
+            % low sample at the rate of 500/50, it would be runs well 
+            if (nargin<2)
+                sampleRate = 10;
+            end
+            % %% part1: generate the low_sampled data. 
+            t_bgn = 0;
+            t_edn = 0.4;
+            freq = 500;     % 500Hz, the same as WAM
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            fce_t = obj.force_t(fce_t_idx);
+            pos = obj.position_h(obj.xyi,pos_t_idx);
+            fce = obj.force_h(obj.xyi,fce_t_idx);
+            try
+                ifsame = min(pos_t == fce_t); % one 0, all 0
+            catch 
+                ifsame = 0;
+            end
+            
+            if (~ifsame)
+                t_all = t_bgn:(1/freq):t_edn;
+                % resample at time t
+                pos_ = interp1(pos_t, pos, t_all); % .... process here
+                fce_ = interp1(fce_t, fce, t_all); 
+                % chances the last pos_ and fce_ is nan
+                pos_ = pos_(1:end-1);
+                fce_ = fce_(1:end-1);
+                t_all= t_all(1:end-1);
+                if sum(isnan(pos_) | isnan(fce_)) % if still have force
+                    display('pos_ and fce_ have nan values, abort!');
+                    return
+                end
+            end
+            pos    = pos_ - pos(1);
+            fce    = fce_;
+            posR   = pos(1:sampleRate:end);
+            fceR   = fce(1:sampleRate:end);
+            resample_freq = 500/sampleRate;
+            
+            % %% part2: estimate through lines
+            
+            x      = posR;
+            dx     = diff(x,1,2)/((1/resample_freq).^1);
+            ddx    = diff(x,2,2)/((1/resample_freq).^2);
+            dddx   = diff(x,3,2)/((1/resample_freq).^3);
+            
+            n = length(dddx);
+            F = reshape(fceR(1:n),n,1);
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
+                reshape(ddx(1:n),n,1), reshape(dddx(1:n),n,1)];
+            b = [];
+            % calculate 
+            b = (pinv(X'*X)*X'*F);
+            % asign values
+            pred_K = -b(2);
+            pred_D = -b(3);
+            pred_A = -b(4);
+            pred_J = -b(5);
+            pred_x0 = b(1)/obj.pred_K;
+            if(0)
+                fprintf('trial%03d, K=%.3f, B=%.3f, M=%.3f, J=%.3f, x0=%.3f', ...
+                    obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_J, obj.pred_x0 );
+            end
+            % %% calculating the predicted value
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
+                reshape(ddx(1:n),n,1), reshape(dddx(1:n),n,1)];
+            b = [pred_x0*pred_K;
+                -pred_K;
+                -pred_D;
+                -pred_A;
+                -pred_J];
+            F = X*b;
+            t_all_ = t_all(1:length(F));
+            axh = figure('Visible', 'on');
+            hold on;
+            % %% part3: figure the low_sampled data
+            plot(t_all, fce_, ':.');   % origin
+            t_rsp = t_bgn:(1/resample_freq):t_edn;             % t_resample
+            t_prd = t_rsp;                                     % for prediction
+            if length(t_rsp) > length(fceR)
+                t_rsp = t_rsp(1:length(fceR));
+            end
+            plot(t_rsp, fceR, 'k', 'LineWidth', 3);                   % low-sample
+            if length(t_prd) > length(F)
+                t_prd = t_prd(1:length(F));
+            end
+            plot(t_prd, F, 'b', 'LineWidth', 3);
+            xlabel('time (s)');
+            ylabel('force (N)');
+            legend('origin force', 'low sample force', 'pred force');
+            title(['origin and regress force trial' num2str(obj.tNo)]);
+        end
         function axh = plotPredictedForceODE(obj)
             % solve the force using differential equation
         end
