@@ -813,57 +813,28 @@ classdef (HandleCompatible)SessionScan < handle
             % see if right session
             
             % the timepoints
-            idx_y_5cm0= ...
-                [[43166,53354,63125,72204,81101]	
-                [89780,106318,116129,124344,132576]	
-                [143097,161871,171277,179980,190026]
-                [200306,217437,225979,234183,242343]	
-                [250829,264622,272934,281923,292109]	
-                [304025,314258,322328,331534,340066]	];
-            idx_y_5cm = ...
-                [[46052,55908,65660,74400,83165]	
-                [91784,107985,117586,125554,134182]	
-                [144755,163484,172414,181250,191748]
-                [202181,218802,227254,234940,243731]	
-                [253131,265462,274172,282870,293272]	
-                [305771,315204,323240,332306,340835]	];
-            idx_y1cm0 = ...
-                [[49192,58610,67509,76634,85295] 
-                [100851,111147,119954,128350,138854] 
-                [156048,166584,175455,184630,194119] 
-                [212717,221631,230274,238428,246602] 
-                [259946,268730,277192,287910,296635] 
-                [309366,318166,326597,335150,343811] ];
-            idx_y1cm = ...
-                [[51273,61318,69998,78522,87425] 
-                [103086,113438,121879,130060,140598] 
-                [158274,167181,176712,185685,195731] 
-                [214212,222956,231080,239580,247831] 
-                [261365,269693,277854,288737,297834]	
-                [310857,319299,328166,336458,345126]	];
-            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
-            Kx0_mat = repmat(Kx0, 5, 1);
-            % the y position
-            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
-            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
-            y2cm_= (0.5 - y2cm);
-            y4cm_= (1 - y4cm);
-            % plot the point 
-            axh = figure();
+            mark_points_pidx = [[98711,106238,115289,121453,128060,134232,140822,146860,154532,164123;170039,176956,183303,190006,195974,202767,207357,213104,218773,225426;229908,234749,240283,245042,251434,256594,262023,267078,273125,278855;283931,288132,294089,298720,303960,308201,314518,320204,326198,332360;336335,340619,346080,350330,355241,360779,365989,370401,375789,380547]];
+            mark_points_fidx = [[131649,141811,153296,161952,171277,181191,190031,199230,208382,221735;230949,239667,249602,257913,267645,277198,283658,292322,298482,307948;314907,320869,328917,335411,344123,352020,360516,366502,376120,381122;389864,396727,404140,411256,418624,424603,432600,440484,448752,457617;463822,470138,475846,483106,489594,496613,504303,510249,517776,524549]];
+            mark_point_p = obj.wamp_h(mark_points_pidx,2)-0.481;
+            mark_point_f = obj.force_h(2,mark_points_fidx)+3.2; % add 3 newton bias
+            mark_point_f_theoretic = ones(5,10)*16;
+            figure();
             hold on;
-            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
-            refline;
-            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
-            refline; 
+            plot(mark_point_f(:), mark_point_p(:), '*');
+            plot(mark_point_f_theoretic(:), mark_point_p(:), '*');
+            title('force vs position');
+            figure();
+            hold on;
+            title('position vs stiffness');
+            plot(mark_point_p(:),mark_point_f(:)./mark_point_p(:), '*');
+            plot( mark_point_p(:), mark_point_f_theoretic(:)./mark_point_p(:), '*');
+            legend('measured', 'theoretical');
+            
             ax = gca;
             ax.XGrid = 'off';
             ax.YGrid = 'on';
-            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
-            xlim([-100, 2600]);
-            %ylim([0, 0.05]);
-            ylim([-0.2, 0.5]);
-            xlabel('Kx N/m');
-            ylabel('error cm');
+            xlabel('position cm');
+            ylabel('Stiffness');
             title('Measurement error');
             end
         end
@@ -1202,6 +1173,105 @@ classdef (HandleCompatible)SessionScan < handle
                     trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
                     trial_num = sum(trials_idx);
                     trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==1); %succeed
+                    %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
+                    col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
+                    if col_i>=7
+                        col_i = mod(col_i,8);
+                    end
+                    for trial_i = find(trialsS_idx)
+                        % plot force
+                        % data
+                        try
+                            force = obj.trials(trial_i).force_h;
+                            time = obj.trials(trial_i).force_t;
+                        catch
+                            force = obj.trials(trial_i).force;
+                            time = obj.trials(trial_i).time;
+                        end
+                        % figure
+                        set(0, 'CurrentFigure', axhf);
+                        % x, y seperately
+                        subplot(2,1,1); hold on; plot(time, force(1,:), 'Color', obj.col_vec(col_i,:));
+                        subplot(2,1,2); hold on; plot(time, force(2,:), 'COlor', obj.col_vec(col_i,:));
+                        % plot position
+                        % data
+                        try
+                            position = obj.trials(trial_i).position_h;
+                            time = obj.trials(trial_i).position_t;
+                        catch
+                            position = obj.trials(trial_i).position;
+                            time = obj.trials(trial_i).time;
+                        end
+                        set(0, 'CurrentFigure', axhp);
+                        % x, y seperately
+                        subplot(2,1,1); hold on; plot(time, position(1,:), 'Color', obj.col_vec(col_i,:));
+                        subplot(2,1,2); hold on; plot(time, position(2,:), 'Color', obj.col_vec(col_i,:));
+                        try
+                            velocity = obj.trials(trial_i).velocity_h;
+                            time = obj.trials(trial_i).position_t;
+                        catch
+                            velocity = obj.trials(trial_i).velocity;
+                            time = obj.trials(trial_i).time;
+                        end
+                        set(0, 'CurrentFigure', axhv);
+                        subplot(2,1,1); hold on; plot(time, velocity(1,:), 'Color', obj.col_vec(col_i,:));
+                        subplot(2,1,2); hold on; plot(time, velocity(2,:), 'Color', obj.col_vec(col_i,:));
+                    end
+                end
+            end
+            
+            xrangeF = [-0.5, 0.5];
+            figure(axhf); 
+            subplot(2,1,1);
+            title('force data x');
+            xlim(xrangeF);
+            subplot(2,1,2);
+            title('force data y');
+            xlim(xrangeF);
+            
+            xrangeP = [-0.2, 0.8];
+            figure(axhp);
+            subplot(2,1,1);
+            title('robot position x');
+            xlim(xrangeP);
+            subplot(2,1,2);
+            title('robot position y');
+            xlim(xrangeP);
+            
+            xrangeV = [-0.2, 0.8];
+            figure(axhv);
+            subplot(2,1,1);
+            title('robot velocity x');
+            xlim(xrangeV);
+            subplot(2,1,2);
+            title('robot velocity y');
+            xlim(xrangeV);
+            
+            set(axhf, 'Visible', 'on');
+            set(axhp, 'Visible', 'on');
+            set(axhv, 'Visible', 'on');
+        end
+        function [axhf, axhp, axhv] = plotSameTrial_failure(obj)
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            outcome = [obj.trials.outcome];
+            % fTH now only have 2 vals
+            % tarL now only have 2 vals
+            axhf = figure(); % force figure
+            set(axhf, 'Visible', 'off');
+            axhp = figure(); % position figure
+            set(axhp, 'Visible', 'off');
+            axhv = figure(); % velocity figure
+            set(axhv, 'Visible', 'off');
+            for fTH_i = 1:length(all_fTH)
+                fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
+                for tarL_i = 1:length(all_tarL)
+                    fprintf('target: %0.2f', all_tarL(tarL_i));
+                    trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
+                    trial_num = sum(trials_idx);
+                    trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==0); %failed
                     %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
                     col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
                     if col_i>=7
