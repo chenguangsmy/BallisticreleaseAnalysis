@@ -251,17 +251,16 @@ classdef TrialScan
                 end
                 
             end
-            x      = pos_(10:end) - pos(1);
+            x      = pos_ - pos(1);
             dx     = diff(x,1,2)/(1/freq);
             ddx    = diff(x,2,2)/((1/freq).^2);
             dddx   = diff(x,3,2)/((1/freq).^3);
             
             n = length(dddx);
-            m = n-9; % from 10
-            F = reshape(fce_(10:n),m,1);
+            F = reshape(fce_(1:n),n,1);
             
-            X = [ones(n,1), reshape(x(1:n),m,1), reshape(dx(1:n),m,1), ...
-                reshape(ddx(1:n),m,1), reshape(dddx(1:n),m,1)];
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
+                reshape(ddx(1:n),n,1), reshape(dddx(1:n),n,1)];
             b = [];
             % calculate 
             b = (pinv(X'*X)*X'*F);

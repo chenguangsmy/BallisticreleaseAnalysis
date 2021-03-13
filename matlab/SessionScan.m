@@ -400,6 +400,24 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
+        %%% other process
+        function obj_new = ConcatTrials(obj1, obj2, trial_idx1, trial_idx2)
+            trials = [obj1.trials(trial_idx1) obj2.trials(trial_idx2)];
+            obj_new = obj1;
+            obj_new.trials = trials;
+        end
+        function obj = processSession_n(obj)
+            if obj.ssnum == 1965
+                % all trial 
+                for trial_i = 1:length(obj.trials)
+                    % set fTh = 15;
+                    obj.trials(trial_i).fTh = 15;
+                    % all trial set force_y+5.4;
+                    obj.trials(trial_i).force(2,:) = obj.trials(trial_i).force(2,:)+5.4;
+                    obj.trials(trial_i).force_h(2,:) = obj.trials(trial_i).force_h(2,:)+5.4;
+                end
+            end
+        end
         %%% communicate 
         function obj = generateWamPertData(obj)
             % send data into wam function to help SessionScanWam generate perturbation-only data
@@ -1244,6 +1262,93 @@ classdef (HandleCompatible)SessionScan < handle
             title('robot velocity x');
             xlim(xrangeV);
             subplot(2,1,2);
+            title('robot velocity y');
+            xlim(xrangeV);
+            
+            set(axhf, 'Visible', 'on');
+            set(axhp, 'Visible', 'on');
+            set(axhv, 'Visible', 'on');
+        end
+        function [axhf, axhp, axhv] = plotSameTrial_y(obj)
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            outcome = [obj.trials.outcome];
+            % fTH now only have 2 vals
+            % tarL now only have 2 vals
+            axhf = figure(); % force figure
+            set(axhf, 'Visible', 'off');
+            axhp = figure(); % position figure
+            set(axhp, 'Visible', 'off');
+            axhv = figure(); % velocity figure
+            set(axhv, 'Visible', 'off');
+            for fTH_i = 1:length(all_fTH)
+                fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
+                for tarL_i = 1:length(all_tarL)
+                    fprintf('target: %0.2f', all_tarL(tarL_i));
+                    trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
+                    trial_num = sum(trials_idx);
+                    trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==1); %succeed
+                    %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
+                    col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
+                    if col_i>=7
+                        col_i = mod(col_i,8);
+                    end
+                    for trial_i = find(trialsS_idx)
+                        % plot force
+                        % data
+                        try
+                            force = obj.trials(trial_i).force_h;
+                            time = obj.trials(trial_i).force_t;
+                        catch
+                            force = obj.trials(trial_i).force;
+                            time = obj.trials(trial_i).time;
+                        end
+                        % figure
+                        set(0, 'CurrentFigure', axhf);
+                        % x, y seperately
+                        hold on; plot(time, force(2,:), '.', 'COlor', obj.col_vec(col_i,:));
+                        % plot position
+                        % data
+                        try
+                            position = obj.trials(trial_i).position_h;
+                            time = obj.trials(trial_i).position_t;
+                        catch
+                            position = obj.trials(trial_i).position;
+                            time = obj.trials(trial_i).time;
+                        end
+                        set(0, 'CurrentFigure', axhp);
+                        % x, y seperately
+                        hold on; plot(time, position(2,:), '.', 'Color', obj.col_vec(col_i,:));
+                        try
+                            velocity = obj.trials(trial_i).velocity_h;
+                            time = obj.trials(trial_i).position_t;
+                        catch
+                            velocity = obj.trials(trial_i).velocity;
+                            time = obj.trials(trial_i).time;
+                        end
+                        set(0, 'CurrentFigure', axhv);
+                        hold on; plot(time, velocity(2,:), '.', 'Color', obj.col_vec(col_i,:));
+                    end
+                    figure(axhf); title('Force');
+                    figure(axhp); title('Position');
+                    figure(axhv); title('Velocity');
+                end
+            end
+            
+            xrangeF = [-0.2, 0.4];
+            figure(axhf); 
+            title('force data y');
+            xlim(xrangeF);
+            
+            xrangeP = [-0.2, 0.4];
+            figure(axhp);
+            title('robot position y');
+            xlim(xrangeP);
+            
+            xrangeV = [-0.2, 0.4];
+            figure(axhv);
             title('robot velocity y');
             xlim(xrangeV);
             
