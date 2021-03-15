@@ -8,7 +8,7 @@ classdef get_Z_spectral < handle
     end
     
     methods
-        function [this] = get_Z_spectral(Data_pert)
+        function [this] = get_Z_spectral(Data_pert,col_vec)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             
@@ -52,7 +52,7 @@ classdef get_Z_spectral < handle
             PC11_s = zeros(nFreq,1);
             PC22_s = zeros(nFreq,1);
             PC12_s = zeros(nFreq,1);
-            PC21_s = zeros(nFreq,1);
+            PC21_s = zeros(nFreq,1);            
             
             % Anklebot Data
             % data_abot = load('/Users/jhermus/Documents/School/MIT/Research/Limb_Impedance/PreliminaryData/Stocastic/SampleData.asc', 'r');
@@ -257,7 +257,7 @@ classdef get_Z_spectral < handle
             % Magnitude plot of ankle impedance
             ax1 = subplot(2,2,1,'XScale','log','YScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z11_l_mag(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z11_l_mag(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim yLowerLim11 yUpperLim11]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
             ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
@@ -265,7 +265,7 @@ classdef get_Z_spectral < handle
             
             ax2 = subplot(2,2,2,'XScale','log','YScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_mag(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z22_l_mag(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim yLowerLim22 yUpperLim22]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
             ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
@@ -273,13 +273,13 @@ classdef get_Z_spectral < handle
             
             ax3 = subplot(2,2,3,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z11_l_phi(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z11_l_phi(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim 0 180]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
             ax4 = subplot(2,2,4,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_phi(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z22_l_phi(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim 0 180]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
@@ -292,14 +292,14 @@ classdef get_Z_spectral < handle
             
             ax1 = subplot(2,2,1,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC11_s(:,1),'LineWidth',2);
+            plot(TF_freq,PC11_s(:,1),'LineWidth',2,'Color', col_vec);
             grid on;box on; ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14); 
             title('Y11 PC','fontWeight','bold','fontSize',16);
             
             ax2 = subplot(2,2,2,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC12_s(:,1),'LineWidth',2); hold off;
+            plot(TF_freq,PC12_s(:,1),'LineWidth',2,'Color', col_vec); hold off;
             grid on; box on; ylim([0 1]);
             axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14); 
@@ -307,14 +307,14 @@ classdef get_Z_spectral < handle
             
             ax3 = subplot(2,2,3,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC21_s(:,1),'LineWidth',2); hold off;
+            plot(TF_freq,PC21_s(:,1),'LineWidth',2,'Color', col_vec); hold off;
             grid on;box on;ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14);
             title('Y21 PC','fontWeight','bold','fontSize',16);
             
             ax4 = subplot(2,2,4,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC22_s(:,1),'LineWidth',2); hold off;
+            plot(TF_freq,PC22_s(:,1),'LineWidth',2,'Color', col_vec); hold off;
             grid on;box on;ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14); 
             title('Y22 PC','fontWeight','bold','fontSize',16);
@@ -336,7 +336,7 @@ classdef get_Z_spectral < handle
                         
             ax2 = subplot(2,1,1,'XScale','log','YScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_mag(:,1)-model_mag,'LineWidth',2); 
+            plot(TF_freq,Z22_l_mag(:,1)-model_mag,'LineWidth',2,'Color', col_vec); 
             grid on; box on;
             axis([xLowerLim xUpperLim yLowerLim_sub yUpperLim_sub]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
@@ -345,7 +345,7 @@ classdef get_Z_spectral < handle
             
             ax4 = subplot(2,1,2,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_phi(:,1)-model_phi,'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z22_l_phi(:,1)-model_phi,'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim -90 45 ]); yticks([-90: 45 :45])
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
             ylabel('phase (deg)','fontWeight','bold','fontSize',14);
