@@ -432,7 +432,7 @@ classdef (HandleCompatible)SessionScan < handle
                     trials_idx = [obj.trials.tarL] == tarLi &...
                                     [obj.trials.fTh] == fThi &...
                                     [obj.trials.outcome] == 1;      % only sucessful trials
-                    rdt_ranges = [obj.trials(trials_idx).pert_rdt_bgn;...
+                    rdt_ranges = [obj.trials(trials_idx).pert_rdt_bgn;...  
                                     obj.trials(trials_idx).pert_rdt_edn];
                     tarL_list = [tarL_list tarLi];
                     fTh_list  = [fTh_list fThi];
@@ -444,6 +444,173 @@ classdef (HandleCompatible)SessionScan < handle
             
              % call generateWamPertData()
         end
+        
+        function [obj] = add_to_PertData(obj, new_Data_pert)
+            n_test1 = length(obj.wam.Data_pert);
+            n_test2 = length(new_Data_pert);
+
+            for i = 1:n_test2
+                obj.wam.Data_pert(i+n_test1) = new_Data_pert(i);
+            end
+            
+        end
+        
+        function obj = generateWamPertData_ensemble(obj)
+            % send data into wam function to help SessionScanWam generate perturbation-only data
+            % perturbation rdt already saved in TrialScan
+            
+            % Figure out state
+            
+            % Find and talk out start up time in zero state
+            dexStart = max(find(obj.wam.state == 0))+1;
+%             dexEnd = max(find(abs(diff(obj.wam.state(1:499999))) == 6)); % Temporarly cut end due to change in sampling rate
+            dexEnd = max(find(abs(diff(obj.wam.state)) == 6)); % Keep all
+
+            state = obj.wam.state(dexStart:dexEnd);
+            % Find trial onset
+            dexForceRampStart = find(state == 3 & [0;abs(diff(state))>=1])+dexStart;
+            dexMovOnset = find(state == 4 & [0;abs(diff(state))>=1])+dexStart-1;
+            dexHoldEnd = find(state == 7 & [0;abs(diff(state))>=1])+dexStart-2;
+                        
+            % Chop first trial
+            dexForceRampStart = dexForceRampStart(2:end);
+            dexMovOnset = dexMovOnset(2:end);
+            dexHoldEnd = dexHoldEnd(2:end);
+            
+            % Check for failed trials that did not go through all states
+            % If length is all the same dont bother checking
+            if ~(length(dexHoldEnd) == length(dexMovOnset))
+                dexSkip = find(dexHoldEnd(1:length(dexMovOnset)) - dexMovOnset<0,1); 
+                dexForceRampStart = dexForceRampStart([1:dexSkip-1,dexSkip+1:length(dexForceRampStart)]);
+                dexHoldEnd = dexHoldEnd([1:dexSkip-1,dexSkip+1:length(dexHoldEnd)]);
+            end
+
+            
+            % Check the ranges were chosen correctly
+            figure; 
+            ax1 = subplot(3,1,1);
+            plot(obj.wam.time,obj.wam.tp(:,2),'linewidth',2.5); hold on;
+            plot(obj.wam.time(dexForceRampStart),obj.wam.tp(dexForceRampStart(1), 2),'o','linewidth',2.5); hold on;
+            plot(obj.wam.time(dexMovOnset),obj.wam.tp(dexMovOnset, 2),'*','linewidth',2.5); grid on;
+            plot(obj.wam.time(dexHoldEnd),obj.wam.tp(dexHoldEnd, 2),'+','linewidth',2.5); grid on;
+            ylabel('Postion');
+            
+            ax2 = subplot(3,1,2);
+            plot(obj.wam.time,obj.wam.state,'linewidth',2.5); hold on; grid on; ylim([0 8]);
+            plot(obj.wam.time(dexForceRampStart),obj.wam.state(dexForceRampStart),'o','linewidth',2.5); hold on;
+            plot(obj.wam.time(dexMovOnset),obj.wam.state(dexMovOnset),'*','linewidth',2.5); grid on;
+            plot(obj.wam.time(dexHoldEnd),obj.wam.state(dexHoldEnd),'+','linewidth',2.5); grid on;
+            ylabel('State');
+            
+            ax3 = subplot(3,1,3);
+            plot(obj.wam.time(1:end-1),1./diff(obj.wam.time),'.','linewidth',2.5);
+            ylabel('Sampling rate (samples/s)'); xlabel('Time (s)');
+            
+            linkaxes([ax1, ax2, ax3],'x');
+        
+            tarL_list = [];
+            fTh_list = [];
+            rdt_ranges_all = {};
+            i = 0;
+            for tarLi = obj.tarLs
+                for fThi = obj.fThs
+                    i = i+1;
+                    % Remove trials_idx for now add to select successful
+                    % and right contion in the onset time (e.g. obj.trials(trials_idx).idx_fcr)
+%                     trials_idx = [obj.trials.tarL] == tarLi &...
+%                                     [obj.trials.fTh] == fThi;%; &...
+%                                     [obj.trials.outcome] == 1;      % only sucessful trials
+%                                 
+%                     % Find movement onsent time and align them            
+%                     rdt_tmp = [obj.trials.idx_fcr;...
+%                                     obj.trials.idx_mov;...
+%                                     obj.trials.idx_end];
+%                     rdt_ranges = [obj.trials(trials_idx).bgn] + ...
+%                         [[obj.trials(trials_idx).idx_mov] -  min(rangeDiff(1,:));...
+%                         [obj.trials(trials_idx).idx_mov] +  min(rangeDiff(2,:))];
+%                     rdt_mov = [obj.trials(trials_idx).bgn] + [obj.trials(trials_idx).idx_mov]; % Movement onset use to alter time vector
+
+                    rangeDiff = diff([dexForceRampStart';...
+                               dexMovOnset';...
+                               dexHoldEnd']);
+                             
+                    ranges = [[dexMovOnset'] -  min(rangeDiff(1,:));...
+                              [dexMovOnset'] +  min(rangeDiff(2,:))];
+                    tarL_list = [tarL_list tarLi];
+                    fTh_list  = [fTh_list fThi];
+                    rdt_ranges_all{i} = ranges;
+                    dexMovOnset_all{i} = dexMovOnset;
+                end
+            end
+            obj.wam = obj.wam.concatinateTrials2File_ensemble(tarL_list, fTh_list, rdt_ranges_all, dexMovOnset_all);
+            % for each trial condition, concatinate a structure
+            % call generateWamPertData_ensemble()
+            
+        end
+        
+        function [obj] = add_to_ensemble(obj, new_Data_pert_ensemble)
+            
+            for i = 1:length(new_Data_pert_ensemble)
+                n = length(obj.wam.Data_pert_ensemble(i).time_r) - length(new_Data_pert_ensemble(i).time_r);
+                
+                obj.wam.Data_pert_ensemble(i).time_r = [obj.wam.Data_pert_ensemble(i).time_r;...
+                                         obj.get_chopOrPadd(new_Data_pert_ensemble(i).time_r,n)];
+                                     
+                obj.wam.Data_pert_ensemble(i).z_r_1 = [obj.wam.Data_pert_ensemble(i).z_r_1;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).z_r_1,n)];
+                obj.wam.Data_pert_ensemble(i).z_r_2 = [obj.wam.Data_pert_ensemble(i).z_r_2;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).z_r_2,n)];  
+                                    
+                obj.wam.Data_pert_ensemble(i).u_r_1 = [obj.wam.Data_pert_ensemble(i).u_r_1;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).u_r_1,n)];
+                obj.wam.Data_pert_ensemble(i).u_r_2 = [obj.wam.Data_pert_ensemble(i).u_r_2;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).u_r_2,n)];  
+                                    
+                obj.wam.Data_pert_ensemble(i).v_r_1 = [obj.wam.Data_pert_ensemble(i).v_r_1;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).v_r_1,n)];          
+                obj.wam.Data_pert_ensemble(i).v_r_2 = [obj.wam.Data_pert_ensemble(i).v_r_2;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).v_r_2,n)];  
+                                    
+                obj.wam.Data_pert_ensemble(i).it_r = [obj.wam.Data_pert_ensemble(i).it_r;...
+                                       obj.get_chopOrPadd(new_Data_pert_ensemble(i).it_r,n)]; 
+                                   
+                obj.wam.Data_pert_ensemble(i).rdt_r = [obj.wam.Data_pert_ensemble(i).rdt_r;...
+                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).rdt_r,n)]; 
+                                    
+                obj.wam.Data_pert_ensemble(i).state_r = [obj.wam.Data_pert_ensemble(i).state_r;...
+                                          obj.get_chopOrPadd(new_Data_pert_ensemble(i).state_r,n)]; 
+            end
+
+        % Old
+            % R1 = size(ss1972.wam.Data_pert_ensemble,2);
+            % R2 = size(ss1973.wam.Data_pert_ensemble,2);
+            % n =  size(ss1973.wam.Data_pert_ensemble(1).tp,1) - size(ss1972.wam.Data_pert_ensemble(54).tp,1);
+            %
+            % for i = 1:R2
+            %     ss1972.wam.Data_pert_ensemble(R1+i).FT = 10;
+            %     ss1972.wam.Data_pert_ensemble(R1+i).x0 = 0.05;
+            %
+            %     ss1972.wam.Data_pert_ensemble(R1+i).time = [ss1973.wam.Data_pert_ensemble(i).time; zeros(n,1)];
+            %     ss1972.wam.Data_pert_ensemble(R1+i).tp = [ss1973.wam.Data_pert_ensemble(i).tp; zeros(n,3)];
+            %     ss1972.wam.Data_pert_ensemble(R1+i).tv = [ss1973.wam.Data_pert_ensemble(i).tv; zeros(n,3)];
+            %     ss1972.wam.Data_pert_ensemble(R1+i).cf = [ss1973.wam.Data_pert_ensemble(i).cf; zeros(n,3)];
+            %     ss1972.wam.Data_pert_ensemble(R1+i).it = [ss1973.wam.Data_pert_ensemble(i).it; zeros(n,1)];
+            %     ss1972.wam.Data_pert_ensemble(R1+i).rdt = [ss1973.wam.Data_pert_ensemble(i).rdt; zeros(n,1)];
+            %
+            % end
+            
+        end
+        
+        function [mat] = get_chopOrPadd(obj,mat,n)
+            if(n==0)
+                mat = mat;
+            elseif(n > 0)
+                mat = [zeros(size(mat,1),n),mat];
+            elseif(n < 0) 
+                mat = mat(:,1:end+n);
+            end  
+        end
+        
         %%% plot
         function taskScanTrials(obj)
             % I need true combo here! see the ProcessRawData
