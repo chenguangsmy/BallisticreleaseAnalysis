@@ -3,12 +3,31 @@ classdef get_Z_spectral < handle
     %   Detailed explanation goes here
     
     properties
+      
+        TF_freq
         
+        tot_Z_11_mag
+        tot_Z_12_mag
+        tot_Z_21_mag
+        tot_Z_22_mag
         
+        tot_11_phi
+        tot_12_phi
+        tot_21_phi
+        tot_22_phi
+        
+        PC11
+        PC12
+        PC21
+        PC22
+        
+        hand_Z_22_mag
+        hand_Z_22_phi
+      
     end
     
     methods
-        function [this] = get_Z_spectral(Data_pert)
+        function [this] = get_Z_spectral(Data_pert,col_vec)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             
@@ -24,7 +43,7 @@ classdef get_Z_spectral < handle
             
             
             %% Variables
-            nfft=12000;
+            nfft=2000;
             nFreq = nfft/2+1;
             Hz = 500;
 %             runningTime = this.runTime;
@@ -43,16 +62,16 @@ classdef get_Z_spectral < handle
             Z12_s = zeros(nFreq,1);     Z12_s_mag = zeros(nFreq,1);     Z21_s_phi = zeros(nFreq,1);
             Z21_s = zeros(nFreq,1);     Z21_s_mag = zeros(nFreq,1);     Z22_s_phi = zeros(nFreq,1);
             
-            % Impedance of Ankle
-            Z11_l = zeros(nFreq,1);     Z11_l_mag = zeros(nFreq,1);     Z11_l_phi = zeros(nFreq,1);
-            Z22_l = zeros(nFreq,1);     Z22_l_mag = zeros(nFreq,1);     Z12_l_phi = zeros(nFreq,1);
-            Z12_l = zeros(nFreq,1);     Z12_l_mag = zeros(nFreq,1);     Z21_l_phi = zeros(nFreq,1);
-            Z21_l = zeros(nFreq,1);     Z21_l_mag = zeros(nFreq,1);     Z22_l_phi = zeros(nFreq,1);
+%             % Impedance of Ankle
+%             Z11_l = zeros(nFreq,1);     Z11_l_mag = zeros(nFreq,1);     Z11_l_phi = zeros(nFreq,1);
+%             Z22_l = zeros(nFreq,1);     Z22_l_mag = zeros(nFreq,1);     Z12_l_phi = zeros(nFreq,1);
+%             Z12_l = zeros(nFreq,1);     Z12_l_mag = zeros(nFreq,1);     Z21_l_phi = zeros(nFreq,1);
+%             Z21_l = zeros(nFreq,1);     Z21_l_mag = zeros(nFreq,1);     Z22_l_phi = zeros(nFreq,1);
             
             PC11_s = zeros(nFreq,1);
             PC22_s = zeros(nFreq,1);
             PC12_s = zeros(nFreq,1);
-            PC21_s = zeros(nFreq,1);
+            PC21_s = zeros(nFreq,1);            
             
             % Anklebot Data
             % data_abot = load('/Users/jhermus/Documents/School/MIT/Research/Limb_Impedance/PreliminaryData/Stocastic/SampleData.asc', 'r');
@@ -96,7 +115,7 @@ classdef get_Z_spectral < handle
             X2 = [];
             Y1 = [];
             Y2 = [];
-            for i = 1:30
+            for i = 1:length(Data_pert)%25%30
                 X1 = [X1; Data_pert(i).cf(:,1)];
                 X2 = [X2; Data_pert(i).cf(:,2)];
                 Y1 = [Y1; detrend(Data_pert(i).tp(:,1))];
@@ -217,12 +236,13 @@ classdef get_Z_spectral < handle
                 Z21_s(j,1) = K_matrix(2,1);
                 Z22_s(j,1) = K_matrix(2,2);
                 
-                % Ankle Impedance
-                Z11_l(j,1) = Z11_s(j,1);% - Z11_abot(j,1);
-                Z22_l(j,1) = Z22_s(j,1);% - Z22_abot(j,1);
-                Z12_l(j,1) = Z12_s(j,1);% - Z12_abot(j,1);
-                Z21_l(j,1) = Z21_s(j,1);% - Z21_abot(j,1);
+%                 % Ankle Impedance
+%                 Z11_l(j,1) = Z11_s(j,1);% - Z11_abot(j,1);
+%                 Z22_l(j,1) = Z22_s(j,1);% - Z22_abot(j,1);
+%                 Z12_l(j,1) = Z12_s(j,1);% - Z12_abot(j,1);
+%                 Z21_l(j,1) = Z21_s(j,1);% - Z21_abot(j,1);
             end
+            
             
             %% Mag & Phase calculation for Impedance plot
             for j=1:nFreq
@@ -235,16 +255,17 @@ classdef get_Z_spectral < handle
                 Z12_s_phi(j,1) = 180/pi*unwrap2(angle(Z12_s(j,1)),unwrapThreshold,'up');
                 Z21_s_phi(j,1) = 180/pi*unwrap2(angle(Z21_s(j,1)),unwrapThreshold,'up');
                 
-                Z11_l_mag(j,1) = abs(Z11_l(j,1));
-                Z22_l_mag(j,1) = abs(Z22_l(j,1));
-                Z12_l_mag(j,1) = abs(Z12_l(j,1));
-                Z21_l_mag(j,1) = abs(Z21_l(j,1));
-                Z11_l_phi(j,1) = 180/pi*unwrap2(angle(Z11_l(j,1)),unwrapThreshold,'up');
-                Z22_l_phi(j,1) = 180/pi*unwrap2(angle(Z22_l(j,1)),unwrapThreshold,'up');
-                Z12_l_phi(j,1) = 180/pi*unwrap2(angle(Z12_l(j,1)),unwrapThreshold,'up');
-                Z21_l_phi(j,1) = 180/pi*unwrap2(angle(Z21_l(j,1)),unwrapThreshold,'up');
+%                 Z11_l_mag(j,1) = abs(Z11_l(j,1));
+%                 Z22_l_mag(j,1) = abs(Z22_l(j,1));
+%                 Z12_l_mag(j,1) = abs(Z12_l(j,1));
+%                 Z21_l_mag(j,1) = abs(Z21_l(j,1));
+%                 Z11_l_phi(j,1) = 180/pi*unwrap2(angle(Z11_l(j,1)),unwrapThreshold,'up');
+%                 Z22_l_phi(j,1) = 180/pi*unwrap2(angle(Z22_l(j,1)),unwrapThreshold,'up');
+%                 Z12_l_phi(j,1) = 180/pi*unwrap2(angle(Z12_l(j,1)),unwrapThreshold,'up');
+%                 Z21_l_phi(j,1) = 180/pi*unwrap2(angle(Z21_l(j,1)),unwrapThreshold,'up');
             end
-            
+
+        
             %% Impedance plot (Diagonal)
             xLowerLim = 0.5;
             xUpperLim = 50.0;
@@ -257,7 +278,7 @@ classdef get_Z_spectral < handle
             % Magnitude plot of ankle impedance
             ax1 = subplot(2,2,1,'XScale','log','YScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z11_l_mag(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z11_s_mag(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim yLowerLim11 yUpperLim11]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
             ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
@@ -265,7 +286,7 @@ classdef get_Z_spectral < handle
             
             ax2 = subplot(2,2,2,'XScale','log','YScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_mag(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z22_s_mag(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim yLowerLim22 yUpperLim22]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
             ylabel('magnitude (abs)','fontWeight','bold','fontSize',14);
@@ -273,13 +294,13 @@ classdef get_Z_spectral < handle
             
             ax3 = subplot(2,2,3,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z11_l_phi(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z11_s_phi(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim 0 180]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
             ax4 = subplot(2,2,4,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_phi(:,1),'LineWidth',2); grid on; box on;
+            plot(TF_freq,Z22_s_phi(:,1),'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim 0 180]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
@@ -292,14 +313,14 @@ classdef get_Z_spectral < handle
             
             ax1 = subplot(2,2,1,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC11_s(:,1),'LineWidth',2);
+            plot(TF_freq,PC11_s(:,1),'LineWidth',2,'Color', col_vec);
             grid on;box on; ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14); 
             title('Y11 PC','fontWeight','bold','fontSize',16);
             
             ax2 = subplot(2,2,2,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC12_s(:,1),'LineWidth',2); hold off;
+            plot(TF_freq,PC12_s(:,1),'LineWidth',2,'Color', col_vec); hold off;
             grid on; box on; ylim([0 1]);
             axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14); 
@@ -307,14 +328,14 @@ classdef get_Z_spectral < handle
             
             ax3 = subplot(2,2,3,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC21_s(:,1),'LineWidth',2); hold off;
+            plot(TF_freq,PC21_s(:,1),'LineWidth',2,'Color', col_vec); hold off;
             grid on;box on;ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14);
             title('Y21 PC','fontWeight','bold','fontSize',16);
             
             ax4 = subplot(2,2,4,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,PC22_s(:,1),'LineWidth',2); hold off;
+            plot(TF_freq,PC22_s(:,1),'LineWidth',2,'Color', col_vec); hold off;
             grid on;box on;ylim([0 1]); axis([xLowerLim xUpperLim 0 1]);
             xlabel('Hz','fontWeight','bold','fontSize',14); 
             title('Y22 PC','fontWeight','bold','fontSize',16);
@@ -333,10 +354,14 @@ classdef get_Z_spectral < handle
 
             figure(3); hold on;
             set(gcf,'Color',[1,1,1]);
+            
+            
+            hand_Z_22_mag = Z22_s_mag(:,1)-model_mag;
+            hand_Z_22_phi = Z22_s_phi(:,1)-model_phi;
                         
             ax2 = subplot(2,1,1,'XScale','log','YScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_mag(:,1)-model_mag,'LineWidth',2); 
+            plot(TF_freq,hand_Z_22_mag,'LineWidth',2,'Color', col_vec); 
             grid on; box on;
             axis([xLowerLim xUpperLim yLowerLim_sub yUpperLim_sub]);
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
@@ -345,12 +370,33 @@ classdef get_Z_spectral < handle
             
             ax4 = subplot(2,1,2,'XScale','log');
             set(gca,'fontWeight','bold','fontSize',12); hold on;
-            plot(TF_freq,Z22_l_phi(:,1)-model_phi,'LineWidth',2); grid on; box on;
+            plot(TF_freq,hand_Z_22_phi,'LineWidth',2,'Color', col_vec); grid on; box on;
             axis([xLowerLim xUpperLim -90 45 ]); yticks([-90: 45 :45])
             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); 
             ylabel('phase (deg)','fontWeight','bold','fontSize',14);
             
             linkaxes([ax2,ax4],'x');
+            
+            
+            %% Define structure
+            this.TF_freq = TF_freq;
+            this.tot_Z_11_mag = Z11_s_mag;
+            this.tot_Z_12_mag = Z12_s_mag;
+            this.tot_Z_21_mag = Z21_s_mag;
+            this.tot_Z_22_mag = Z22_s_mag;
+            
+            this.tot_11_phi = Z11_s_phi;
+            this.tot_12_phi = Z12_s_phi;
+            this.tot_21_phi = Z21_s_phi;
+            this.tot_22_phi = Z22_s_phi;
+            
+            this.PC11 = PC11_s;
+            this.PC12 = PC12_s;
+            this.PC21 = PC21_s;
+            this.PC22 = PC22_s;
+            
+            this.hand_Z_22_mag = hand_Z_22_mag;
+            this.hand_Z_22_phi = hand_Z_22_phi;
             
 %             % Sanity check
 %             opts = bodeoptions('cstprefs');
