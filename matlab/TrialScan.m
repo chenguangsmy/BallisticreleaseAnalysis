@@ -148,7 +148,8 @@ classdef TrialScan
         end
         function obj = findPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
-             idx = obj.idx_fcr:obj.idx_mov;
+             %idx = obj.idx_fcr:obj.idx_mov;
+             idx = obj.idx_fcr:obj.idx_end;
              pert_t = obj.time_orn(idx);
             % find time  
             try
@@ -166,8 +167,8 @@ classdef TrialScan
              pert_idx = sessionScanObj.time >= obj.pert_t_bgn & ...
                         sessionScanObj.time <= obj.pert_t_edn;
              pert_rdt = sessionScanObj.Data.Position.RDT(pert_idx);
-             obj.pert_rdt_bgn = pert_rdt(1);
-             obj.pert_rdt_edn = pert_rdt(end);
+             obj.pert_rdt_bgn = pert_rdt(1);    % force increasing time (pert start)
+             obj.pert_rdt_edn = pert_rdt(end);  % release time (pert finished)
         end
         function obj = alignMOV(obj)
             %alignMOV align all trials at ST_MOV
