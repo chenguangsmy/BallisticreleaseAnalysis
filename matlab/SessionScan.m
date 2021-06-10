@@ -47,7 +47,14 @@ classdef (HandleCompatible)SessionScan < handle
                     0 1 1
                     1 0 1
                     1 1 0
-                    1 1 1]   % color for plot, rgb cmyk
+                    0.5 0.5 0.5
+                    0 0.4470 0.7410
+                    0.8500 0.3250 0.0980
+                    0.9290 0.6940 0.1250
+                    0.4940 0.1840 0.5560
+                    0.4660 0.6740 0.1880
+                    0.3010 0.7450 0.9330
+                    0.6350 0.0780 0.1840]   % color for plot, rgb cmyk
         %badTrials = [1];       % bad trial, cull in data
         badTrials = [1, 278];       % FOR SS1898
         stateNames = {'Begin', 'Present', 'FrcRamp', 'Move', 'Hold', 'End', 'Reset'};
@@ -1339,11 +1346,16 @@ classdef (HandleCompatible)SessionScan < handle
                     force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
                     force_std = std(resample_v(:,:,xyi), 'omitnan');  
                     % mean line
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i, size(obj.col_vec, 1)),:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
                     % 1std shade
                     force_up = force_mean + force_std/2;
                     force_dn = force_mean - force_std/2;
-                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                    [axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
                 end
             end
             xlabel('time aligned at MOV signal');
