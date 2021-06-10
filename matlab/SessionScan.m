@@ -215,7 +215,7 @@ classdef (HandleCompatible)SessionScan < handle
                 xlabel('RDT seq num'); ylabel('time'); 
                 title('validation interp');
             end
-             obj.force_h = force_obj.force;
+             obj.force_h = force_obj.force_net;
              obj.force_t = align_Time;
         end
         function obj = wamHighSample(obj, wam_obj)
@@ -1230,14 +1230,19 @@ classdef (HandleCompatible)SessionScan < handle
             xy_char = 'xy';
             axhf = figure();
             l_h = [];
+            labels = {};
+            label_i = 0;
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
+
                     %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) ...
                         & [obj.trials.tarL]==all_tarL(tarL_i)...
                         & [obj.trials.outcome]==1; 
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
                     force_mean = mean(resample_f(:,:,xyi)); %only y direction
                     force_std = std(resample_f(:,:,xyi));  
@@ -1253,7 +1258,8 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel([xy_char(xyi) ' dir force (N)']);
             xlim([-0.5 0.4]);
             title('Force signal');
-            legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            legend(l_h, labels);
         end
         function axhp = plotMeantrialPos(obj)
             % plot the meaned trial Position according to the task condition
@@ -1274,11 +1280,15 @@ classdef (HandleCompatible)SessionScan < handle
             % plot position
             axhp = figure();
             l_h = [];
+            labels = {};
+            label_i = 0;
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
                     force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
                     force_std = std(resample_p(:,:,xyi), 'omitnan');  
@@ -1294,7 +1304,8 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel([xy_char(xyi) 'dir position (m)']);
             xlim([-0.2 0.5]);
             title('Position signal');
-            legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            legend(l_h, labels);
         end
         function axhv = plotMeantrialVel(obj)
             % plot the meaned trial Velocity according to the task condition
@@ -1315,11 +1326,15 @@ classdef (HandleCompatible)SessionScan < handle
             % plot velocity
             axhv = figure();
             l_h = [];
+            labels = {};
+            label_i = 0;
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
                     force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
                     force_std = std(resample_v(:,:,xyi), 'omitnan');  
@@ -1335,7 +1350,8 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel([xy_char(xyi) 'dir velocity (m/s)']);
             xlim([-0.2 0.5]);
             title('Velocity signal');
-            legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            legend(l_h, labels);
         end
         function [axhf, axhp, axhv] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
