@@ -484,6 +484,20 @@ classdef (HandleCompatible)SessionScan < handle
             dexMovOnset = dexMovOnset(2:end);
             dexHoldEnd = dexHoldEnd(2:end);
             
+            % Check if the size of the dexs are the same. If not check
+            % order
+            if(0~=sum(diff([length(dexForceRampStart),length(dexMovOnset),length(dexHoldEnd)])))
+                if(dexMovOnset(1) > dexForceRampStart(1)) % remove extra trial
+                    dexMovOnset = dexMovOnset(2:end);
+                    dexHoldEnd = dexHoldEnd(2:end);
+                end
+                
+                if(length(dexHoldEnd) > length(dexForceRampStart)+100) % If weird problem
+                    dexHoldEnd = dexHoldEnd(1:length(dexMovOnset));
+                    dexForceRampStart = dexForceRampStart(1:length(dexMovOnset));
+                end
+            end
+            
             % Check for failed trials that did not go through all states
             % If length is all the same dont bother checking
             if ~(length(dexHoldEnd) == length(dexMovOnset))

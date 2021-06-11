@@ -8,7 +8,7 @@ classdef WAM_simSystem2D < handle
     %               exported from the FPGA and computes the ZFT.
     
     properties
-                
+        
         % Subject Spesific Parameters
         subjectNumber % subject number in study
         l1a % Length of upper arm (m)
@@ -97,16 +97,16 @@ classdef WAM_simSystem2D < handle
         robPosVec_Y
         pretScale
         
-%         % Ensamble outputs
-%         z_r
-%         u_r
-%         t_cycle
-%         N
-%         L
-%         R
-%         M1
-%         M2
-      
+        %         % Ensamble outputs
+        %         z_r
+        %         u_r
+        %         t_cycle
+        %         N
+        %         L
+        %         R
+        %         M1
+        %         M2
+        
     end
     
     methods
@@ -123,27 +123,27 @@ classdef WAM_simSystem2D < handle
             if(exist('pretScale','var'))
                 this.pretScale = pretScale;
             end
-                
+            
             get_subjectParam(this); % Defines subject paramters
             get_InMotionParam(this); % Define InMotion2 paramters
-%             tic;
-%             this.simulateSystem('line');
-%             toc;
-%             this.simulateSystem('point_singlePret');
-%             this.simulateSystem('circle');
-%             this.simulateSystem('circle_singlePret','nn');
-%             this.simulateSystem('line_SISO');
-                
-%             [z_r_norm,u_r_norm,y_r_norm,z_r_tan,u_r_tan,y_r_tan,t_cycle,N,R] = this.get_ensambleInput('point');
-%             [z_r_norm,u_r_norm,y_r_norm,z_r_tan,u_r_tan,y_r_tan,t_cycle,N,R] = this.get_ensambleInput('circle'); % Dont have to spesify direction
-%             
-%             this.save_zftAnimation('/Users/jhermus/Downloads/Test.mp4');
-%             get_InMotionData(this); % Imports the raw data and filters
-%             get_binnedMeasures(this) % Bins data for plotting
+            %             tic;
+            %             this.simulateSystem('line');
+            %             toc;
+            %             this.simulateSystem('point_singlePret');
+            %             this.simulateSystem('circle');
+            %             this.simulateSystem('circle_singlePret','nn');
+            %             this.simulateSystem('line_SISO');
+            
+            %             [z_r_norm,u_r_norm,y_r_norm,z_r_tan,u_r_tan,y_r_tan,t_cycle,N,R] = this.get_ensambleInput('point');
+            %             [z_r_norm,u_r_norm,y_r_norm,z_r_tan,u_r_tan,y_r_tan,t_cycle,N,R] = this.get_ensambleInput('circle'); % Dont have to spesify direction
+            %
+            %             this.save_zftAnimation('/Users/jhermus/Downloads/Test.mp4');
+            %             get_InMotionData(this); % Imports the raw data and filters
+            %             get_binnedMeasures(this) % Bins data for plotting
         end
         
         function [] = simulateSystem(this,symType)
-             % Filename:	ZFT.m
+            % Filename:	ZFT.m
             % Author:  James Hermus
             % Date:     16 July 2018
             % Description:	Computes the zero force trajectory from subject data
@@ -153,9 +153,9 @@ classdef WAM_simSystem2D < handle
             % ** For ode45 get everything in shoulder centered coordinates
             
             if(strcmp(symType,'line'))
-
-            %% Simulate line move
-                                
+                
+                %% Simulate line move
+                
                 % Initial State
                 % Define the initial state vector
                 xx0 = zeros(4,1);
@@ -165,19 +165,19 @@ classdef WAM_simSystem2D < handle
                 [this.q_0, this.q_0_dot, this.X_0, this.X_0_dot] = this.get_ZFT(this.t);
                 
                 % Create bandwidthlimited 50 Hz gausian white noise (std before or after filt?)
-%                 this.F_pret = [this.get_instanceOrRandomPreturbation();...
-%                                this.get_instanceOrRandomPreturbation()]'; % (1/8).*
+                %                 this.F_pret = [this.get_instanceOrRandomPreturbation();...
+                %                                this.get_instanceOrRandomPreturbation()]'; % (1/8).*
                 
                 this.F_pret = [this.get_StepPreturbation();...
-                               this.get_StepPreturbation()]';
-
-                % this.F_pret = this.get_StepPreturbation_2D'; % (1/8).* 
-                           
-               % Use ode45 to solve state equations
-              [tvec, xvec] = ode45(@(t,y)this.getStates(t,y), this.t, xx0);
-
+                    this.get_StepPreturbation()]';
+                
+                % this.F_pret = this.get_StepPreturbation_2D'; % (1/8).*
+                
+                % Use ode45 to solve state equations
+                [tvec, xvec] = ode45(@(t,y)this.getStates(t,y), this.t, xx0);
+                
                 % Use SemiImplicitEuler
-%                 [tvec, xvec] = this.SemiImplicitEuler(@(t,y)this.getStates(t,y),[this.t(1) this.t(end)], xx0);
+                %                 [tvec, xvec] = this.SemiImplicitEuler(@(t,y)this.getStates(t,y),[this.t(1) this.t(end)], xx0);
                 for i = 1:length(xvec)
                     [tmp,F_contact(:,i)] = this.getStates(tvec(i),xvec(i,:)');
                 end
@@ -185,7 +185,7 @@ classdef WAM_simSystem2D < handle
             elseif(strcmp(symType,'line_SISO'))
                 
                 %% Simulate line move SISO
-                                
+                
                 % Initial State
                 % Define the initial state vector
                 xx0 = zeros(4,1);
@@ -196,22 +196,22 @@ classdef WAM_simSystem2D < handle
                 
                 % Create bandwidthlimited 50 Hz gausian white noise (std before or after filt?)
                 this.F_pret = [this.get_StepPreturbation();...
-                               zeros(1,this.N_tot)]';
-%                 this.F_pret = [this.get_instanceOrRandomPreturbation();...
-%                                zeros(1,this.N_tot)]';
-                           
+                    zeros(1,this.N_tot)]';
+                %                 this.F_pret = [this.get_instanceOrRandomPreturbation();...
+                %                                zeros(1,this.N_tot)]';
+                
                 % Use ode45 to solve state equations
                 [tvec, xvec] = ode45(@(t,y)this.getStates(t,y), this.t, xx0);
-
+                
                 % Use SemiImplicitEuler
-%                 [tvec, xvec] = this.SemiImplicitEuler(@(t,y)this.getStates(t,y),[this.t(1) this.t(end)], xx0);
+                %                 [tvec, xvec] = this.SemiImplicitEuler(@(t,y)this.getStates(t,y),[this.t(1) this.t(end)], xx0);
                 for i = 1:length(xvec)
                     [tmp,F_contact(:,i)] = this.getStates(tvec(i),xvec(i,:)');
-                end 
+                end
                 
-%                 figure; plot(tvec,this.F_pret(:,1)); 
-%                 ylim([-6 6]); xlim([0 4]); xlabel('Time (s)'); ylabel('Preturbation (N)');
-%                 set(gca,'fontsize',16);
+                %                 figure; plot(tvec,this.F_pret(:,1));
+                %                 ylim([-6 6]); xlim([0 4]); xlabel('Time (s)'); ylabel('Preturbation (N)');
+                %                 set(gca,'fontsize',16);
                 
             else
                 error('spesify symType as point or circle');
@@ -234,34 +234,34 @@ classdef WAM_simSystem2D < handle
             this.constraint_y = this.d2 - this.lc*sin(0:0.01:2*pi)';
             
             % Point Constraint
-%               dex = 1;
-%                         figure;plot(this.armPosVec_X(1,:), this.armPosVec_Y(1,:), '.-b',...
-%                             this.robPosVec_X(1,:), this.robPosVec_Y(1,:), '.-k','linewidth',4,'markersize',40);hold on;
-%                                         this.crank_x(1,:),          this.crank_y(1,:),          '.-k',...
-%                         ylim([0 1.2]); xlim([-0.56 0.56]); grid on; axis equal;
-%                         ylabel('Y Distance (m)','fontsize',14);
-%                         xlabel('X Distance (m)','fontsize',14);
-%                         legend('Arm','InMotion','location','east');legend boxoff;
-%                         set(gca,'fontsize',18);
+            %               dex = 1;
+            %                         figure;plot(this.armPosVec_X(1,:), this.armPosVec_Y(1,:), '.-b',...
+            %                             this.robPosVec_X(1,:), this.robPosVec_Y(1,:), '.-k','linewidth',4,'markersize',40);hold on;
+            %                                         this.crank_x(1,:),          this.crank_y(1,:),          '.-k',...
+            %                         ylim([0 1.2]); xlim([-0.56 0.56]); grid on; axis equal;
+            %                         ylabel('Y Distance (m)','fontsize',14);
+            %                         xlabel('X Distance (m)','fontsize',14);
+            %                         legend('Arm','InMotion','location','east');legend boxoff;
+            %                         set(gca,'fontsize',18);
             
             % Circular Constraint
-%             dex = 3000:length(xvec);
-%             figure;plot(this.constraint_x,     this.constraint_y,     ':k',...
-%                 this.X_0(dex,1),this.X_0(dex,2),'-r',...
-%                 this.armPosVec_X(1,:), this.armPosVec_Y(1,:), '.-b',...
-%                 this.robPosVec_X(1,:), this.robPosVec_Y(1,:), '.-k','linewidth',4,'markersize',40);hold on;
-%             %                 this.crank_x(1,:),          this.crank_y(1,:),          '.-k',...
-%             ylim([0 1.2]); xlim([-0.56 0.56]); grid on; axis equal;
-%             ylabel('Y Distance (m)','fontsize',14);
-%             xlabel('X Distance (m)','fontsize',14);
-%             legend('Constraint','x_0','Arm','InMotion','location','east');legend boxoff;
-%             set(gca,'fontsize',18);
-%             
-%             figure; dex = 3000:length(xvec);
-%             plot(this.X(dex,1),this.X(dex,2),'linewidth',2.5); hold on;
-%             plot(this.X_0(dex,1),this.X_0(dex,2),'r','linewidth',2.5); hold on;
-%             plot(this.d1+this.lc*sin(0:0.001:2*pi),this.d2+this.lc*cos(0:0.001:2*pi),'--k','linewidth',2.5);
-%             axis equal;
+            %             dex = 3000:length(xvec);
+            %             figure;plot(this.constraint_x,     this.constraint_y,     ':k',...
+            %                 this.X_0(dex,1),this.X_0(dex,2),'-r',...
+            %                 this.armPosVec_X(1,:), this.armPosVec_Y(1,:), '.-b',...
+            %                 this.robPosVec_X(1,:), this.robPosVec_Y(1,:), '.-k','linewidth',4,'markersize',40);hold on;
+            %             %                 this.crank_x(1,:),          this.crank_y(1,:),          '.-k',...
+            %             ylim([0 1.2]); xlim([-0.56 0.56]); grid on; axis equal;
+            %             ylabel('Y Distance (m)','fontsize',14);
+            %             xlabel('X Distance (m)','fontsize',14);
+            %             legend('Constraint','x_0','Arm','InMotion','location','east');legend boxoff;
+            %             set(gca,'fontsize',18);
+            %
+            %             figure; dex = 3000:length(xvec);
+            %             plot(this.X(dex,1),this.X(dex,2),'linewidth',2.5); hold on;
+            %             plot(this.X_0(dex,1),this.X_0(dex,2),'r','linewidth',2.5); hold on;
+            %             plot(this.d1+this.lc*sin(0:0.001:2*pi),this.d2+this.lc*cos(0:0.001:2*pi),'--k','linewidth',2.5);
+            %             axis equal;
         end
         
         function get_subjectParam(this)
@@ -511,18 +511,18 @@ classdef WAM_simSystem2D < handle
             
             
             % Line motion
-%             D = 1; 
-%             A = 0.1;
-%             tstart = 0;
-%             [x_0,x_0_dot] = getMinJerkTraj(this,D,A,tstart,tt);
+            %             D = 1;
+            %             A = 0.1;
+            %             tstart = 0;
+            %             [x_0,x_0_dot] = getMinJerkTraj(this,D,A,tstart,tt);
             
             % x_0 fixed
             xe = this.d1 + 0.1;
             ye = this.d2;
             x_0 = [xe;ye];
-
+            
             x_0_dot = [zeros(2,1)];
-
+            
             % Right Hand
             alpha1 = atan2(ye,xe);
             alpha2 = acos((xe.^2 + ye.^2 + this.l1a^2 - this.l2a^2)./(2*this.l1a*sqrt(xe.^2 + ye.^2)));
@@ -532,14 +532,14 @@ classdef WAM_simSystem2D < handle
             q1p = alpha1 - alpha2;
             q2p = alpha1 + alpha3 - q1p;
             q_0 = [q1p;q2p];
-                               
+            
             q_0_dot = this.get_jacobian(q_0) \ x_0_dot; % Check outputs incorrect q_0_dot when multiple values are input
             
-%             q_0 = interp1(this.t, this.q_0, tt)';
-%             q_0_dot = interp1(this.t, this.q_0_dot, tt)';
-%             x_0 = interp1(this.t, this.X_0, tt)';
-%             x_0_dot = this.get_jacobian(q_0)*q_0_dot;
-
+            %             q_0 = interp1(this.t, this.q_0, tt)';
+            %             q_0_dot = interp1(this.t, this.q_0_dot, tt)';
+            %             x_0 = interp1(this.t, this.X_0, tt)';
+            %             x_0_dot = this.get_jacobian(q_0)*q_0_dot;
+            
         end
         
         function [x,v,a] = getMinJerkTraj(this,D,A,tstart,tt)
@@ -601,7 +601,7 @@ classdef WAM_simSystem2D < handle
             % ylabel('Acceleration (rad/sec^2)');
             % legend('Minimum Jerk','Location','southeast');
         end
-
+        
         
         function xx_dot = getStates_point(this,tt,xx)
             % Filename:	getStatesZFT.m
@@ -614,15 +614,15 @@ classdef WAM_simSystem2D < handle
             % Extract states
             q=xx(1:2);
             q_dot=xx(3:4);
-                        
+            
             X = forwKino(this,q);
-                        
+            
             % Define Jacobian of the arm
             J = this.get_jacobian(q);
             X_dot = J*q_dot; % Compute hand velocity
-
+            
             [thcp,ee,nn] = get_crankPostion(this,X,'shoulder');
-
+            
             M = this.get_massMatrixArm(q);
             
             % Define centifugal and Coriolis forces of the arm
@@ -635,8 +635,8 @@ classdef WAM_simSystem2D < handle
             
             % Force Preturbation from InMotion
             F_pret = [interp1(this.t, this.F_pret(:,1), tt, 'nearest');...
-                      interp1(this.t, this.F_pret(:,2), tt, 'nearest')];
-                  
+                interp1(this.t, this.F_pret(:,2), tt, 'nearest')];
+            
             % Human Joint toruqe
             q_0 = [0;0];
             [q_0(1), q_0(2)] = this.invKino(this.d1+this.lc,this.d2); % q0 point
@@ -648,8 +648,8 @@ classdef WAM_simSystem2D < handle
             
             % No robot integration
             % Changed preturbation to normal tangential direction
-            q_ddot = inv(M) * ( tau + J'*(F_pret+F_c) - h); 
-
+            q_ddot = inv(M) * ( tau + J'*(F_pret+F_c) - h);
+            
             
             % With robot constraint integration
             % x34dot = inv( (M + J'*inv(J_r')*M_r*inv(J_r)*J_r)) *(tau - h - J'*inv(J_r')*(M_r*inv(J_r')*(Jd*[q1v;q2v] - J_dr*theta_dr) + J_r'*F + h_r));
@@ -657,7 +657,7 @@ classdef WAM_simSystem2D < handle
             % Return the state derivatives to ODE solver
             xx_dot = [q_dot; q_ddot];
         end
-                
+        
         function [xx_dot,F_contact] = getStates(this,tt,xx)
             % Filename:	getStatesZFT.m
             % Author:  James Hermus
@@ -669,49 +669,49 @@ classdef WAM_simSystem2D < handle
             % Extract states
             q=xx(1:2);
             q_dot=xx(3:4);
-                        
+            
             X = forwKino(this,q);
-                        
+            
             % Define Jacobian of the arm
             J = this.get_jacobian(q);
             X_dot = J*q_dot; % Compute hand velocity
-
+            
             M = this.get_massMatrixArm(q);
             
             % Define centifugal and Coriolis forces of the arm
             h = [ -this.m2a*this.l1a*this.c2a*sin(q(2)) * (2*q_dot(1)*q_dot(2) + q_dot(2)^2) ;...
                 this.m2a*this.l1a*this.c2a*sin(q(2)) * q_dot(1)^2];
-                        
+            
             % Force from InMotion Constraint
             [F_c] = get_ForceFromConstraint_Point(this,X,X_dot,tt,'shoulder');
             
             if(~isempty(this.pretScale))
-                         
+                
                 pretScale_1 = interp1([0;this.pretScale{1}(:,1);2*pi], [this.pretScale{1}(1,2);this.pretScale{1}(:,2);this.pretScale{1}(end,2)], thcp, 'nearest');
                 pretScale_2 = interp1([0;this.pretScale{1}(:,1);2*pi], [this.pretScale{1}(1,3);this.pretScale{1}(:,3);this.pretScale{1}(end,3)], thcp, 'nearest');
-
-                 % Force Preturbation from InMotion
-                 F_pret = [(10^-4)*(1./pretScale_1)*interp1(this.t, this.F_pret(:,1), tt, 'nearest');...
-                           (10^-4)*(1./pretScale_2)*interp1(this.t, this.F_pret(:,2), tt, 'nearest')];
+                
+                % Force Preturbation from InMotion
+                F_pret = [(10^-4)*(1./pretScale_1)*interp1(this.t, this.F_pret(:,1), tt, 'nearest');...
+                    (10^-4)*(1./pretScale_2)*interp1(this.t, this.F_pret(:,2), tt, 'nearest')];
             else
-                 % Force Preturbation from InMotion
-                 F_pret = [interp1(this.t, this.F_pret(:,1), tt, 'nearest');...
-                           interp1(this.t, this.F_pret(:,2), tt, 'nearest')];
+                % Force Preturbation from InMotion
+                F_pret = [interp1(this.t, this.F_pret(:,1), tt, 'nearest');...
+                    interp1(this.t, this.F_pret(:,2), tt, 'nearest')];
             end
             
             %% Human Joint toruqe
             [q_0,q_0_dot] = get_ZFT(this,tt);
             
-            tau = this.K*(q_0 - q) + this.B*(q_0_dot-q_dot);  
+            tau = this.K*(q_0 - q) + this.B*(q_0_dot-q_dot);
             
             %% Robot torque
-%           [J_r, J_r_dot, h_r, M_r] = this.InMotionPassiveForce(X, X_dot,'shoulder');
-
+            %           [J_r, J_r_dot, h_r, M_r] = this.InMotionPassiveForce(X, X_dot,'shoulder');
+            
             % No robot integration
             % Changed preturbation to normal tangential direction
             q_ddot = inv(M) * ( tau + J'*(F_pret + F_c) - h); % CHECK THIS
-
-            % Compute contact force 
+            
+            % Compute contact force
             F_contact = F_pret + F_c;
             
             % Return the state derivatives to ODE solver
@@ -723,8 +723,8 @@ classdef WAM_simSystem2D < handle
             
             % Check coordinates are in crank space
             X = this.check_crankCoordinates(X,coordinatess);
-
-            % Circle            
+            
+            % Circle
             [theta,ee,nn] = get_crankPostion(this,X,'crank');
             
             delta_x = this.lc - sqrt(X(1)^2+X(2)^2);
@@ -733,13 +733,13 @@ classdef WAM_simSystem2D < handle
             rob_B = 40; % Uniform damping
             % F = K * [-x_con(dex) + x; -y_con(dex) + y];% + B*[x_dot;y_dot];
             
-%             % Force preturbation
+            %             % Force preturbation
             F = rob_K * delta_x * nn + rob_B*dot(-X_dot,nn)*nn; % Add Damping!!
             F_ne = [rob_K * delta_x + rob_B*dot(-X_dot,nn);0]; % only normal
-
+            
             % Try adding damping in both dof
-%             F = rob_K * delta_x * nn + rob_B*(-X_dot); % Add Damping!!
-%             F_ne = [rob_K * delta_x + rob_B*dot(-X_dot,nn);rob_B*dot(-X_dot,ee)]; % only normal
+            %             F = rob_K * delta_x * nn + rob_B*(-X_dot); % Add Damping!!
+            %             F_ne = [rob_K * delta_x + rob_B*dot(-X_dot,nn);rob_B*dot(-X_dot,ee)]; % only normal
             
         end
         
@@ -754,7 +754,7 @@ classdef WAM_simSystem2D < handle
             if(tt<=2)
                 F = rob_K * ([0;0]-X) + rob_B*([0;0]-X_dot); % Add Damping!!
             else % After release
-                F = [0;0]; 
+                F = [0;0];
             end
         end
         
@@ -763,18 +763,18 @@ classdef WAM_simSystem2D < handle
             fp = 1*rand(1,this.N_tot);
             fp = fp-mean(fp);
             
-%             % Filter
-%             cf = 100; % cutoff freqnency
-%             [b,a] = butter(2,cf/(this.sfrq/2)); % make filter
-%             fp = filtfilt(b,a,fp); % apply fitler
-%             
-%             for i = 1:this.N_tot
-%                 if(~mod(i-1,10))
-%                     fp(i) = 1*(rand(1)-0.5);
-%                 else
-%                     fp(i) = fp(i-1);
-%                 end
-%             end
+            %             % Filter
+            %             cf = 100; % cutoff freqnency
+            %             [b,a] = butter(2,cf/(this.sfrq/2)); % make filter
+            %             fp = filtfilt(b,a,fp); % apply fitler
+            %
+            %             for i = 1:this.N_tot
+            %                 if(~mod(i-1,10))
+            %                     fp(i) = 1*(rand(1)-0.5);
+            %                 else
+            %                     fp(i) = fp(i-1);
+            %                 end
+            %             end
             
             % Make bionary amplitude
             fp(find(fp >= 0)) = 5; % Use 0.1 before
@@ -804,7 +804,124 @@ classdef WAM_simSystem2D < handle
             fp(dex:dex+10) = A;
             
         end
-           
+        
+        function [fp] = get_linStepPreturbation(this)
+            
+            fp = zeros(1,this.N_tot);
+            
+            Lag = 15;
+            % Get random time preturbation
+            dex = randi([Lag this.N_tot-Lag],1);
+            
+            % Get random sign  pretubation
+            A = randn(1);
+            
+            % Make bionary amplitude
+            A(find(A >= 0)) = 5; % Use 0.1 before
+            A(find(A < 0)) = -5;
+            
+            if(dex<200)
+                A = 4*A;
+            end
+            
+            fp(dex:dex+10) = A;
+            fp(dex) = A/2;
+            fp(dex+10) = A/2;
+            
+        end
+        
+        function [fp] = get_continuousStepPreturbation(this)
+            
+            fp = zeros(1,this.N_tot);
+            
+            Lag = 15;
+            % Get random time preturbation
+            dex = randi([Lag this.N_tot-Lag],1);
+            
+            % Get random sign  pretubation
+            A = randn(1);
+            
+            % Make bionary amplitude
+            A(find(A >= 0)) = 5; % Use 0.1 before
+            A(find(A < 0)) = -5;
+            
+            if(dex<200)
+                A = 4*A;
+            end
+            
+            w = 24;
+            fp(dex-w/2:dex+w/2) = 1;
+            
+            dexUp = dex-w/4:dex-w/8;
+            t_up = linspace(-pi/2, pi/2,length(dexUp));
+            fp(dexUp) = (0.5)*(sin(t_up)+1);
+            
+            dexDown = dex+w/8:dex+w/4;
+            t_up = linspace(pi/2, -pi/2,length(dexDown));
+            fp(dexDown) = (0.5)*(sin(t_up)+1);
+            
+            fp = A.*fp;
+            
+            % Sanity check interp problem
+%             clear all
+%             close all
+%             clc
+%             
+%             sfrq = 500;
+%             dt = 1/sfrq;
+%             tmax = 0.5;
+%             t = 0:dt:tmax-dt;
+%             N = length(t);
+%             d = 125;
+%             w = 74;
+%             for r = 1:5
+%                 % Make x1 (box car function)
+%                 x1 = zeros(N,1);
+%                 x1(d-w/2:d+w/2) = 1;
+%                 
+%                 % interp x1
+%                 sfrq_high = 2000;
+%                 dt_high = 1/sfrq_high;
+%                 t_high = 0:dt_high:tmax-dt_high;
+%                 x1_interp = interp1(t,x1,t_high,'spline');
+%                 
+%                 % Make x2 (sine edge)
+%                 x2 = zeros(N,1);
+%                 x2(d-w/2:d+w/2) = 1;
+%                 
+%                 dexUp = d-w/2:d-w/2+r;
+%                 t_up = linspace(-pi/2, pi/2,length(dexUp));
+%                 x2(dexUp) = (0.5)*(sin(t_up)+1);
+%                 
+%                 dexDown = d+w/2-r:d+w/2;
+%                 t_up = linspace(pi/2, -pi/2,length(dexDown));
+%                 x2(dexDown) = (0.5)*(sin(t_up)+1);
+%                 
+%                 % interp x2
+%                 x2_interp = interp1(t,x2,t_high,'spline');
+%                 
+%                 % x3 (linear edge)
+%                 x3 = x1;
+%                 x3(dexUp) = linspace(0,1,length(dexUp));
+%                 x3(dexDown) = linspace(1,0,length(dexDown));
+%                 
+%                 % Actual
+%                 t_r = 0:1/5000:tmax;
+%                 x_r = zeros(length(t_r),1);
+%                 x_r(d*10-w*10/2:d*10+w*10/2) = 1;
+%                 
+%                 % interp x3
+%                 x3_interp = interp1(t,x3,t_high,'spline');
+%                 
+%                 figure;plot(t,x1,'r-o',t_high,x1_interp,'r-+',...
+%                     t,x2,'b-o',t_high,x2_interp,'b-+',...
+%                     t,x3,'g-o',t_high,x3_interp,'g-+',...
+%                     t_r,x_r,'k--','linewidth',2,'markersize',10);
+%                 ylim([-0.25 1.25]); title(['r = ',int2str(r)]);
+%             end
+            
+        end
+        
         function [Fp] = get_StepPreturbation_2D(this)
             
             Fp = zeros(2,this.N_tot);
@@ -898,14 +1015,14 @@ classdef WAM_simSystem2D < handle
             
             % Recombine for vector and individual
             [X] = recombineVecforArrayFunction(this, x, y);
-              
+            
         end
         
         function [p,ee,nn] = get_crankPostion(this,X,coordinatess)
             
             % Check input is for a single sample
             if(size(X,1)==2 && size(X,2)==1)
-                % Proceed 
+                % Proceed
             else
                 error('Shape of X is incorrect');
             end
@@ -927,9 +1044,9 @@ classdef WAM_simSystem2D < handle
         end
         
         function [p] = get_crankPostion_Vec(this,X,coordinatess)
-    
+            
             if(size(X,1) >= 2 && size(X,2) >= 2 )
-                % Proceed 
+                % Proceed
             else
                 error('Shape of X is incorrect');
             end
@@ -983,7 +1100,7 @@ classdef WAM_simSystem2D < handle
             % correponding joint angles.
             
             % Takes input in InMotion2 coordinates
-           
+            
             % IMPORTANT NOTE: These joint angles and masses are spesific to the
             % InMotion two and are diffrent from the global subject joint angles and
             % interial parameters.
@@ -1007,8 +1124,8 @@ classdef WAM_simSystem2D < handle
         end
         
         function [J_r, J_r_dot, h_r, M_r] = InMotionPassiveForce(this, X, X_dot, coordinatess)
-        
-            % CHECK THIS FUNCTION COPY AND PASTED 
+            
+            % CHECK THIS FUNCTION COPY AND PASTED
             % Filename:	InMotionPassiveForce.m
             % Author:  James Hermus
             % Date:		September 13 2017
@@ -1031,11 +1148,11 @@ classdef WAM_simSystem2D < handle
             x_dot = X_dot(1);
             y_dot = X_dot(2);
             
-             % Takes in crank coorinates
+            % Takes in crank coorinates
             if(strcmp(coordinatess,'crank'))
-               POS = this.convert_cartRefFrame([xe;ye],0,2);
+                POS = this.convert_cartRefFrame([xe;ye],0,2);
             elseif(strcmp(coordinatess,'shoulder'))
-               POS = this.convert_cartRefFrame([xe;ye],1,2);
+                POS = this.convert_cartRefFrame([xe;ye],1,2);
             else
                 disp('Spesify coordinates');
             end
@@ -1069,7 +1186,7 @@ classdef WAM_simSystem2D < handle
         end
         
         function [l1, l2, l3, l4, m1, m2, m3, m4, r1, r2, r3, r4, I1, I2, I3, I4] = getRobotParam(this)
-           
+            
             % InMotion2 Parameters
             % Length
             l1 = this.rob_l1;
@@ -1106,7 +1223,7 @@ classdef WAM_simSystem2D < handle
             end
             
             [q1p, q2p] = this.invKino( POS(:,1),POS(:,2) );
-
+            
             % Returns the arm postion for plotting
             armPosVec_X = [zeros(length(q1p),1), this.l1a*cos(q1p),...
                 this.l1a*cos(q1p) + this.l2a*cos(q1p + q2p)];
@@ -1120,12 +1237,12 @@ classdef WAM_simSystem2D < handle
         end
         
         function [robPosVec_X, robPosVec_Y] = plotPosInMotion(this,xe,ye,coordinatess)
-                                    
+            
             % Takes in crank coorinates
             if(strcmp(coordinatess,'crank'))
-               POS = this.convert_cartRefFrame([xe,ye],0,2);
+                POS = this.convert_cartRefFrame([xe,ye],0,2);
             elseif(strcmp(coordinatess,'shoulder'))
-               POS = this.convert_cartRefFrame([xe,ye],1,2);
+                POS = this.convert_cartRefFrame([xe,ye],1,2);
             else
                 disp('Spesify coordinates');
             end
@@ -1144,7 +1261,7 @@ classdef WAM_simSystem2D < handle
                 this.rob_l1*sin(q_1) + this.rob_l2*sin(q_2)]+this.rob_d2 + this.d2;
         end
         
-        function [] = get_zftPlot(this)             
+        function [] = get_zftPlot(this)
             % Zero Force Trajectory Plot
             
             figure('position',[700 250 560 420]); hold on;
@@ -1186,11 +1303,11 @@ classdef WAM_simSystem2D < handle
         function [X] = check_crankCoordinates(this,X,coordinatess)
             
             if(strcmp(coordinatess,'crank'))
-                % Proceed 
+                % Proceed
             elseif(strcmp(coordinatess, 'shoulder'))
                 [X] = convert_cartRefFrame(this,X,1,0);
             else
-                error('Spesific crank or shoulder coordinates');    
+                error('Spesific crank or shoulder coordinates');
             end
             
         end
@@ -1211,18 +1328,18 @@ classdef WAM_simSystem2D < handle
                 ax = plot(this.armPosVec_X(i,:), this.armPosVec_Y(i,:), '-b',...
                     this.armPosVec_X(i,:), this.armPosVec_Y(i,:), '.b',...
                     'markersize',35,'linewidth',3);
-%                 this.crank_x(i,:),     this.crank_y(i,:),     '-r',...
-%                 this.crank_x(i,:),     this.crank_y(i,:),     '.k',...
-%                     this.constraint_x,     this.constraint_y,     ':k',...
-%                     this.X_0(i,1),           this.X_0(i,2),       '.g',...
-%                     this.robPosVec_X(i,:), this.robPosVec_Y(i,:), '-k',...
-%                     this.X(i,1)+0.1*[0,ee(1)],this.X(i,2)+0.1*[0,ee(2)],':b',...
-%                     this.X(i,1)+0.1*[0,nn(1)],this.X(i,2)+0.1*[0,nn(2)],':r',...
-%                     this.robPosVec_X(i,:), this.robPosVec_Y(i,:), '.k',...
+                %                 this.crank_x(i,:),     this.crank_y(i,:),     '-r',...
+                %                 this.crank_x(i,:),     this.crank_y(i,:),     '.k',...
+                %                     this.constraint_x,     this.constraint_y,     ':k',...
+                %                     this.X_0(i,1),           this.X_0(i,2),       '.g',...
+                %                     this.robPosVec_X(i,:), this.robPosVec_Y(i,:), '-k',...
+                %                     this.X(i,1)+0.1*[0,ee(1)],this.X(i,2)+0.1*[0,ee(2)],':b',...
+                %                     this.X(i,1)+0.1*[0,nn(1)],this.X(i,2)+0.1*[0,nn(2)],':r',...
+                %                     this.robPosVec_X(i,:), this.robPosVec_Y(i,:), '.k',...
                 ylim([0 1.2]); xlim([-0.56 0.56]); grid on; axis equal;
                 ylabel('Y Distance (m)','fontsize',14);
                 xlabel('X Distance (m)','fontsize',14);
-%                 legend([ax(1),ax(2),ax(3),ax(4),ax(5),ax(8)],{'Arm','Constraint Path','Robot','Tangental','Normal','Zero-Force Trajectory'},'location','northwest'); % Add ZFT
+                %                 legend([ax(1),ax(2),ax(3),ax(4),ax(5),ax(8)],{'Arm','Constraint Path','Robot','Tangental','Normal','Zero-Force Trajectory'},'location','northwest'); % Add ZFT
                 ylabel('Y Distance (m)','fontsize',14);
                 xlabel('X Distance (m)','fontsize',14);
                 xlim([-0.6 0.6]);
@@ -1241,8 +1358,8 @@ classdef WAM_simSystem2D < handle
             % Crop start and end
             % ??? Figure this out soon
             
-%             f_r_1 = zeros(1,N);
-%             f_r_2 = zeros(1,N);
+            %             f_r_1 = zeros(1,N);
+            %             f_r_2 = zeros(1,N);
             
             if(strcmp(symType,'line') || strcmp(symType,'line_SISO'))
                 % Dimension 1
@@ -1258,7 +1375,7 @@ classdef WAM_simSystem2D < handle
             else
                 error('symType must be: line.');
             end
-                
+            
         end
         
         function [t_list, x_list] = SemiImplicitEuler(this,func,tspan, y0, options)
@@ -1293,7 +1410,7 @@ classdef WAM_simSystem2D < handle
             x_list = y';
             
         end
-
+        
         function [POS] = convert_cartRefFrame(this,POS,oldFrame,newFrame)
             
             [POS] = get_VecforArrayFunction(this, POS);

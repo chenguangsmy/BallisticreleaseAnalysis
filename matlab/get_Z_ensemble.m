@@ -101,24 +101,24 @@ classdef get_Z_ensemble < handle
             for i = iDex(1):10:iDex(end)
                 axes(ax1);
                 plot3(this.tvec,time(i)*ones(1,L),h_hat_11_filt(:,i),'.r'); hold on;
-                plot3(this.tvec,time(i)*ones(1,L),h_model_11(:,i),'-b'); hold on;
+%                 plot3(this.tvec,time(i)*ones(1,L),h_model_11(:,i),'-b'); hold on;
 %                 plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_true_model(:,1,1,i),'-k'); hold on;
                 
                 axes(ax2);
                 plot3(this.tvec,time(i)*ones(1,L),h_hat_12_filt(:,i),'.r'); hold on;
-                plot3(this.tvec,time(i)*ones(1,L),h_model_12(:,i),'-b'); hold on;
+%                 plot3(this.tvec,time(i)*ones(1,L),h_model_12(:,i),'-b'); hold on;
 %                 plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_true_model(:,1,2,i),'-k'); hold on;
 
                 
                 axes(ax3);
                 plot3(this.tvec,time(i)*ones(1,L),h_hat_21_filt(:,i),'.r'); hold on;
-                plot3(this.tvec,time(i)*ones(1,L),h_model_21(:,i),'-b'); hold on;
+%                 plot3(this.tvec,time(i)*ones(1,L),h_model_21(:,i),'-b'); hold on;
 %                 plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_true_model(:,2,1,i),'-k'); hold on;
 
                 
                 axes(ax4);
                 plot3(this.tvec,time(i)*ones(1,L),h_hat_22_filt(:,i),'.r'); hold on;
-                plot3(this.tvec,time(i)*ones(1,L),h_model_22(:,i),'-b'); hold on;
+%                 plot3(this.tvec,time(i)*ones(1,L),h_model_22(:,i),'-b'); hold on;
 %                 plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_true_model(:,2,2,i),'-k'); hold on;
 
             end

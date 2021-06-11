@@ -147,3 +147,17 @@ k_spring = 3*157.6;
 k_robot = 2928;
 plot([time3(1),0,0,time3(end)],...
     [k_spring+k_robot,k_spring+k_robot,k_spring,k_spring],'--k','linewidth',2.5);
+
+%% Test sys ID on impulse preturbations 6/9/21 
+%% Analysis with Springs
+ss = SessionScan(2084);     % during this part already do [1]
+% connect data
+% Elliminates half the trials due to "failure" 
+ss.generateWamPertData();   %                          do [2]
+
+% Ensemble analysis
+ss.generateWamPertData_ensemble();
+
+ss.wam.Data_pert_ensemble.estimate = get_Z_ensemble(ss.wam.Data_pert_ensemble);
+
+
