@@ -1365,6 +1365,163 @@ classdef (HandleCompatible)SessionScan < handle
             %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
             legend(l_h, labels);
         end
+        function axhf = plotMeantrialForce_sameCond(obj)
+            % plot the meaned trial Force according to the task condition
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % axhf = figure();
+            for tarL_i = 1:length(all_tarL)
+                axhf(tarL_i) = figure(tarL_i); hold on;
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                for fTH_i = 1:length(all_fTH)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+
+                    %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) ...
+                        & [obj.trials.tarL]==all_tarL(tarL_i)...
+                        & [obj.trials.outcome]==1; 
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
+                    force_mean = mean(resample_f(:,:,xyi)); %only y direction
+                    force_std = std(resample_f(:,:,xyi));  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+                legend(l_h, labels);
+                xlabel('time aligned at MOV signal');
+                ylabel([xy_char(xyi) ' dir force (N)']);
+                xlim([-0.5 0.4]);
+                title('Force signal');
+            end
+
+        end
+        function axhp = plotMeantrialPos_sameCond(obj)
+            % plot the meaned trial Position according to the task condition
+            % if did not calculate the mean and var, calculate
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot position
+            for tarL_i = 1:length(all_tarL)
+                axhp(tarL_i) = figure();
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                for fTH_i = 1:length(all_fTH)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
+                    force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
+                    force_std = std(resample_p(:,:,xyi), 'omitnan');  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+                legend(l_h, labels);
+                xlabel('time aligned at MOV signal');
+                ylabel([xy_char(xyi) 'dir position (m)']);
+                xlim([-0.2 0.5]);
+                title('Position signal');
+            end
+            
+        end
+        function axhv = plotMeantrialVel_sameCond(obj)
+            % plot the meaned trial Velocity according to the task condition
+            % if did not calculate the mean and var, calculate
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot velocity
+            
+            for tarL_i = 1:length(all_tarL)
+                axhv(tarL_i) = figure();
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                for fTH_i = 1:length(all_fTH)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
+                    force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
+                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
+                end
+            xlabel('time aligned at MOV signal');
+            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
+            xlim([-0.2 0.5]);
+            title('Velocity signal');
+            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            legend(l_h, labels);
+            end
+        end
         function [axhf, axhp, axhv] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
