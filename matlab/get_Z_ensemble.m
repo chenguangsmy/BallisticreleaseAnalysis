@@ -85,7 +85,7 @@ classdef get_Z_ensemble < handle
             end
                         
             % Fit Model Prony
-            [K_hat, h_model_11, h_model_12, h_model_21, h_model_22, VAFirf] = get_MIMO_Prony(this,iDex, h_hat_11_filt, h_hat_12_filt, h_hat_21_filt, h_hat_22_filt, M2);
+%             [K_hat, h_model_11, h_model_12, h_model_21, h_model_22, VAFirf] = get_MIMO_Prony(this,iDex, h_hat_11_filt, h_hat_12_filt, h_hat_21_filt, h_hat_22_filt, M2);
             
             %% Make fit plots 
 %             K_hat(1,1,:) =  K_hat(1,1,:)-2500; % Subtract something
@@ -136,16 +136,16 @@ classdef get_Z_ensemble < handle
             xlabel('lag (s)'); ylabel('Time (s)'); zlabel('\Delta e_t (m)'); grid on; set(gca,'fontsize',fs);
             
             
-            figure; 
-            plot(time(iDex),VAFirf(1,iDex),'linewidth',2.5); hold on;
-            plot(time(iDex),VAFirf(2,iDex),'linewidth',2.5);
-            plot(time(iDex),VAFirf(3,iDex),'linewidth',2.5);
-            plot(time(iDex),VAFirf(4,iDex),'linewidth',2.5);
-            ylabel('VAF_{irf}'); xlabel('Time (s)'); set(gca, 'fontsize', 16); ylim([0 100]);
-            legend('11','12','21','22');         
+%             figure; 
+%             plot(time(iDex),VAFirf(1,iDex),'linewidth',2.5); hold on;
+%             plot(time(iDex),VAFirf(2,iDex),'linewidth',2.5);
+%             plot(time(iDex),VAFirf(3,iDex),'linewidth',2.5);
+%             plot(time(iDex),VAFirf(4,iDex),'linewidth',2.5);
+%             ylabel('VAF_{irf}'); xlabel('Time (s)'); set(gca, 'fontsize', 16); ylim([0 100]);
+%             legend('11','12','21','22');         
             
-            figure('Position',[440 274 560 524]);
-            labelss = {'11','12','21','22'};
+% %             figure('Position',[440 274 560 524]);
+% %             labelss = {'11','12','21','22'};
             
 %             ax1 = subplot(3,1,1);
 %             p1=plot(this.tvec(iDex), M_ne11(iDex),'.-b',this.tvec(iDex), squeeze(M_ne_const(1,1,iDex)),'--b','linewidth',2.5,'markersize',15); hold on;
@@ -163,11 +163,11 @@ classdef get_Z_ensemble < handle
 %             grid on;  xlim([0.2 this.tvec(end)]); ylabel('Damping (Ns/m)'); %ylim([0 100]);
             
 %             ax3 = subplot(3,1,3);
-            p1=plot(time(iDex), squeeze(K_hat(1,1,iDex)),'-b','linewidth',2.5,'markersize',15); hold on;
-            p2=plot(time(iDex), squeeze(K_hat(1,2,iDex)),'-r','linewidth',2.5,'markersize',15); hold on;
-            p3=plot(time(iDex), squeeze(K_hat(2,1,iDex)),'-g','linewidth',2.5,'markersize',15); hold on;
-            p4=plot(time(iDex), squeeze(K_hat(2,2,iDex)),'-k','linewidth',2.5,'markersize',15);
-            grid on;  xlim([time(1) time(end)]); ylabel(' Stiffness (N/m)'); %ylim([0 3000]);
+% %             p1=plot(time(iDex), squeeze(K_hat(1,1,iDex)),'-b','linewidth',2.5,'markersize',15); hold on;
+% %             p2=plot(time(iDex), squeeze(K_hat(1,2,iDex)),'-r','linewidth',2.5,'markersize',15); hold on;
+% %             p3=plot(time(iDex), squeeze(K_hat(2,1,iDex)),'-g','linewidth',2.5,'markersize',15); hold on;
+% %             p4=plot(time(iDex), squeeze(K_hat(2,2,iDex)),'-k','linewidth',2.5,'markersize',15);
+% %             grid on;  xlim([time(1) time(end)]); ylabel(' Stiffness (N/m)'); %ylim([0 3000]);
             
 %             figure;
 %             plot(this.tvec(iDex), VAFirf_ne11(iDex),'.-b','linewidth',2.5,'markersize',15); hold on;
@@ -177,8 +177,8 @@ classdef get_Z_ensemble < handle
 %             grid on;  xlim([0.2 this.tvec(end)]); ylabel(' VAF_{irf}'); ylim([0 100]);
 %             xlabel('Time (s)'); set(gca,'fontsize',18);
             
-            this.K_hat = K_hat;
-            this.time = time(1:N+M1-40);
+%             this.K_hat = K_hat;
+%             this.time = time(1:N+M1-40);
             disp('test');
             
         end
