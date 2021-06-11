@@ -1386,16 +1386,18 @@ classdef (HandleCompatible)SessionScan < handle
                 l_h = [];
                 labels = {};
                 label_i = 0;
-                for fTH_i = 1:length(all_fTH)
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh]); % condition specific all targets.
+                for fTH_i = 1:length(all_fTh)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
 
                     %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) ...
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) ...
                         & [obj.trials.tarL]==all_tarL(tarL_i)...
                         & [obj.trials.outcome]==1; 
                     label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
                     force_mean = mean(resample_f(:,:,xyi)); %only y direction
                     force_std = std(resample_f(:,:,xyi));  
@@ -1441,12 +1443,14 @@ classdef (HandleCompatible)SessionScan < handle
                 l_h = [];
                 labels = {};
                 label_i = 0;
-                for fTH_i = 1:length(all_fTH)
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh]); % condition specific all targets.
+                for fTH_i = 1:length(all_fTh)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
                     force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
                     force_std = std(resample_p(:,:,xyi), 'omitnan');  
@@ -1493,12 +1497,14 @@ classdef (HandleCompatible)SessionScan < handle
                 l_h = [];
                 labels = {};
                 label_i = 0;
-                for fTH_i = 1:length(all_fTH)
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh])
+                for fTH_i = 1:length(all_fTh)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
                     force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
                     force_std = std(resample_v(:,:,xyi), 'omitnan');  

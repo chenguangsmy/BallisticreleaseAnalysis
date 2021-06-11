@@ -11,7 +11,7 @@ for F_i = 1:length(F_list)
     F  = F_list(F_i);   % N
     x0 = 0.05;     % m
     ks = F/x0;   % N/m  % assume subject can alter his/her stiffness
-    kr = 10;    % N/(m*s)
+    kr = 25;    % N/(m*s)
     % specify ODE
     % m*x'' = ks(x0 - x) - kr*x'
     % x'(0) = 0;
@@ -77,4 +77,4 @@ ss2080 = ss2077; % combo trials here
 ss2080.trials = all_trials_clean;
 %ss2080.plotMeantrialForce_sameCond();
 ss2080.plotMeantrialVel_sameCond();
-%ss2080.plotMeantrialPos_sameCond();
+ss2080.plotMeantrialPos_sameCond();
