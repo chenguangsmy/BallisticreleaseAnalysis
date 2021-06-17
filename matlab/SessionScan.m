@@ -1552,7 +1552,7 @@ classdef (HandleCompatible)SessionScan < handle
                     %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
                     col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
                     if col_i>=7
-                        col_i = mod(col_i,8);
+                        col_i = mod(col_i-1,8)+1;
                     end
                     for trial_i = find(trialsS_idx)
                         % plot force
