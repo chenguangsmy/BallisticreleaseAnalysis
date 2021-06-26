@@ -185,6 +185,120 @@ classdef (HandleCompatible)SessionScan < handle
             %   Detailed explanation goes here
             obj.duration_avg = obj.duration/double(obj.trials_num);
         end
+        function [sT, tT, sR] = getConditionalSucessTrials(obj) 
+            % [sucessTrials, totalTrials, sucessRate] = getConditionalSucessTrials(obj) 
+            % sT: sucessTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
+            % tT: totalTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
+            % sR: sucessRate, 4(directions)-by-n(targetnum)-by-m(forcenum)
+            
+            tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
+            if isempty(tard)
+                tard = 0;
+            end
+            tar_num = length(tard);
+            tarl = obj.tarLs;
+            tarl_num = length(tarl);
+            fThs = obj.fThs;
+            fThs_num = length(fThs);
+            sT = zeros(tar_num, tarl_num, fThs_num);
+            tT = zeros(tar_num, tarl_num, fThs_num);
+            sR = zeros(tar_num, tarl_num, fThs_num); 
+            % copy all the tarR, tarL, fTh from all trials first
+            tarR = zeros(1, obj.trials_num);
+            tarL = zeros(1, obj.trials_num);
+            fTh  = zeros(1, obj.trials_num);
+            for trial_i = 1:obj.trials_num
+                if isempty(obj.trials(trial_i).tarR)
+                    tarR(trial_i) = -1;
+                else
+                    tarR(trial_i) = obj.trials(trial_i).tarR;
+                end
+                if isempty(obj.trials(trial_i).tarL)
+                    tarL(trial_i) = -1;
+                else
+                    tarL(trial_i) = obj.trials(trial_i).tarL;
+                end
+                if isempty(obj.trials(trial_i).fTh) 
+                    fTh(trial_i) = -1;
+                else
+                    fTh(trial_i) = obj.trials(trial_i).fTh;
+                end
+            end
+            for tard_i = 1:tar_num
+                for tarl_i = 1:tarl_num
+                    for fThi = 1:fThs_num
+                        tT(tard_i, tarl_i, fThi) = ...
+                            sum(tarR == tard(tard_i) &...
+                            tarL == tarl(tarl_i) & ...
+                            fTh  == fThs(fThi));
+                        sT(tard_i, tarl_i, fThi) = ...
+                            sum(tarR == tard(tard_i) &...
+                            tarL == tarl(tarl_i) & ...
+                            fTh  == fThs(fThi) & ...
+                            [obj.trials.outcome] == 1);
+                        sR(tard_i, tarl_i, fThi) = sT(tard_i, tarl_i, fThi)/tT(tard_i, tarl_i, fThi);
+                    end
+                end
+            end
+            sR_2d = reshape(sR(1,:,:), size(sR, 2), size(sR, 3));
+            sR_table = [[obj.fThs]', sR_2d'];
+            % display rate using table
+            display(['For session' num2str(ss_list(ss_i))]);
+            VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
+            T = table(sR_table(:,1), sR_table(:,2), sR_table(:,3), sR_table(:,4), sR_table(:,5), 'VariableNames', VarNames)
+        end
+        function [time_mean] = getConditionaltime(obj) 
+            % [trialTime] = getConditionaltime(obj) 
+            tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
+            if isempty(tard)
+                tard = 0;
+            end
+            tar_num = length(tard);
+            tarl = obj.tarLs;
+            tarl_num = length(tarl);
+            fThs = obj.fThs;
+            fThs_num = length(fThs);
+            trialTime = zeros(tar_num, tarl_num, fThs_num);
+            % copy all the tarR, tarL, fTh from all trials first
+            tarR = zeros(1, obj.trials_num);
+            tarL = zeros(1, obj.trials_num);
+            fTh  = zeros(1, obj.trials_num);
+            for trial_i = 1:obj.trials_num
+                if isempty(obj.trials(trial_i).tarR)
+                    tarR(trial_i) = -1;
+                else
+                    tarR(trial_i) = obj.trials(trial_i).tarR;
+                end
+                if isempty(obj.trials(trial_i).tarL)
+                    tarL(trial_i) = -1;
+                else
+                    tarL(trial_i) = obj.trials(trial_i).tarL;
+                end
+                if isempty(obj.trials(trial_i).fTh) 
+                    fTh(trial_i) = -1;
+                else
+                    fTh(trial_i) = obj.trials(trial_i).fTh;
+                end
+            end
+            for tard_i = 1:tar_num
+                for tarl_i = 1:tarl_num
+                    for fThi = 1:fThs_num
+                        trialid = ...
+                            (tarR == tard(tard_i) &...
+                            tarL == tarl(tarl_i) & ...
+                            fTh  == fThs(fThi));
+                        time_all = [obj.trials(trialid).edn_t] - [obj.trials(trialid).bgn_t];
+                        time_mean(tard_i, tarl_i, fThi) = mean(time_all);
+                    end
+                end
+            end
+            time_2d = reshape(time_mean(1,:,:), size(time_mean, 2), size(time_mean, 3));
+            time_table = [[obj.fThs]', time_2d'];
+            % display rate using table
+            display(['For session' num2str(obj.ssnum)]);
+            VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
+            T = table(time_table(:,1), time_table(:,2), time_table(:,3), time_table(:,4), time_table(:,5), 'VariableNames', VarNames)
+        end
         function obj = forceHighSample(obj, force_obj)
             % align force to higher resolution according to a seperate
             % ft_obj file. the seperate ft_obj file should extract from
