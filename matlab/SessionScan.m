@@ -185,6 +185,120 @@ classdef (HandleCompatible)SessionScan < handle
             %   Detailed explanation goes here
             obj.duration_avg = obj.duration/double(obj.trials_num);
         end
+        function [sT, tT, sR] = getConditionalSucessTrials(obj) 
+            % [sucessTrials, totalTrials, sucessRate] = getConditionalSucessTrials(obj) 
+            % sT: sucessTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
+            % tT: totalTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
+            % sR: sucessRate, 4(directions)-by-n(targetnum)-by-m(forcenum)
+            
+            tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
+            if isempty(tard)
+                tard = 0;
+            end
+            tar_num = length(tard);
+            tarl = obj.tarLs;
+            tarl_num = length(tarl);
+            fThs = obj.fThs;
+            fThs_num = length(fThs);
+            sT = zeros(tar_num, tarl_num, fThs_num);
+            tT = zeros(tar_num, tarl_num, fThs_num);
+            sR = zeros(tar_num, tarl_num, fThs_num); 
+            % copy all the tarR, tarL, fTh from all trials first
+            tarR = zeros(1, obj.trials_num);
+            tarL = zeros(1, obj.trials_num);
+            fTh  = zeros(1, obj.trials_num);
+            for trial_i = 1:obj.trials_num
+                if isempty(obj.trials(trial_i).tarR)
+                    tarR(trial_i) = -1;
+                else
+                    tarR(trial_i) = obj.trials(trial_i).tarR;
+                end
+                if isempty(obj.trials(trial_i).tarL)
+                    tarL(trial_i) = -1;
+                else
+                    tarL(trial_i) = obj.trials(trial_i).tarL;
+                end
+                if isempty(obj.trials(trial_i).fTh) 
+                    fTh(trial_i) = -1;
+                else
+                    fTh(trial_i) = obj.trials(trial_i).fTh;
+                end
+            end
+            for tard_i = 1:tar_num
+                for tarl_i = 1:tarl_num
+                    for fThi = 1:fThs_num
+                        tT(tard_i, tarl_i, fThi) = ...
+                            sum(tarR == tard(tard_i) &...
+                            tarL == tarl(tarl_i) & ...
+                            fTh  == fThs(fThi));
+                        sT(tard_i, tarl_i, fThi) = ...
+                            sum(tarR == tard(tard_i) &...
+                            tarL == tarl(tarl_i) & ...
+                            fTh  == fThs(fThi) & ...
+                            [obj.trials.outcome] == 1);
+                        sR(tard_i, tarl_i, fThi) = sT(tard_i, tarl_i, fThi)/tT(tard_i, tarl_i, fThi);
+                    end
+                end
+            end
+            sR_2d = reshape(sR(1,:,:), size(sR, 2), size(sR, 3));
+            sR_table = [[obj.fThs]', sR_2d'];
+            % display rate using table
+            display(['For session' num2str(ss_list(ss_i))]);
+            VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
+            T = table(sR_table(:,1), sR_table(:,2), sR_table(:,3), sR_table(:,4), sR_table(:,5), 'VariableNames', VarNames)
+        end
+        function [time_mean] = getConditionaltime(obj) 
+            % [trialTime] = getConditionaltime(obj) 
+            tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
+            if isempty(tard)
+                tard = 0;
+            end
+            tar_num = length(tard);
+            tarl = obj.tarLs;
+            tarl_num = length(tarl);
+            fThs = obj.fThs;
+            fThs_num = length(fThs);
+            trialTime = zeros(tar_num, tarl_num, fThs_num);
+            % copy all the tarR, tarL, fTh from all trials first
+            tarR = zeros(1, obj.trials_num);
+            tarL = zeros(1, obj.trials_num);
+            fTh  = zeros(1, obj.trials_num);
+            for trial_i = 1:obj.trials_num
+                if isempty(obj.trials(trial_i).tarR)
+                    tarR(trial_i) = -1;
+                else
+                    tarR(trial_i) = obj.trials(trial_i).tarR;
+                end
+                if isempty(obj.trials(trial_i).tarL)
+                    tarL(trial_i) = -1;
+                else
+                    tarL(trial_i) = obj.trials(trial_i).tarL;
+                end
+                if isempty(obj.trials(trial_i).fTh) 
+                    fTh(trial_i) = -1;
+                else
+                    fTh(trial_i) = obj.trials(trial_i).fTh;
+                end
+            end
+            for tard_i = 1:tar_num
+                for tarl_i = 1:tarl_num
+                    for fThi = 1:fThs_num
+                        trialid = ...
+                            (tarR == tard(tard_i) &...
+                            tarL == tarl(tarl_i) & ...
+                            fTh  == fThs(fThi));
+                        time_all = [obj.trials(trialid).edn_t] - [obj.trials(trialid).bgn_t];
+                        time_mean(tard_i, tarl_i, fThi) = mean(time_all);
+                    end
+                end
+            end
+            time_2d = reshape(time_mean(1,:,:), size(time_mean, 2), size(time_mean, 3));
+            time_table = [[obj.fThs]', time_2d'];
+            % display rate using table
+            display(['For session' num2str(obj.ssnum)]);
+            VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
+            T = table(time_table(:,1), time_table(:,2), time_table(:,3), time_table(:,4), time_table(:,5), 'VariableNames', VarNames)
+        end
         function obj = forceHighSample(obj, force_obj)
             % align force to higher resolution according to a seperate
             % ft_obj file. the seperate ft_obj file should extract from
@@ -1379,6 +1493,169 @@ classdef (HandleCompatible)SessionScan < handle
             %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
             legend(l_h, labels);
         end
+        function axhf = plotMeantrialForce_sameCond(obj)
+            % plot the meaned trial Force according to the task condition
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % axhf = figure();
+            for tarL_i = 1:length(all_tarL)
+                axhf(tarL_i) = figure(tarL_i); hold on;
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh]); % condition specific all targets.
+                for fTH_i = 1:length(all_fTh)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+
+                    %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) ...
+                        & [obj.trials.tarL]==all_tarL(tarL_i)...
+                        & [obj.trials.outcome]==1; 
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
+                    force_mean = mean(resample_f(:,:,xyi)); %only y direction
+                    force_std = std(resample_f(:,:,xyi));  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+                legend(l_h, labels);
+                xlabel('time aligned at MOV signal');
+                ylabel([xy_char(xyi) ' dir force (N)']);
+                xlim([-0.5 0.4]);
+                title('Force signal');
+            end
+
+        end
+        function axhp = plotMeantrialPos_sameCond(obj)
+            % plot the meaned trial Position according to the task condition
+            % if did not calculate the mean and var, calculate
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot position
+            for tarL_i = 1:length(all_tarL)
+                axhp(tarL_i) = figure();
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh]); % condition specific all targets.
+                for fTH_i = 1:length(all_fTh)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
+                    force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
+                    force_std = std(resample_p(:,:,xyi), 'omitnan');  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                end
+                legend(l_h, labels);
+                xlabel('time aligned at MOV signal');
+                ylabel([xy_char(xyi) 'dir position (m)']);
+                xlim([-0.2 0.5]);
+                title('Position signal');
+            end
+            
+        end
+        function axhv = plotMeantrialVel_sameCond(obj)
+            % plot the meaned trial Velocity according to the task condition
+            % if did not calculate the mean and var, calculate
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot velocity
+            
+            for tarL_i = 1:length(all_tarL)
+                axhv(tarL_i) = figure();
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh])
+                for fTH_i = 1:length(all_fTh)
+                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
+                    force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
+                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
+                end
+            xlabel('time aligned at MOV signal');
+            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
+            xlim([-0.2 0.5]);
+            title('Velocity signal');
+            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            legend(l_h, labels);
+            end
+        end
         function [axhf, axhp, axhv] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
@@ -1403,7 +1680,7 @@ classdef (HandleCompatible)SessionScan < handle
                     %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
                     col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
                     if col_i>=7
-                        col_i = mod(col_i,8);
+                        col_i = mod(col_i-1,8)+1;
                     end
                     for trial_i = find(trialsS_idx)
                         % plot force
