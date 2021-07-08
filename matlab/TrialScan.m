@@ -389,6 +389,38 @@ classdef TrialScan
             end
         end
         
+        function mov_time = getMoveTime(obj)
+            if obj.outcome == 1
+                time_bgn = obj.time(obj.idx_mov); %...
+                time_edn = obj.time(obj.idx_hld); %...
+                mov_time = time_edn - time_bgn;
+            else
+                mov_time = -1;
+            end
+        end
+        
+        function mov_time = getMoveTimeArr(obj)
+            trials_num = length(obj);
+            mov_time = zeros(1,trials_num);
+            for trial_i = 1:length(obj)
+                trial_tmp = obj(trial_i);
+                if trial_tmp.outcome == 1
+                    time_bgn = trial_tmp.time(trial_tmp.idx_mov); %...
+                    time_edn = trial_tmp.time(trial_tmp.idx_hld); %...
+                    mov_time(trial_i) = time_edn - time_bgn;
+                else
+                    mov_time(trial_tmp) = -1;
+                end
+            end
+        end
+        function frc = getforceVecBeforeRelease(obj)
+            % return 100ms force average before release
+            frc = zeros(3,1);
+            time_bgn = obj.time(obj.idx_mov) - 0.2; %...
+            time_edn = obj.time(obj.idx_mov); %...
+            time_idx = obj.time > time_bgn & obj.time < time_edn;
+            frc = mean(obj.force(:,time_idx), 2); % row avg
+        end
         %%% plot
         function axh = plotPredictedForceOnPosition(obj)
             % use regression terms to get the predicted force
@@ -607,6 +639,54 @@ classdef TrialScan
         end
         function axh = plotPredictedForceODE(obj)
             % solve the force using differential equation
+            % wait to be written
+            obj;
+            axh = -1;
+        end
+        function axh = plotRobotEndpointTraj(obj, axh)
+            %printf('begin the plot');
+            if nargin == 1
+                axh = figure();
+            end
+            center = [-0.513, 0.483];
+            figure(axh);
+            plot(obj.position_h(1,:) - center(1), obj.position_h(2,:) - center(2));
+            xlim([-0.12, 0.12]); ylim([-0.12, 0.12]);
+            title('');
+            xlabel('x (m)');
+            ylabel('y (m)');
+            
+        end
+        function axh = plotRobotEndpointTrajRot(obj, axh, rot)
+            %printf('begin the plot');
+            if nargin == 1
+                axh = figure();
+            elseif nargin == 2
+                rot = 0;
+            end
+            % data
+            if obj.outcome == 1
+            line_col = 'b';
+            if (rot ~= 0)
+                line_col = 'g';
+            end
+            
+            time_bgn = obj.time(obj.idx_mov); %...
+            time_edn = obj.time(obj.idx_end); %...
+            time_idx = obj.position_t > time_bgn & obj.position_t < time_edn; 
+            center = [-0.513, 0.483];
+            x = obj.position_h(1,time_idx) - center(1); 
+            y = obj.position_h(2,time_idx) - center(2); 
+            p_rot = [cos(rot), -sin(rot); sin(rot), cos(rot)] * [x; y];
+            
+            % plot
+            figure(axh);
+            plot(p_rot(1,:), p_rot(2,:), line_col);
+            xlim([-0.12, 0.12]); ylim([-0.12, 0.12]);
+            title('');
+            xlabel('x (m)');
+            ylabel('y (m)');
+            end
         end
     end
 end

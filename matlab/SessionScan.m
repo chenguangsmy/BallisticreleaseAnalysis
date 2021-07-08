@@ -2065,7 +2065,33 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('Eq m');
             xlabel('task settings');
         end
-
+        function axh = plotForceVecBeforeRelease(obj, axh, rot)
+            if nargin == 1
+                axh = figure();
+            elseif nargin == 2
+                rot = 0; % rotation from the robot to the subject 
+            end
+            % data
+            sucessful_idx = find([obj.trials.outcome]);
+            forceVectors = zeros(3, length(sucessful_idx));
+            for trial_i = 1:length(sucessful_idx)
+                forceVectors(:,trial_i) = ...
+                    obj.trials(sucessful_idx(trial_i)).getforceVecBeforeRelease();
+            end
+            forceVectors = [[cos(rot), -sin(rot); sin(rot), cos(rot)] * ...
+                forceVectors(1:2,:); ...
+                forceVectors(3,:)]; % rotation;
+            
+            % plot
+            figure(axh);
+            for trial_i = 1:length(sucessful_idx)
+                line([0 forceVectors(1, trial_i)], [0 forceVectors(2, trial_i)], ...
+                    'lineWidth', 3, 'color', 'b');
+            end
+            xlabel('x component'); 
+            ylabel('y component');
+            title('force vector before release');
+        end
     end
 
 end
