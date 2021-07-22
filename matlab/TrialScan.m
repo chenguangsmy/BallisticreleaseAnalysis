@@ -213,14 +213,19 @@ classdef TrialScan
             
             % check if the time aligned, if not, re-align
             t_bgn = 0;
-            t_edn = 0.4;
+            t_edn = 1.4; % 0.4
             freq = 500;     % 500Hz, the same as WAM
             pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
             fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
             pos_t = obj.position_t(pos_t_idx);
             fce_t = obj.force_t(fce_t_idx);
-            pos = obj.position_h(obj.xyi,pos_t_idx);
-            fce = obj.force_h(obj.xyi,fce_t_idx);
+            try % for the normal trials
+                pos = obj.position_h(obj.xyi,pos_t_idx);
+                fce = [sind(-45), cosd(45)] * obj.force_h(1:2,fce_t_idx);
+            catch % for the simulated trials
+                pos = obj.position_h(:,pos_t_idx);
+                fce = obj.force_h(:,fce_t_idx);
+            end
             try
                 ifsame = min(pos_t == fce_t); % one 0, all 0
             catch 
@@ -250,13 +255,26 @@ classdef TrialScan
                     plot(fce_t, fce, 'o', t_all, fce_, ':.');
                     ylabel('foece interp');
                 end
-                
+            else 
+                pos_ = pos;
+                fce_ = fce;
             end
-            x      = pos_ - pos(1);
-            dx     = diff(x,1,2)/(1/freq);
-            ddx    = diff(x,2,2)/((1/freq).^2);
-            dddx   = diff(x,3,2)/((1/freq).^3);
-            
+            x      = pos_ - pos(1);                 % unit: m
+            dx     = diff(x,1,2)/(1/freq);          % unit: m/s
+            ddx    = diff(x,2,2)/((1/freq).^2);     % unit: m/s^2
+            dddx   = diff(x,3,2)/((1/freq).^3);     % unit: m/s^3
+            islowpass = 1;
+            if (islowpass)
+                x_lowpass = lowpass(x, 4, 500);
+                x_lowpass = x_lowpass(1:500);
+                dx   = diff(x_lowpass,1,2)/(1/freq);
+                ddx  = diff(x_lowpass,1,2)/((1/freq).^2);
+                dddx = diff(x_lowpass,1,2)/((1/freq).^3);
+                f_lowpass = lowpass(fce_, 4, 500);
+                fce_ = f_lowpass(1:500);
+                fce_0 = mean(fce_(end-99:end));
+                fce_ = fce_ - fce_0;
+            end
             n = length(dddx);
             F = reshape(fce_(1:n),n,1);
             
@@ -264,17 +282,228 @@ classdef TrialScan
                 reshape(ddx(1:n),n,1), reshape(dddx(1:n),n,1)];
             b = [];
             % calculate 
-            b = (pinv(X'*X)*X'*F);
+            b = (inv(X'*X)*X'*F); % looks un-safe, is other ways to do least square?
             % asign values
             obj.pred_K = -b(2);
             obj.pred_D = -b(3);
             obj.pred_A = -b(4);
             obj.pred_J = -b(5);
             obj.pred_x0 = b(1)/obj.pred_K;
-            if(0)
+            if(1)
                 fprintf('trial%03d, K=%.3f, B=%.3f, M=%.3f, J=%.3f, x0=%.3f', ...
                     obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_J, obj.pred_x0 );
             end
+        end
+        function obj = predictImpedanceLinDev2ndOrder(obj)
+            % obj = predictImpedanceLinDev(obj)
+            % predict 1D dynamic parameters for simplicity
+            % predict the Impedance using a linear derivative module, just
+            % as Scott did in thesis pg27. Where:
+            % F(t) = K(x0-x(t)) - Dx`(t) - Ax``(t)
+            % solution:
+            % Using matrix least squre regression:
+            %  F = X*b
+            %  b = inv(X'X)*X'*F
+            %  where:
+            %  b = [Kx0, -K, -D, -A, -J]';         % 5-by-1
+            %  X = [1 x(1) x`(1) x``(1) x```(1) ...
+            %       1 x(2) x`(2) x``(2) x```(2) ...
+            %       ...
+            %       1 x(n) x`(n) x``(n) x```(n)];   % n-by-4
+            %  F = [F(1) F(2) ... F(n)]';           % n-by-1
+            
+            % check if the time aligned, if not, re-align
+            t_bgn = 0;
+            t_edn = 1.4; % 0.4
+            freq = 500;     % 500Hz, the same as WAM
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            fce_t = obj.force_t(fce_t_idx);
+            try % for the normal trials
+                pos = obj.position_h(obj.xyi,pos_t_idx);
+                fce = [sind(-45), cosd(45)] * obj.force_h(1:2,fce_t_idx);
+            catch % for the simulated trials
+                pos = obj.position_h(:,pos_t_idx);
+                fce = obj.force_h(:,fce_t_idx);
+            end
+            try
+                ifsame = min(pos_t == fce_t); % one 0, all 0
+            catch 
+                ifsame = 0;
+            end
+            
+            if (~ifsame)
+                t_all = t_bgn:(1/freq):t_edn;
+                % resample at time t
+                pos_ = interp1(pos_t, pos, t_all); % .... process here
+                fce_ = interp1(fce_t, fce, t_all); 
+                % chances the last pos_ and fce_ is nan
+                pos_ = pos_(1:end-1);
+                fce_ = fce_(1:end-1);
+                t_all= t_all(1:end-1);
+                if sum(isnan(pos_) | isnan(fce_)) % if still have force
+                    display('pos_ and fce_ have nan values, abort!');
+                    return
+                end
+                
+                if(0) % see the interp result
+                    fh = figure();
+                    subplot(2,1,1);
+                    plot(pos_t, pos, 'o', t_all, pos_, ':.');
+                    ylabel('position interp');
+                    subplot(2,1,2);
+                    plot(fce_t, fce, 'o', t_all, fce_, ':.');
+                    ylabel('foece interp');
+                end
+            else 
+                pos_ = pos;
+                fce_ = fce;
+            end
+            x      = pos_ - pos(1);                 % unit: m
+            dx     = diff(x,1,2)/(1/freq);          % unit: m/s
+            ddx    = diff(x,2,2)/((1/freq).^2);     % unit: m/s^2
+            islowpass = 1;
+            if (islowpass)
+                %x_lowpass = lowpass(x, 4, 500);
+                x_lowpass = x; 
+                x_lowpass = x_lowpass(1:500);
+                dx   = diff(x_lowpass,1,2)/(1/freq);
+                ddx  = diff(dx,1,2)/((1/freq));
+                f_lowpass = lowpass(fce_, 4, 500);
+                fce_ = f_lowpass(1:500);
+                fce_0 = mean(fce_(end-99:end));
+                fce_ = fce_ - fce_0;
+            end
+            n = length(ddx);
+            F = reshape(fce_(1:n),n,1);
+            
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1), ...
+                reshape(ddx(1:n),n,1)];
+            b = [];
+            % calculate 
+            b = (inv(X'*X)*X'*F); % looks un-safe, is other ways to do least square?
+            % asign values
+            obj.pred_K = -b(2);
+            obj.pred_D = -b(3);
+            obj.pred_A = -b(4);
+            obj.pred_x0 = b(1)/obj.pred_K;
+            if(1)
+                fprintf('trial%03d, K=%.3f, B=%.3f, M=%.3f, x0=%.3f', ...
+                    obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_x0 );
+            end
+        end
+        function obj = predictImpedanceLinDev2ndOrderFixM(obj)
+            % obj = predictImpedanceLinDev(obj)
+            % predict 1D dynamic parameters for simplicity
+            % predict the Impedance using a linear derivative module, just
+            % as Scott did in thesis pg27. Where:
+            % F(t) = K(x0-x(t)) - Dx`(t) - Ax``(t)
+            % Make a alteration so that: 
+            % F(t)/M = K/M(x0-x(t)) - D/Mx`(t) - x``(t)
+            % solution:
+            % Using matrix least squre regression:
+            %  F/m + x``(t) = X*b
+            %  b = inv(X'X)*X'*F
+            %  where:
+            %  b = [Kx0, -K, -D]';          % 3-by-1
+            %  X = [1 x(1) x`(1)  ...
+            %       1 x(2) x`(2)  ...
+            %       ...
+            %       1 x(n) x`(n)];          % n-by-4
+            %  F = [F(1) F(2) ... F(n)]';   % n-by-1
+            
+            % check if the time aligned, if not, re-align
+            t_bgn = -1;
+            t_edn = 2.4; % 0.4
+            freq = 500;     % 500Hz, the same as WAM
+            M = 3; % assume 3 kg
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            fce_t = obj.force_t(fce_t_idx);
+            try % for the normal trials
+                pos = obj.position_h(obj.xyi,pos_t_idx);
+                fce = [sind(-45), cosd(45)] * obj.force_h(1:2,fce_t_idx);
+            catch % for the simulated trials
+                pos = obj.position_h(:,pos_t_idx);
+                fce = obj.force_h(:,fce_t_idx);
+            end
+            try
+                ifsame = min(pos_t == fce_t); % one 0, all 0
+            catch 
+                ifsame = 0;
+            end
+            
+            if (~ifsame)
+                t_all = t_bgn:(1/freq):t_edn;
+                % resample at time t
+                pos_ = interp1(pos_t, pos, t_all); % .... process here
+                fce_ = interp1(fce_t, fce, t_all); 
+                % chances the last pos_ and fce_ is nan
+                pos_ = pos_(1:end-1);
+                fce_ = fce_(1:end-1);
+                t_all= t_all(1:end-1);
+                if sum(isnan(pos_) | isnan(fce_)) % if still have force
+                    display('pos_ and fce_ have nan values, abort!');
+                    return
+                end
+                
+                if(0) % see the interp result
+                    fh = figure();
+                    subplot(2,1,1);
+                    plot(pos_t, pos, 'o', t_all, pos_, ':.');
+                    ylabel('position interp');
+                    subplot(2,1,2);
+                    plot(fce_t, fce, 'o', t_all, fce_, ':.');
+                    ylabel('foece interp');
+                end
+            else 
+                pos_ = pos;
+                fce_ = fce;
+            end
+            x      = pos_ - pos(1);                 % unit: m
+            dx     = diff(x,1,2)/(1/freq);          % unit: m/s
+            ddx    = diff(x,2,2)/((1/freq).^2);     % unit: m/s^2
+            islowpass = 0;
+            if (islowpass)
+                x_lowpass = lowpass(x, 4, 500);
+                x_lowpass = x_lowpass(1:500);
+                f_lowpass = lowpass(fce_, 4, 500);
+            else
+                x_lowpass = x; %x_lowpass = x(1:500);
+                f_lowpass = fce_;
+            end
+            ddx_length = length(ddx);
+            %fce_ = f_lowpass(1:ddx_length);
+            %fce_0 = mean(fce_(end-99:end));
+            %fce_ = fce_ - fce_0;
+                
+            
+            M = fce_(1:end-2) ./ ddx;
+            M = mean(M(~isnan(M)));
+            f_m_a = ddx;
+            n = length(ddx(501:end));
+            F = reshape(f_m_a(end-n+1:end),n,1);
+            
+            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1)];
+            %X = [ones(n,1), reshape(x(end-n+1-2:end-2),n,1), reshape(dx(end-n+1-1:end-1),n,1)];
+            b = [];
+            % calculate 
+            b = (inv(X'*X)*X'*F); % looks un-safe, is other ways to do least square?
+            % asign values
+            obj.pred_K = -b(2) * M;
+            obj.pred_D = -b(3) * M;
+            obj.pred_x0 = b(1)/obj.pred_K * M;
+            obj.pred_A = M;
+            if(1)
+                fprintf('trial%03d, K=%.3f, B=%.3f, M=%.3f, x0=%.3f', ...
+                    obj.tNo, obj.pred_K, obj.pred_D, M, obj.pred_x0 );
+            end
+            
+            % get back to original points and get r2
+            F_pred = X*b;
+            mean(F - F_pred)
         end
         function obj = predictImpedanceLinDevS(obj)
             % obj = predictImpedanceLinDevS(obj)
@@ -362,6 +591,44 @@ classdef TrialScan
                     obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_J, obj.pred_S, obj.pred_x0 );
             end
         end
+        function axh = visualizeFrcVelDelay(obj)
+            % axh = visualizeFrcVelDelay(obj)
+            % Visualize force and velocity as a overlap lines, and by this
+            % determine whether the alignment is good. 
+            % In the current situation, force and neural activity only has
+            % alignment according to the RTMA system, which could be
+            % delayed in network. 
+            
+            % pre-process data
+            % same magnitude
+            t_bgn = 0;
+            t_edn = 0.4;
+            freq = 500;     % 500Hz, the same as WAM
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            
+            fce_t = obj.force_t(fce_t_idx);
+            pos = obj.position_h(obj.xyi,pos_t_idx);
+            fce = obj.force_h(obj.xyi,fce_t_idx);
+            vel = obj.velocity_h(obj.xyi,pos_t_idx);
+            
+            % here only for y direction
+            pos_reMag = 1/range(pos) * pos; 
+            vel_reMag = 1/range(vel) * vel;
+            frc_reMag = 1/range(fce) * fce; 
+            pos_reNorm = pos_reMag - mean(pos_reMag);
+            frc_reNorm = frc_reMag - mean(frc_reMag);
+            
+            axh = figure(); hold on;
+            plot(pos_t, pos_reNorm(:)); 
+            plot(fce_t, frc_reMag(:));
+            plot(pos_t, vel_reMag(:));
+            
+            legend('position\_renorm', 'force\_remag', 'velocity\_remag');
+            title('timeAlign comparation in trial');
+            xlabel('time after release');
+        end
         
         function comboTT = getComboTT(obj,sessionScanObj)
         	% defined: targets = [obj.tarR, obj.tarL, obj.fTh];
@@ -420,6 +687,76 @@ classdef TrialScan
             time_edn = obj.time(obj.idx_mov); %...
             time_idx = obj.time > time_bgn & obj.time < time_edn;
             frc = mean(obj.force(:,time_idx), 2); % row avg
+        end
+        function obj = simuTrialusingODE(obj, k, b, m)
+            % obj = simuTrialusingODE(obj, k, b, m)
+            % generate a trial using a specified stiffness, damping and
+            % mass. 
+            
+            %F_list = [3 5 10 13 15 20];
+            %figure(1); hold on;
+            %figure(2); hold on;
+            %k = 226.156; 
+            % b = 10.171;
+            if ~exist('m', 'var')
+                m = 3.011;
+            end
+            x0 = 0.05; % 5cm;
+            F  = k * 0.05;
+            %m  = 1;     % kg
+            ks = k;   % N/m  % assume subject can alter his/her stiffness
+            kr = b;    % N/(m*s)
+            % specify ODE
+            % m*x'' = ks(x0 - x) - kr*x'
+            % x'(0) = 0;
+            % x(0) = 0;
+            syms x(t)
+            Dx = diff(x);
+            
+            % ode = diff(x, t, 2) == 1/m * ks * (x0 - x) - kr * Dx;
+            ode = diff(x, t, 2) == eval('1/m') * eval('ks')*(eval('x0') - x) - eval('kr') * Dx;
+            cond1 = x(0) == 0;
+            cond2 = Dx(0)== 0;
+            
+            conds = [cond1 cond2];
+            % get solutions
+            xSol(t) = dsolve(ode, conds);
+            xSol = simplify(xSol);
+            
+            t = -2:0.002:3;
+            x_result = xSol(t);
+            x_result_numerical= double(x_result);
+            x_resultd_numerical= diff(x_result_numerical);
+            tdiff = t(1:end-1);
+            x_result_numerical(t<0) = 0;
+            x_resultd_numerical(tdiff<0) = 0;
+            figure();
+            subplot(3,1,1);
+            plot(t, x_result_numerical);
+            title('position');
+            xlim([-0.2, 0.8]);
+            ylabel('m');
+            subplot(3,1,2);
+            plot(t(1:end-1), diff(x_result_numerical)./diff(t));
+            title('velocity');
+            xlim([-0.2, 0.8]);
+            ylabel('m/s');
+            velocity = diff(x_result_numerical)./diff(t);
+            position = x_result_numerical;  
+            t_vel = t(1:end-1);
+            force = diff(velocity)./diff(t_vel) * m;
+            subplot(3,1,3);
+            plot(t_vel(1:end-1), force);
+            title('force');
+            ylabel('N');
+            xlim([-0.2, 0.8]); 
+            
+            % saving datas in obj
+            obj.position_t = t;
+            obj.force_t = t_vel(1:end-1);
+            obj.position_h = position; 
+            obj.force_h = force; 
+            %obj.force_h(obj.force_t<0) = F;
         end
         %%% plot
         function axh = plotPredictedForceOnPosition(obj)
@@ -657,23 +994,32 @@ classdef TrialScan
             ylabel('y (m)');
             
         end
-        function axh = plotRobotEndpointTrajRot(obj, axh, rot)
+        function axh = plotRobotEndpointTrajRot(obj, axh, rot, cl)
+            % obj.plotRobotEndpointTrajRot(axh, rot, cl)
             %printf('begin the plot');
+            
             if nargin == 1
                 axh = figure();
             elseif nargin == 2
                 rot = 0;
             end
             % data
-            if obj.outcome == 1
-            line_col = 'b';
-            if (rot ~= 0)
-                line_col = 'g';
+            if exist('cl', 'var')
+                line_col = cl;
+            else
+                if obj.outcome == 1
+                    line_col = 'b';
+                    if (rot ~= 0)
+                        line_col = 'g';
+                    end
+                end
             end
-            
+            if isempty(obj.idx_mov) || isempty(obj.idx_end)
+                return
+            end
             time_bgn = obj.time(obj.idx_mov); %...
             time_edn = obj.time(obj.idx_end); %...
-            time_idx = obj.position_t > time_bgn & obj.position_t < time_edn; 
+            time_idx = (obj.position_t > time_bgn) & (obj.position_t < time_edn); 
             center = [-0.513, 0.483];
             x = obj.position_h(1,time_idx) - center(1); 
             y = obj.position_h(2,time_idx) - center(2); 
@@ -686,7 +1032,7 @@ classdef TrialScan
             title('');
             xlabel('x (m)');
             ylabel('y (m)');
-            end
+            
         end
     end
 end

@@ -110,6 +110,16 @@ classdef SessionScanFT
            ylabel('force / N'); 
            title('original force');
         end
+        function plotForcexy_ss2271(obj)
+            force0 = mean(obj.force_origin(:,1:50), 2);
+            forceNet = obj.force_origin(:,:) - force0;
+            force_xy = zeros(size(forceNet(1:2,:),2), 1);
+            for time_i = 1:size(obj.force_origin, 2)
+                force_xy(time_i) = norm(forceNet(1:2,time_i), 2);
+            end
+            force_z  = forceNet(3,:)';
+            plot([force_xy, force_z]);
+        end
     end
 end
 

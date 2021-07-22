@@ -243,7 +243,7 @@ classdef (HandleCompatible)SessionScan < handle
             sR_2d = reshape(sR(1,:,:), size(sR, 2), size(sR, 3));
             sR_table = [[obj.fThs]', sR_2d'];
             % display rate using table
-            display(['For session' num2str(ss_list(ss_i))]);
+            display(['For session' num2str(obj.ssnum)]);
             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
             T = table(sR_table(:,1), sR_table(:,2), sR_table(:,3), sR_table(:,4), sR_table(:,5), 'VariableNames', VarNames)
         end
@@ -1602,9 +1602,13 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
         end
-        function axhv = plotMeantrialVel_sameCond(obj)
+        function axhv = plotMeantrialVel_sameCond(obj, invert)
             % plot the meaned trial Velocity according to the task condition
             % if did not calculate the mean and var, calculate
+            % 'invert == -1' will flirt over the trial curve
+            if ~exist('invert', 'var') 
+                invert = 1;
+            end
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
@@ -1626,7 +1630,7 @@ classdef (HandleCompatible)SessionScan < handle
                 labels = {};
                 label_i = 0;
                 trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
-                all_fTh = unique([trials_all.fTh])
+                all_fTh = unique([trials_all.fTh]);
                 for fTH_i = 1:length(all_fTh)
                     col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
@@ -1634,7 +1638,7 @@ classdef (HandleCompatible)SessionScan < handle
                     label_i = label_i + 1;
                     labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
+                    vel_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
                     force_std = std(resample_v(:,:,xyi), 'omitnan');  
                     % mean line
                     try
@@ -1642,7 +1646,7 @@ classdef (HandleCompatible)SessionScan < handle
                     catch
                         col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
                     end
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    l_h = [l_h plot(resample_t, invert*vel_mean, 'LineWidth', 3, 'Color', col_tmp)];
                     % 1std shade
                     %force_up = force_mean + force_std/2;
                     %force_dn = force_mean - force_std/2;
@@ -1656,6 +1660,86 @@ classdef (HandleCompatible)SessionScan < handle
             legend(l_h, labels);
             end
         end
+        function axhv = plotMeantrialVel_sameCond_overlap(obj, invert, axhv, col_i)
+            % plot the meaned trial Velocity according to the task condition
+            % if did not calculate the mean and var, calculate
+            % 'invert == -1' will flirt over the trial curve
+            % Required each session tobe only one directional target.
+            if ~exist('invert', 'var') 
+                invert = 1;
+            end
+            if ~exist('axhv', 'var')
+                axhv_flag = -1;
+            elseif ~isstruct(axhv)
+                axhv_flag = -1;
+            else
+                axhv_flag = 1;
+            end
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot velocity
+            % check if axhv is the same length with all_tarL. 
+            %   if so, plot on the axhv. If not, plot on new figures 
+            if axhv_flag == -1 %| length(axhv.axih)~=length(all_tarL)
+                pltopt = 'new'; 
+                axhv = [];
+                axhv.figh = figure();
+            else
+                pltopt = 'ovl'; % overlap
+                axhv.figh = figure(axhv.figh);
+            end
+            for tarL_i = 1:length(all_tarL)
+                if strcmp(pltopt, 'new')
+                    axhv.axih(tarL_i) = subplot(length(all_tarL), 1, tarL_i);
+                elseif strcmp(pltopt, 'ovl')
+                    axhv.axih(tarL_i) = subplot(axhv.axih(tarL_i));
+                end
+                l_h = [];
+                labels = {};
+                label_i = 0;
+                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
+                all_fTh = unique([trials_all.fTh]);
+                for fTH_i = 1:length(all_fTh)
+                    % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    hold on;
+                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
+                    label_i = label_i + 1;
+                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
+                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
+                    vel_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
+                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
+                    % mean line
+                    try
+                        col_tmp = obj.col_vec(col_i,:);
+                    catch
+                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
+                    end
+                    l_h = [l_h plot(resample_t, invert*vel_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    % 1std shade
+                    %force_up = force_mean + force_std/2;
+                    %force_dn = force_mean - force_std/2;
+                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
+                end
+            xlabel('time aligned at MOV signal');
+            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
+            xlim([-0.2 0.5]);
+            title(['3, 12, 21N at ' num2str(all_tarL(tarL_i)*100) 'cm']);
+            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
+            %legend(l_h, labels);
+            end
+        end
+
         function [axhf, axhp, axhv] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
