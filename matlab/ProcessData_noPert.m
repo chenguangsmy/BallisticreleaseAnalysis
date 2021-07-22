@@ -37,3 +37,30 @@ for ss_i = 1:4
     ss_tmp = eval(['ss' num2str(ss_list(ss_i))]);
     ss_tmp.getConditionaltime();
 end
+
+%% See the velocity differences when robot configuration is the same
+axhv1 = ss2153.plotMeantrialVel_sameCond_overlap(1, 1, 1);
+axhv1 = ss2156.plotMeantrialVel_sameCond_overlap(1, axhv1, 2);
+suptitle('front (red) and left (green)');
+axhv2 = ss2154.plotMeantrialVel_sameCond_overlap(-1, 1, 3);
+axhv2 = ss2155.plotMeantrialVel_sameCond_overlap(-1, axhv2, 4);
+suptitle('back (blue) and right (cyne)');
+
+
+%% Test non-linearity of robot using spring test 
+% 1. No-calibrated. 
+ss2333 = SessionScan(2333); 
+ss2336 = SessionScan(2336);
+axhv1 = ss2333.plotMeantrialVel_sameCond_overlap(1, 1, 1);
+axhv1 = ss2336.plotMeantrialVel_sameCond_overlap(-1, axhv1, 2);
+ylim([-0.7 0.7]);
+title('movement difference before calibration');
+legend('forward', 'backward (invert)');
+% 2. After-calibration
+ss2338 = SessionScan(2338);
+ss2340 = SessionScan(2340);
+axhv2 = ss2338.plotMeantrialVel_sameCond_overlap(-1, 1, 1);
+axhv2 = ss2340.plotMeantrialVel_sameCond_overlap(1, axhv2, 2);
+ylim([-0.7 0.7]);
+title('movement difference after calibration');
+legend('forward', 'backward (invert)');
