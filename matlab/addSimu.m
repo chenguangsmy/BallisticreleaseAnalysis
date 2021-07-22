@@ -78,3 +78,42 @@ ss2080.trials = all_trials_clean;
 %ss2080.plotMeantrialForce_sameCond();
 ss2080.plotMeantrialVel_sameCond();
 ss2080.plotMeantrialPos_sameCond();
+
+
+%% Use simulation to test Scott's method if right
+trialtmp = ss2333.trials(20); % an example trial in the example session;  
+trialtmp = strialtmp.simuTrialusingODE(226, 28, 3) % K, D, M
+trialtmp_pred = trialtmp.predictImpedanceLinDev2ndOrderFixM()
+
+% only shift M
+M_list = 1:5; K = 320; D = 3;
+prop_pred = zeros(length(M_list), 3);
+for trial_i = 1:length(M_list)
+    trialtmp = trialtmp.simuTrialusingODE(K, D, M_list(trial_i));
+    trialpred= trialtmp.predictImpedanceLinDev2ndOrderFixM();
+    prop_pred(trial_i,:) = [trialpred.pred_K, trialpred.pred_D, trialpred.pred_A];
+end
+% only shift K
+M = 3; K_list = [160 240 320 400 480]; D = 3;
+prop_pred = zeros(length(K_list), 3);
+for trial_i = 1:length(K_list)
+    trialtmp = trialtmp.simuTrialusingODE(K_list(trial_i), D, M);
+    trialpred= trialtmp.predictImpedanceLinDev2ndOrderFixM();
+    prop_pred(trial_i,:) = [trialpred.pred_K, trialpred.pred_D, trialpred.pred_A];
+end
+% only shift D
+M = 3; K = 320; D_list = (1:5)*2;
+prop_pred = zeros(length(D_list), 3);
+for trial_i = 1:length(K_list)
+    trialtmp = trialtmp.simuTrialusingODE(K, D_list(trial_i), M);
+    trialpred= trialtmp.predictImpedanceLinDev2ndOrderFixM();
+    prop_pred(trial_i,:) = [trialpred.pred_K, trialpred.pred_D, trialpred.pred_A];
+end
+
+M_list = 1*ones(20); K = 320; D = 3;
+prop_pred = zeros(length(M_list), 3);
+for trial_i = 1:length(M_list)
+    trialtmp = trialtmp.simuTrialusingODE(K, D, M_list(trial_i));
+    trialpred= trialtmp.predictImpedanceLinDev2ndOrderFixM();
+    prop_pred(trial_i,:) = [trialpred.pred_K, trialpred.pred_D, trialpred.pred_A];
+end
