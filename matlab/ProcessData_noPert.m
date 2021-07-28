@@ -68,8 +68,8 @@ legend('forward', 'backward (invert)');
 ssTestList = [2341, 2342];
 ssFront = SessionScan(ssTestList(1));
 ssBack = SessionScan(ssTestList(2));
-axhv2 = ssFront.plotMeantrialVel_sameCond_overlap(1, 1, 2);
-axhv2 = ssBack.plotMeantrialVel_sameCond_overlap(-1, axhv2, 1);
+axhv2 = ssFront.plotMeantrialVel_sameCond_overlap(1, 1, 1);
+axhv2 = ssBack.plotMeantrialVel_sameCond_overlap(-1, axhv2, 2);
 ylim([-0.7 0.7]);
 title('movement difference after calibration');
 legend('forward', 'backward (invert)');
@@ -84,7 +84,7 @@ legend('forward', 'backward (invert)');
 % | KingKong.02257.mat	| KingKongFT02257.csv	| KingKongWAM02257.csv	| randomize step pert, 9N 5cm release. |  
 % | KingKong.02259.mat	| KingKongFT02259.csv	| KingKongWAM02259.csv	| randomize step pert, 9N 7.5cm release. |  
 % | KingKong.02266.mat	| KingKongFT02266.csv	| KingKongWAM02266.csv	| randomize step pert, 9N 10cm release. |  
-% | KingKong.02263.mat	| KingKongFT02263.csv	| KingKongWAM02263.csv	| randomize step pert, 15N 7.5cm release. |  
+% | KingKong.02263.mat	| KingKongFT02263.csv	| KingKongWAM02263.csv	| randomize step pert, 15N 7.5cm release. | ??? no pert data! 
 % | KingKong.02258.mat	| KingKongFT02258.csv	| KingKongWAM02258.csv	| randomize step pert, 15N 5cm release. |  
 % | KingKong.02267.mat	| KingKongFT02267.csv	| KingKongWAM02267.csv	| randomize step pert, 15N 10cm release. |  
 % | KingKong.02264.mat	| KingKongFT02264.csv	| KingKongWAM02264.csv	| randomize step pert, 21N 5cm release. |  
@@ -94,9 +94,97 @@ legend('forward', 'backward (invert)');
 %   5cm: 2256 2257 2258 2264
 % 7.5cm: 2268 2259 2263 2265
 %  10cm: 2262 2266 2267 2261
-sessions_all = [2256 2257 2258 2264 2268 2259 2263 2265 2262 2266 2267 2261];
+
+% back:
+% | KingKong.2355.mat	| KingKongFT2355.csv	| KingKongWAM2355.csv	| backward ballistic release with pert,   5cm   3N |
+% | KingKong.2358.mat	| KingKongFT2358.csv	| KingKongWAM2358.csv	| backward ballistic release with pert, 7.5cm   9N |
+% | KingKong.2359.mat	| KingKongFT2359.csv	| KingKongWAM2359.csv	| backward ballistic release with pert,  10cm   15N |
+% | KingKong.2360.mat	| KingKongFT2360.csv	| KingKongWAM2360.csv	| backward ballistic release with pert,  10cm   21N |
+% | KingKong.2361.mat	| KingKongFT2361.csv	| KingKongWAM2361.csv	| backward ballistic release with pert, 7.5cm   21N |
+% | KingKong.2362.mat	| KingKongFT2362.csv	| KingKongWAM2362.csv	| backward ballistic release with pert, 7.5cm   15N |
+% | KingKong.2363.mat	| KingKongFT2363.csv	| KingKongWAM2363.csv	| backward ballistic release with pert,  10cm   9N |
+% | KingKong.2365.mat	| KingKongFT2365.csv	| KingKongWAM2365.csv	| backward ballistic release with pert, 7.5cm   3N |
+% | KingKong.2366.mat	| KingKongFT2366.csv	| KingKongWAM2366.csv	| backward ballistic release with pert,   5cm   9N |
+% | KingKong.2367.mat	| KingKongFT2367.csv	| KingKongWAM2367.csv	| backward ballistic release with pert,   5cm   15N |
+% | KingKong.2368.mat	| KingKongFT2368.csv	| KingKongWAM2368.csv	| backward ballistic release with pert,   5cm   21N |
+% | KingKong.2369.mat	| KingKongFT2369.csv	| KingKongWAM2369.csv	| backward ballistic release with pert,  10cm   3N |
+%   5cm: 2355 2366 2367 2368
+% 7.5cm: 2365 2358 2362 2361
+%  10cm: 2369 2363 2359 2360
+sessions_mat_f = [2256 2257 2258 2264; 2268 2259 2263 2265; 2262 2266 2267 2261]; % front 
+sessions_mat_b = [2355 2366 2367 2368; 2365 2358 2362 2361; 2369 2363 2359 2360]; % back
+sessions_all = sessions_mat_b(:);
+%sessions_all = [2256 2257 2258 2264 2268 2259 2263 2265 2262 2266 2267 2261];
+col_array = colormap(lines);
 for session_i = 1:length(sessions_all)
     sessions_idx = sessions_all(session_i);
     eval(['ss' num2str(sessions_idx) ' = SessionScan(' num2str(sessions_idx) ');']);
 end
 
+%%  plot stacked figure;
+axh1 = figure();
+force_arr = [3 9 15 21];
+for dist = 1:4
+sessions_allf = sessions_mat_f(:,dist)'; % 3, 9, 15, 21N
+sessions_allb = sessions_mat_b(:,dist)'; % 3, 9, 15, 21N
+%sessions_allf = sessions_mat_f(3,:); % 5 ,7.5, 10cm
+%sessions_allb = sessions_mat_b(3,:); % 5 ,7.5, 10cm
+%axh = figure();
+axh = subplot(4, 2, (dist-1)*2+1);
+for session_i = 1:length(sessions_allf)
+    sessions_idx = sessions_allf(session_i);
+    eval(['sstmp = ss' num2str(sessions_idx) ';']);
+    plotStepPertResponse_raw(sstmp, axh, col_array(session_i,:));
+end
+ylabel(['force:' num2str(force_arr(dist)) 'N']);
+if dist == 1
+    title('front')
+elseif dist == 4
+    xlabel('time (s');
+end
+%axh = figure();
+axh = subplot(4, 2, (dist-1)*2+2);
+for session_i = 1:length(sessions_allb)
+    sessions_idx = sessions_allb(session_i);
+    eval(['sstmp = ss' num2str(sessions_idx) ';']);
+    
+    plotStepPertResponse_raw(sstmp, axh, col_array(session_i,:));
+end
+if dist == 1
+    title('back')
+elseif dist == 4
+    xlabel('time (s');
+end
+end
+
+axh2 = figure();
+tar_arr = [5 7.5 15];
+for target = 1:3
+sessions_allf = sessions_mat_f(target,:); % 5 ,7.5, 10cm
+sessions_allb = sessions_mat_b(target,:); % 5 ,7.5, 10cm
+axh = subplot(3, 2, (target-1)*2+1);
+for session_i = 1:length(sessions_allf)
+    sessions_idx = sessions_allf(session_i);
+    eval(['sstmp = ss' num2str(sessions_idx) ';']);
+    plotStepPertResponse_raw(sstmp, axh, col_array(session_i,:));
+end
+ylabel(['target:' num2str(tar_arr(target)) 'cm']);
+if target == 1
+    title('front')
+elseif target == 3
+    xlabel('time (s');
+end
+%axh = figure();
+axh = subplot(3, 2, (target-1)*2+2);
+for session_i = 1:length(sessions_allb)
+    sessions_idx = sessions_allb(session_i);
+    eval(['sstmp = ss' num2str(sessions_idx) ';']);
+    
+    plotStepPertResponse_raw(sstmp, axh, col_array(session_i,:));
+end
+if target == 1
+    title('back')
+elseif target == 3
+    xlabel('time (s');
+end
+end
