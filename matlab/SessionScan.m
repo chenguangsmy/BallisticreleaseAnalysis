@@ -140,6 +140,7 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
+                %obj.trials(trial_i) = alignPertInit(obj.trials(trial_i));
                 if (trial_i == length(trials_all)) % last trial
                     fprintf('  100%%  FINISHED!\n');
                 end
@@ -539,6 +540,18 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
+        function obj = updatePertEachTrial(obj)
+            % obj = updatePertEachTrial()
+            % Updating if_pert variable depend on whether perturbed or not,
+            % because some time a trial should be perturbed, however as the
+            % force threshold never achieved enough long, the perturbed was
+            % not achieved. 
+            % Use function TrialScan.findStepPerterbTime()
+            trial_num = length(obj.trials);
+            for trial_i = 1:trial_num
+                obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
+            end
+        end
         %%% communicate 
         function obj = generateWamPertData(obj)
             % send data into wam function to help SessionScanWam generate perturbation-only data
@@ -745,7 +758,16 @@ classdef (HandleCompatible)SessionScan < handle
                 mat = mat(:,1:end+n);
             end  
         end
-        
+        %%% with perturbations
+        function pert_ct = countPerturbation(obj)
+            % pert_ct = countPerturbation(); % return the trial # being
+            % perturbed
+            pert_ct = 0;
+            for trial_i = 1:length(obj.trials)
+                ifpert = obj.trials(trial_i).ifpert;
+                pert_ct = pert_ct + double(ifpert);
+            end
+        end
         %%% plot
         function taskScanTrials(obj)
             % I need true combo here! see the ProcessRawData

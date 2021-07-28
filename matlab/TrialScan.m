@@ -39,10 +39,12 @@ classdef TrialScan
         position
         position_h      % from WAM
         position_t
+        pertfce_h
+        wamrdt          % wam readtime
         velocity
         velocity_h
         velocity_t
-        
+        ifpert
         % predicted varialbes:
           % predicted linear variables just as Scott Did in thesis::pg44
         pred_x0
@@ -86,6 +88,7 @@ classdef TrialScan
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
+            obj.ifpert  = unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn));
             maskMov     = sessionScanObj.Data.TaskStateMasks.Move;
             maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
             maskTrial(obj.bgn:obj.edn) = 1;   
@@ -126,6 +129,8 @@ classdef TrialScan
                 positionh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
                 obj.position_h  = sessionScanObj.wamp_h(positionh_idx,:)';     % from WAM
                 obj.position_t  = sessionScanObj.wam_t(positionh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
+                obj.pertfce_h   = sessionScanObj.wam.cf(positionh_idx,2)'; % for now only perturb at y direction
+                obj.wamrdt      = sessionScanObj.wam.rdt(positionh_idx);
             end
             if (~isempty(sessionScanObj.wamp_h))
                 velocityh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
@@ -144,10 +149,12 @@ classdef TrialScan
                     obj.outcome = 0;
                 end
             % find perturbation time
-            obj = findPerterbTime(obj, sessionScanObj);
+            %obj = findStocPerterbTime(obj, sessionScanObj);
+            obj = findStepPerterbTime(obj, sessionScanObj);
         end
-        function obj = findPerterbTime(obj, sessionScanObj)
+        function obj = findStocPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
+            % This is only for the elongated stochastic perturbation.
              %idx = obj.idx_fcr:obj.idx_mov;
              idx = obj.idx_fcr:obj.idx_end;
              pert_t = obj.time_orn(idx);
@@ -170,6 +177,38 @@ classdef TrialScan
              obj.pert_rdt_bgn = pert_rdt(1);    % force increasing time (pert start)
              obj.pert_rdt_edn = pert_rdt(end);  % release time (pert finished)
         end
+        function obj = findStepPerterbTime(obj, sessionScanObj)
+            % find perturbation based on we only perturb on ForceRamp
+            % This is only for the step perturbation.
+            wam_pert_signal = obj.pertfce_h;
+            wam_pert_init_idx = find(wam_pert_signal == 0 & [diff(wam_pert_signal) 0]~=0); 
+            wam_pert_edn_idx  = find(wam_pert_signal ~= 0 & [diff(wam_pert_signal) 0]~=0); 
+            if obj.ifpert == 0 || isempty(wam_pert_init_idx)
+                obj.pert_rdt_bgn = [];
+                obj.pert_rdt_edn = [];
+                obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
+                return
+            end
+            fin_pert_init_idx = wam_pert_init_idx(end);
+            fin_pert_edn_idx  = wam_pert_edn_idx(end);
+            if fin_pert_edn_idx < fin_pert_init_idx
+                display(['trial' obj.tNo 'has unfinished perturbation']);
+                obj.pert_rdt_bgn = [];
+                obj.pert_rdt_edn = [];
+            end
+            idxh = fin_pert_init_idx:fin_pert_edn_idx;
+            pert_t = obj.position_t(idxh);
+            % find time  
+            try
+             obj.pert_t_bgn = pert_t(1);
+             obj.pert_t_edn = pert_t(end);
+            catch
+                return
+            end
+             % find RDT
+             obj.pert_rdt_bgn = obj.wamrdt(fin_pert_init_idx);    % force increasing time (pert start)
+             obj.pert_rdt_edn = obj.wamrdt(fin_pert_edn_idx);  % release time (pert finished)
+        end
         function obj = alignMOV(obj)
             %alignMOV align all trials at ST_MOV
             %   Just do linear shift, do NOT skew time
@@ -187,7 +226,29 @@ classdef TrialScan
                 end
             end
         end
-        
+        function obj = alignPertInit(obj, sessionScanObj)
+            %alignPertInit align all trials at the perturbation start
+            % Just do linear shift, do not skew time
+            time = obj.time;
+            % should use the # to find the exact perturb time
+            if obj.ifpert == 0
+                return
+            end
+            idx_t = find(obj.pert_rdt_bgn == obj.wamrdt);
+            time_offset = obj.position_t(idx_t); 
+            
+            if (~isempty(time_offset))
+                obj.time = time - time_offset;
+                
+                if(~isempty(obj.position_t))
+                    obj.position_t = obj.position_t - time_offset;
+                end
+                if(~isempty(obj.force_t))
+                    obj.force_t = obj.force_t - time_offset;
+                end
+            end
+            
+        end
         function obj = cleanData(obj)
             % TODO: clean the trials only in specific part, avoid
             % un-related information.
@@ -464,7 +525,15 @@ classdef TrialScan
             end
             x      = pos_ - pos(1);                 % unit: m
             dx     = diff(x,1,2)/(1/freq);          % unit: m/s
-            ddx    = diff(x,2,2)/((1/freq).^2);     % unit: m/s^2
+            ddx    = diff(x,2,2)/((1/freq).^2);     % unit: m/s^2 
+            % try forward and backward diffrentiation ==> seems useless.
+            x       = pos_ - pos(1); 
+            dx_f    = [diff(x,1,2)/(1/freq) 0];         % unit: m/s
+            dx_b    = [0 diff(x,1,2)/(1/freq)];  % backward differntiation
+            dx_     = (dx_f + dx_b)/2;   
+            ddx_f   = [diff(dx_,1,2)/(1/freq) 0];
+            ddx_b   = [0 diff(dx_,1,2)/(1/freq)];
+            ddx_    = (ddx_f + ddx_b)/2;   
             islowpass = 0;
             if (islowpass)
                 x_lowpass = lowpass(x, 4, 500);
@@ -486,11 +555,13 @@ classdef TrialScan
             n = length(ddx(501:end));
             F = reshape(f_m_a(end-n+1:end),n,1);
             
-            X = [ones(n,1), reshape(x(1:n),n,1), reshape(dx(1:n),n,1)];
+            X = [ones(n,1), reshape(x(end-n+1:end),n,1), reshape(dx(end-n+1:end),n,1)];
             %X = [ones(n,1), reshape(x(end-n+1-2:end-2),n,1), reshape(dx(end-n+1-1:end-1),n,1)];
+            %X = [ones(n,1), reshape(x(end-n+1:end),n,1), reshape(dx(end-n+1-1:end-1),n,1)];
             b = [];
             % calculate 
             b = (inv(X'*X)*X'*F); % looks un-safe, is other ways to do least square?
+            b = ((X'*X)\(X'*F));
             % asign values
             obj.pred_K = -b(2) * M;
             obj.pred_D = -b(3) * M;
