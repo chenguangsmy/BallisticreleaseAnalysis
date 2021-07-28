@@ -2198,6 +2198,114 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('y component');
             title('force vector before release');
         end
+        
+        function axh = plotStepPertResponse_raw(obj, axh, color_arr)
+            % axh = plotStepPertResponse_raw % plot the raw response of
+            % step perturbation, of all trials in this session 
+            % Assuming all trials are at the same task condition (e.g.
+            % requires the same stiffness so that response magnitudes are
+            % the same.
+            
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            obj = updatePertEachTrial(obj);
+            trials_pert = find([obj.trials(:).ifpert]);
+            
+            % plot
+            
+            % figure properties
+            
+            % for each trial
+            for trial_i = trials_pert
+                % make the time aligned for the perturbation
+                time = obj.trials(trial_i).position_t;
+                time0 = obj.trials(trial_i).pert_t_bgn;
+                resp_p = obj.trials(trial_i).position_h(2,:);
+                resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    plot(time-time0, resp_p_net, 'color', color_arr);
+                else
+                    plot(time-time0, resp_p_net);
+                end
+            end
+            if flag_stak == 0
+                xlim([-0.2, 0.8]);
+                ylabel('endpoint position (m)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.2, 0.6]);
+                ylim([-0.015, 0.015]);
+            end
+            
+        end
+        function axh = plotStepPertResponse_raw_inv(obj)
+            % axh = plotStepPertResponse_raw_inv % plot the raw response of
+            % step perturbation, of all trials in this session 
+            % Invert the negative perturbation. 
+            % Assuming all trials are at the same task condition (e.g.
+            % requires the same stiffness so that response magnitudes are
+            % the same.
+            
+            % check input 
+            % ...
+            % list all trials that being perturbed
+            obj = updatePertEachTrial(obj);
+            trials_pert = find([obj.trials(:).ifpert]);
+            
+            % plot
+            axh = figure(); hold on;
+            % figure properties
+            %color = ['rg']; %r- front; g-back
+            % for each trial
+            for trial_i = trials_pert
+                % make the time aligned for the perturbation
+                time_tmp = obj.trials(trial_i).position_t;
+                time0 = obj.trials(trial_i).pert_t_bgn;
+                pertidx = find(time_tmp == time0);
+                resp_p = obj.trials(trial_i).position_h(2,:);
+                resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                pert_sign = sign(obj.trials(trial_i).pertfce_h(pertidx+1));
+                if pert_sign == 1
+                    color_i = 'r';
+                else
+                    color_i = 'g';
+                end
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                
+                plot(time_tmp-time0, pert_sign*resp_p_net, 'color', color_i);
+            end
+
+                xlim([-0.2, 0.6]);
+                ylabel('endpoint position (m)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            
+        end
     end
 
 end

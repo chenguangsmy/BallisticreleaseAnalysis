@@ -38,6 +38,7 @@ classdef TrialScan
         force_t
         position
         position_h      % from WAM
+        position_offset % steady position before release, as wam uses impedance control
         position_t
         pertfce_h
         wamrdt          % wam readtime
@@ -179,7 +180,7 @@ classdef TrialScan
         end
         function obj = findStepPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
-            % This is only for the step perturbation.
+            % This is only for the STEP PERTURBATION.
             wam_pert_signal = obj.pertfce_h;
             wam_pert_init_idx = find(wam_pert_signal == 0 & [diff(wam_pert_signal) 0]~=0); 
             wam_pert_edn_idx  = find(wam_pert_signal ~= 0 & [diff(wam_pert_signal) 0]~=0); 
@@ -189,7 +190,9 @@ classdef TrialScan
                 obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
                 return
             end
-            fin_pert_init_idx = wam_pert_init_idx(end);
+            fin_pert_init_idx = wam_pert_init_idx(end); % ONLY use the final perturb 
+            % dangerous in the task analysis here, as subject may change
+            % strategy to fulfill the perturbation requirements. 
             fin_pert_edn_idx  = wam_pert_edn_idx(end);
             if fin_pert_edn_idx < fin_pert_init_idx
                 display(['trial' obj.tNo 'has unfinished perturbation']);
@@ -208,6 +211,10 @@ classdef TrialScan
              % find RDT
              obj.pert_rdt_bgn = obj.wamrdt(fin_pert_init_idx);    % force increasing time (pert start)
              obj.pert_rdt_edn = obj.wamrdt(fin_pert_edn_idx);  % release time (pert finished)
+             
+             % position offset
+             pos_bef_pert = obj.position_h(2, fin_pert_init_idx-100:fin_pert_init_idx-1); 
+             obj.position_offset = mean(pos_bef_pert);
         end
         function obj = alignMOV(obj)
             %alignMOV align all trials at ST_MOV
@@ -228,6 +235,7 @@ classdef TrialScan
         end
         function obj = alignPertInit(obj, sessionScanObj)
             %alignPertInit align all trials at the perturbation start
+            % specific for the STEP PERTURBATION
             % Just do linear shift, do not skew time
             time = obj.time;
             % should use the # to find the exact perturb time
