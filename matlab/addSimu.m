@@ -117,3 +117,92 @@ for trial_i = 1:length(M_list)
     trialpred= trialtmp.predictImpedanceLinDev2ndOrderFixM();
     prop_pred(trial_i,:) = [trialpred.pred_K, trialpred.pred_D, trialpred.pred_A];
 end
+
+%% Simscope simulation, and prediction use Scott's method
+x  = out.pos.Data;
+dx = out.vel.Data;
+%ddx= [0; diff(dx)]; % this one needs resample
+ddx= [diff(dx); 0]; % this one needs resample
+F  = out.force2.Data(2:end);
+%F  = out.force.Data(1:end-1);
+length(x)
+length(dx)
+length(ddx)
+length(F)
+% f = m*ddx + b*dx - k*x + k*x0
+X = [ones(size(x(2:end))), x(2:end), dx(2:end), ddx(1:end-1)];
+b = (X'*X) \ (X'*F);
+% b(1) = kx0; b(2) = -k; b(3) = b; b(4) = m
+m = b(4);
+B = b(3);
+K = -b(2);
+x0 = b(1)/K;
+fprintf('m: %fkg, B: %fN/(m/s)^-1, K: %fN/m, x0: %fm\n', m, B, K, x0);
+
+%% plot simulation resuts in a different figure
+pos_data = out.pos.Data;
+vel_data = out.vel.Data;
+%fce_data = out.force.Data;
+fce_data = out.fce.Data;
+%fce2_data= out.force2.Data;
+time     = out.tout;
+figure(); 
+subplot(3,1,1);
+plot(time, pos_data);
+ylabel('position');
+subplot(3,1,2);
+plot(time, vel_data);
+ylabel('velosity');
+subplot(3,1,3);
+plot(time, fce_data);
+ylabel('force');
+%subplot(4,1,4);
+%plot(time, fce2_data);
+%ylabel('force2');
+%xlabel('time');
+%legend('position', 'velocity', 'force');
+subplot(3,1,1);
+title('K 320, B 15, M 1');
+
+%% execute a series of simulink 
+force_all = [5 10 15 20];
+target_all = [0.05 0.075 0.10];
+stiffness_col = ['rgbc'];
+for target_i = 1:3
+    target_set = target_all(target_i);
+    stiffness_all = force_all/target_set; 
+    for stiffness_i = 1:4
+        stiffness_set = stiffness_all(stiffness_i);
+        simOut(target_i, stiffness_i) = sim('../ballisticReleaseSimu/SpringMass_2019_show');
+    end
+end
+% plot in the figure
+for target_i = 1:3
+    figure(); hold on;
+    target_set = target_all(target_i);
+    stiffness_all = force_all/target_set; 
+    for stiffness_i = 1:4
+        pos_data = simOut(target_i, stiffness_i).pos.Data;
+        vel_data = simOut(target_i, stiffness_i).vel.Data;
+        fce_data = simOut(target_i, stiffness_i).fce.Data;
+        time     = simOut(target_i, stiffness_i).tout;
+        subplot(3,1,1); hold on;
+        plot(time, pos_data, 'color', stiffness_col(stiffness_i));
+        subplot(3,1,2); hold on;
+        plot(time, vel_data, 'color', stiffness_col(stiffness_i));
+        subplot(3,1,3); hold on;
+        plot(time, fce_data, 'color', stiffness_col(stiffness_i));
+    end
+    subplot(3,1,1);
+    title('K 320, B 15, M 1');
+    ylabel('position');
+    subplot(3,1,2);
+    ylabel('velosity');
+    subplot(3,1,3);
+    ylabel('force');
+    xlabel('time');
+    legend({[num2str(stiffness_all(1)) 'N/m'],...
+        [num2str(stiffness_all(2)) 'N/m'],...
+        [num2str(stiffness_all(3)) 'N/m'],...
+        [num2str(stiffness_all(4)) 'N/m']});
+end
