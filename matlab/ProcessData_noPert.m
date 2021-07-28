@@ -59,8 +59,44 @@ legend('forward', 'backward (invert)');
 % 2. After-calibration
 ss2338 = SessionScan(2338);
 ss2340 = SessionScan(2340);
-axhv2 = ss2338.plotMeantrialVel_sameCond_overlap(-1, 1, 1);
-axhv2 = ss2340.plotMeantrialVel_sameCond_overlap(1, axhv2, 2);
+axhv2 = ss2340.plotMeantrialVel_sameCond_overlap(1, 1, 2);
+axhv2 = ss2338.plotMeantrialVel_sameCond_overlap(-1, axhv2, 1);
 ylim([-0.7 0.7]);
 title('movement difference after calibration');
 legend('forward', 'backward (invert)');
+%% 3. New sessions
+ssTestList = [2341, 2342];
+ssFront = SessionScan(ssTestList(1));
+ssBack = SessionScan(ssTestList(2));
+axhv2 = ssFront.plotMeantrialVel_sameCond_overlap(1, 1, 2);
+axhv2 = ssBack.plotMeantrialVel_sameCond_overlap(-1, axhv2, 1);
+ylim([-0.7 0.7]);
+title('movement difference after calibration');
+legend('forward', 'backward (invert)');
+
+%% Conduct the perturbation checking 
+% front:
+
+%--------------------------------------------------------------------------
+% | KingKong.02256.mat	| KingKongFT02256.csv	| KingKongWAM02256.csv	| randomize step pert, 3N 5cm release. |  
+% | KingKong.02268.mat	| KingKongFT02268.csv	| KingKongWAM02268.csv	| randomize step pert, 3N 7.5cm release. | 
+% | KingKong.02262.mat	| KingKongFT02262.csv	| KingKongWAM02262.csv	| randomize step pert, 3N 10cm release. |   
+% | KingKong.02257.mat	| KingKongFT02257.csv	| KingKongWAM02257.csv	| randomize step pert, 9N 5cm release. |  
+% | KingKong.02259.mat	| KingKongFT02259.csv	| KingKongWAM02259.csv	| randomize step pert, 9N 7.5cm release. |  
+% | KingKong.02266.mat	| KingKongFT02266.csv	| KingKongWAM02266.csv	| randomize step pert, 9N 10cm release. |  
+% | KingKong.02263.mat	| KingKongFT02263.csv	| KingKongWAM02263.csv	| randomize step pert, 15N 7.5cm release. |  
+% | KingKong.02258.mat	| KingKongFT02258.csv	| KingKongWAM02258.csv	| randomize step pert, 15N 5cm release. |  
+% | KingKong.02267.mat	| KingKongFT02267.csv	| KingKongWAM02267.csv	| randomize step pert, 15N 10cm release. |  
+% | KingKong.02264.mat	| KingKongFT02264.csv	| KingKongWAM02264.csv	| randomize step pert, 21N 5cm release. |  
+% | KingKong.02265.mat	| KingKongFT02265.csv	| KingKongWAM02265.csv	| randomize step pert, 21N 7.5cm release. |  
+% | KingKong.02261.mat	| KingKongFT02261.csv	| KingKongWAM02261.csv	| randomize step pert, 21N 10cm release. |  
+%--------------------------------------------------------------------------
+%   5cm: 2256 2257 2258 2264
+% 7.5cm: 2268 2259 2263 2265
+%  10cm: 2262 2266 2267 2261
+sessions_all = [2256 2257 2258 2264 2268 2259 2263 2265 2262 2266 2267 2261];
+for session_i = 1:length(sessions_all)
+    sessions_idx = sessions_all(session_i);
+    eval(['ss' num2str(sessions_idx) ' = SessionScan(' num2str(sessions_idx) ');']);
+end
+
