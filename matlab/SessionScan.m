@@ -2242,13 +2242,18 @@ classdef (HandleCompatible)SessionScan < handle
                 time = obj.trials(trial_i).position_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
                 resp_p = obj.trials(trial_i).position_h(2,:);
-                resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                resp_v = obj.trials(trial_i).velocity_h(2,:);
+                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
                 if ifcolor == 1
-                    plot(time-time0, resp_p_net, 'color', color_arr);
+                    plot(time-time0, resp_p, 'color', color_arr);
+                    %plot(time-time0, resp_p_net, 'color', color_arr);
+                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
                 else
-                    plot(time-time0, resp_p_net);
+                    plot(time-time0, resp_p, 'color', color_arr);
+                    %plot(time-time0, resp_p_net);
+                    %plot(time-time0, resp_v, 'color', color_arr);
                 end
             end
             if flag_stak == 0
@@ -2258,7 +2263,7 @@ classdef (HandleCompatible)SessionScan < handle
                 title(['step pert response for session' num2str(obj.ssnum)]);
             else
                 xlim([-0.2, 0.6]);
-                ylim([-0.015, 0.015]);
+                %ylim([-0.015, 0.015]);
             end
             
         end

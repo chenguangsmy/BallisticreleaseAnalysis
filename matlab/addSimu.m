@@ -206,3 +206,90 @@ for target_i = 1:3
         [num2str(stiffness_all(3)) 'N/m'],...
         [num2str(stiffness_all(4)) 'N/m']});
 end
+
+%% stiffness range simulation
+% Assuming the subject-handle coupling is 2 spring coupling (steady-state), 
+% asking how large the stiffness could be
+x0_arr = [0.025, 0.05, 0.075, 0.10];
+for x0i = 1:length(x0_arr)
+    x0 = x0_arr(x0i); % m
+    k0 = 2500; % N/m
+    F  = 0:1:floor(x0*k0);
+    ks = F./(x0 - F./k0);
+    loglog(F, ks, '*');
+    hold on;
+end
+grid on;
+legend({'2.5cm', '5cm', '7.5cm', '10cm'})
+xlabel('required Force (N)');
+ylabel('theoretical stiffness (N/m)');
+title('Theoretical stiffness with interacting with WAM');
+
+%% x0 range simulation
+% Assuming the subject-handle coupling is 2 spring coupling (steady-state),
+% giving the existing stiffness range, ask how far the x0 could be 
+x0_arr = [0.025, 0.05, 0.075, 0.10];
+kmax = 400; kmin = 100;
+figure(); hold on;
+for x0i = 1:length(x0_arr)
+    x0 = x0_arr(x0i); % m
+    k0 = 2500; % N/m
+    F  = 0:1:30;
+    x0_prac = zeros(size(F));
+    for Fi = 1:length(F)
+        x1 = F(Fi)/k0;
+        ks = F(Fi)/(x0 - F(Fi)/k0);
+        x0_prac(Fi) = x0;
+        if ks>kmax
+            x0_prac(Fi) = F(Fi)/kmax + x1;
+        elseif ks<kmin
+            x0_prac(Fi) = F(Fi)/kmin + x1;
+        end
+    end
+    plot(F, x0_prac, '*');
+end  
+grid on;
+legend({'2.5cm', '5cm', '7.5cm', '10cm'})
+xlabel('required Force (N)');
+ylabel('possible Practical x0 (N/m)');
+title('Theoretical x0 with interacting with WAM');  
+
+%% overlap the perturb simulation
+% according to the previous method, only looking at the perturbation in a
+% relatively short zone. 
+% 2.5cm: 3N : 8N
+%   5cm: 5N : 17N
+% 7.5cm: 8N : 21N
+% 0.1cm: 7N : 21N
+Force_list = {[3, 6], [6, 9, 12, 15], [9:3:21], [9:3:21]};
+dist = [2.5 5 7.5 10]/100;
+k0 = 2500;
+colors = colormap('lines');
+for dist_i = 1:4
+    x0 = dist(dist_i);
+    fce_list = Force_list{dist_i};
+    for fce_i = 1:length(fce_list)
+        fce = fce_list(fce_i);
+        stiffness = fce/(x0-fce/k0);
+        %simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease');
+        simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert');
+    end    
+end
+% plot out 
+for dist_i = 1:4
+    figure(); hold on;
+    x0 = 0.05;
+    fce_list = Force_list{dist_i};
+    for fce_i = 1:length(fce_list)
+        pos = simout(dist_i, fce_i).pos.Data;
+        postime= simout(dist_i, fce_i).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simout(dist_i, fce_i).vel.Data;
+        time = simout(dist_i, fce_i).vel.Time;
+        plot(time, pos-pos0, 'color', colors(fce_i,:));
+        %plot(time, vel, 'color', colors(fce_i,:));
+    end    
+    %ylim([-0.04, 0.04]);
+    xlim([0.5, 2]);
+end
