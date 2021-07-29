@@ -2205,7 +2205,7 @@ classdef (HandleCompatible)SessionScan < handle
             % Assuming all trials are at the same task condition (e.g.
             % requires the same stiffness so that response magnitudes are
             % the same.
-            
+             
             % check input 
             if isempty(axh)
                 axh = 0;

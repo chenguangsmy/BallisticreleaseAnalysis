@@ -287,8 +287,8 @@ for dist_i = 1:4
         pos0= mean(pos(posidx));
         vel = simout(dist_i, fce_i).vel.Data;
         time = simout(dist_i, fce_i).vel.Time;
-        plot(time, pos-pos0, 'color', colors(fce_i,:));
-        %plot(time, vel, 'color', colors(fce_i,:));
+        %plot(time, pos-pos0, 'color', colors(fce_i,:));
+        plot(time, vel, 'color', colors(fce_i,:));
     end    
     %ylim([-0.04, 0.04]);
     xlim([0.5, 2]);
