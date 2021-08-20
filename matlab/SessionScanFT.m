@@ -87,7 +87,9 @@ classdef SessionScanFT
            title(['force offset every trial']);
         end
         function obj = forceFTconvert(obj) % convert from select into world axis
-            obj.force = obj.FTrot_M * obj.force_origin;
+            %obj.force = obj.FTrot_M * obj.force_origin;
+            obj.force = obj.FTrot_M * obj.force_net;
+            %obj.force_net = obj.FTrot_M * obj.force_net;
         end
         function plotElapse(obj)
            figure();
@@ -98,6 +100,17 @@ classdef SessionScanFT
             plot(diff(obj.FT'));
         end
         % function align the data here?
+        % plots here
+        function plotSmoothedForce(obj)
+            % smooth data
+            force_smt = smoothdata(obj.force,2, 'movmean',20); % window 20
+            %force_smt(1,:) = smoothdata(obj.force(1,:),'movmean',20);
+            % plot
+            figure(); hold on;
+            plot(force_smt(1,:));
+            plot(force_smt(2,:));
+            plot(force_smt(3,:));
+        end
         
         function plotForceTorque(obj, sample_r)
            figure();
