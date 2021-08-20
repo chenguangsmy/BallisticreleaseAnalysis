@@ -89,7 +89,11 @@ classdef TrialScan
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
-            obj.ifpert  = unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn));
+            try 
+                obj.ifpert  = unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn));
+            catch
+                obj.ifpert = [];
+            end
             maskMov     = sessionScanObj.Data.TaskStateMasks.Move;
             maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
             maskTrial(obj.bgn:obj.edn) = 1;   
@@ -1059,14 +1063,27 @@ classdef TrialScan
             obj;
             axh = -1;
         end
-        function axh = plotRobotEndpointTraj(obj, axh)
+        function [axh, lnh] = plotRobotEndpointTraj(obj, axh, clr)
             %printf('begin the plot');
             if nargin == 1
                 axh = figure();
+                clr = [];
             end
             center = [-0.513, 0.483];
             figure(axh);
-            plot(obj.position_h(1,:) - center(1), obj.position_h(2,:) - center(2));
+            % only plot the movement idx
+            idxstt = obj.idx_mov; 
+            idxedn = obj.idx_rst; 
+            timestt = obj.time(idxstt); 
+            timeedn = obj.time(idxedn);
+            [~, idxstt_] = min(abs(timestt - obj.position_t)); 
+            [~, idxedn_] = min(abs(timeedn - obj.position_t)); 
+            
+            % plot(obj.position_h(1,:) - center(1), obj.position_h(2,:) - center(2), '*', 'color', clr); % all the points
+            hold on;
+            lnh = plot(obj.position_h(1,idxstt_:idxedn_) - center(1), ...
+                obj.position_h(2,idxstt_:idxedn_) - center(2), ...
+                'color', clr); % all the points
             xlim([-0.12, 0.12]); ylim([-0.12, 0.12]);
             title('');
             xlabel('x (m)');
