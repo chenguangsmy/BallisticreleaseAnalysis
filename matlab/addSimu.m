@@ -262,34 +262,153 @@ title('Theoretical x0 with interacting with WAM');
 % 7.5cm: 8N : 21N
 % 0.1cm: 7N : 21N
 Force_list = {[3, 6], [6, 9, 12, 15], [9:3:21], [9:3:21]};
-dist = [2.5 5 7.5 10]/100;
+%dist = [2.5 5 7.5 10]/100;
+dist = [5 7.5 10]/100;
 k0 = 2500;
 colors = colormap('lines');
-for dist_i = 1:4
-    x0 = dist(dist_i);
-    fce_list = Force_list{dist_i};
-    for fce_i = 1:length(fce_list)
+fce_list = 3:3:21; 
+stiffness0 = 300; % robot stiffness
+for fce_i = 1:length(fce_list)
+    %fce_list = Force_list{dist_i};
+    for dist_i = 1:length(dist)
+        x0 = dist(dist_i);
         fce = fce_list(fce_i);
-        stiffness = fce/(x0-fce/k0);
+        %stiffness = fce/(x0-fce/k0);
+        stiffness = fce/x0;
+        damping = 10;
+        x0r = fce/stiffness0;
+        %stiffness_mat(fce/3, dist_i) = stiffness;
         %simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease');
-        simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert');
+        simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
+            'FixedStep','0.002');
     end    
 end
-% plot out 
-for dist_i = 1:4
-    figure(); hold on;
-    x0 = 0.05;
-    fce_list = Force_list{dist_i};
+%% plot out 
+figure(); 
+fce_list = 3:6:21; 
+%for fce_i = 1:length(fce_list)
+for dist_i = 1:length(dist)
+    %subplot(1,length(fce_list),fce_i); hold on;
+    subplot(1,length(dist),dist_i); hold on;
+    %figure(); hold on;
+    %x0 = 0.05;
+    %fce_list = Force_list{dist_i};
+    %for dist_i = 1:length(dist)
     for fce_i = 1:length(fce_list)
         pos = simout(dist_i, fce_i).pos.Data;
         postime= simout(dist_i, fce_i).tout;
         posidx = postime>0.5 & postime<0.8;
         pos0= mean(pos(posidx));
         vel = simout(dist_i, fce_i).vel.Data;
-        time = simout(dist_i, fce_i).vel.Time;
+        time = simout(dist_i, fce_i).vel.Time - 1;
+        fce = simout(dist_i, fce_i).fce.Data;
+        timeF= simout(dist_i, fce_i).fce.Time;
         %plot(time, pos-pos0, 'color', colors(fce_i,:));
-        plot(time, vel, 'color', colors(fce_i,:));
-    end    
-    %ylim([-0.04, 0.04]);
-    xlim([0.5, 2]);
+        %plot(time, vel, 'color', colors(fce_i,:));
+        %plot(time, pos, 'color', colors(fce_i,:));
+        %plot(time, pos, 'color', colors(dist_i,:));
+        plot(time, fce-fce(1), 'color', colors(fce_i,:));
+        legend_arr{fce_i} = [num2str(fce_list(fce_i)) 'N'];
+        %legend_arr{dist_i} = [num2str(dist(dist_i)) 'm'];
+    end
+    legend(legend_arr);
+    %ylim([-0.01, 0.04]);
+    %ylim([-0.02, 0.06]);
+    %ylim([-0.04, 0.14]);
+    %ylim([-0.15, 0.6]);
+    %ylim([-0.35, 0.35]);
+    xlim([-0.5, 1]);
+    %if dist_i == 1
+    if fce_i == 1
+        ylabel('position (m)')
+        %ylabel('velocity (m/s)')
+        xlabel('time at movement (s)');
+    else
+        %set(gca, 'yTickLabel', {});
+    end
+    set(gca, 'Ygrid', 'on');
+    %title(['target ' num2str(dist(dist_i)*100) 'cm']);
+    title(['force ' num2str(fce_list(fce_i)) 'N']);
 end
+
+%% recognize damping through different simulation values 
+% generate data
+
+%dist = [2.5 5 7.5 10]/100;
+colors = colormap('lines');
+damping_list = 2.^(0:6); 
+stiffness0 = 300; % robot stiffness
+for damp_i = 1:length(damping_list)
+        stiffness = stiffness0;
+        damping = damping_list(damp_i);
+        simout_damping(damp_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
+            'FixedStep','0.002');  
+end
+% report set damping 
+damp_est = zeros(size(damping_list));
+% calculate damping through: 
+%   1. c = 2*k*T*(\delta / sqrt((\delta)^2 + (2*pi)^2 ));   ... delta, K, and T
+%   2. delta = log(x1/x3);                                  ... peak
+for damp_i = 1:length(damping_list)
+    k = stiffness;
+    T = 1; %...
+    %x1 %= ...; % findpeak(...,1 );
+    %x3 %= ...; % findpeak(...,2 );
+    
+    vel = simout_damping(damp_i).vel;
+    vel_idx = vel.Time > 1 & vel.Time < 2;
+    vel_select = vel.Data(vel_idx);
+    vel_selectTime = vel.Time(vel_idx);
+    [peaks, locs ] = findpeaks(vel_select);
+    if length(peaks)<2
+        fprintf("Overdamped in damping: %f",damping_list(damp_i));
+        damp_est(damp_i) = -1;
+    else
+        T = vel_selectTime(locs(2)) - vel_selectTime(locs(1));
+        delta = log(peaks(1)/peaks(2));
+        c = 2*stiffness*(T/(2*pi))*(delta / sqrt((delta)^2 + (2*pi)^2 ));
+        damp_est(damp_i) = c;
+    end
+end
+% report "measured" damping 
+damping_list
+damp_est
+
+%% only test using spring-mass-damper system to test damping
+colors = colormap('lines');
+damping_list = 2.^(0:6); 
+stiffness0 = 300; % robot stiffness
+for damp_i = 1:length(damping_list)
+        stiffness = stiffness0;
+        damping = damping_list(damp_i);
+        simout_damping(damp_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/SpringMassDamper2019',...
+            'FixedStep','0.001');  
+end
+% report set damping 
+damp_est = zeros(size(damping_list));
+% calculate damping through: 
+%   1. c = 2*k*T*(\delta / sqrt((\delta)^2 + (2*pi)^2 ));   ... delta, K, and T
+%   2. delta = log(x1/x3);                                  ... peak
+for damp_i = 1:length(damping_list)
+    k = stiffness;
+    T = 1; %...
+    %x1 %= ...; % findpeak(...,1 );
+    %x3 %= ...; % findpeak(...,2 );
+    
+    vel = simout_damping(damp_i).vel;
+    vel_idx = find(ones(size(vel.Data)));%vel.Time > 1 & vel.Time < 2;
+    vel_select = vel.Data(vel_idx);
+    vel_selectTime = vel.Time(vel_idx);
+    [peaks, locs ] = findpeaks(vel_select);
+    if length(peaks)<2
+        fprintf("Overdamped in damping: %f",damping_list(damp_i));
+        damp_est(damp_i) = -1;
+    else
+        T = vel_selectTime(locs(2)) - vel_selectTime(locs(1));
+        delta = log(peaks(1)/peaks(2));
+        c = 2*stiffness*(T/(2*pi))*(delta / sqrt((delta)^2 + (2*pi)^2 ));
+        damp_est(damp_i) = c;
+    end
+end
+damping_list
+damp_est
