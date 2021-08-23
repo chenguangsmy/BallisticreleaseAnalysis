@@ -431,3 +431,67 @@ ss2541.plotStepPertResponse_rawF(subplot(1,2,2),color_arr(5,:));
 figure();
 ss2540.plotStepPertResponse_raw(subplot(1,2,1), color_arr(6,:));
 ss2540.plotStepPertResponse_rawF(subplot(1,2,2),color_arr(6,:));
+
+%% spring perturbation test, with x0 start at 0 positions
+sessions_mat = [2558 2560 2562 2563 2564;   % 160N/m
+                2547 2546 2543 2545 2544;   % 320N/m, external spring
+                2548 2549 2550 2551 2552;   % 640N/m
+                2557 2556 2555 2554 2553;]; % 960N/m
+                
+sessions_all = sessions_mat(:);
+% for session_i = 1:length(sessions_all)
+%     eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
+%         num2str(sessions_all(session_i)) ');']);
+% end
+%%
+color_arr = colormap('lines');
+figure();
+for stiffness_i = 1:size(sessions_mat,1)
+    axh = subplot(1,4,stiffness_i); hold on;
+    for ss_i = 1:size(sessions_mat,2)
+        if sessions_mat(stiffness_i,ss_i) == 2550 || ...
+           sessions_mat(stiffness_i,ss_i) == 2543 || ...
+           sessions_mat(stiffness_i,ss_i) == 2544 % bad session
+            continue
+        end
+        %num2str(sessions_mat(stiffness_i, ss_i)); % display which session
+        eval(['sstmp = ss' num2str(sessions_mat(stiffness_i, ss_i)) ';']);
+        sstmp.plotStepPertResponse_rawF(axh,color_arr(ss_i,:));
+    end
+    title(['stiffness ' num2str(SpringStiff_list(stiffness_i)) 'N/m']);
+    set(gca, 'Ygrid', 'on');
+    xlim([-0.1 1]);
+    ylim([-5 30]);
+end
+
+%% spring ballistic release test, with x0 start at 0 positions
+sessions_mat = ...%[2558 2560 2562 2563 2564;   % 160N/m
+                [2566 2567 2568 2569 2544];   % 320N/m, external spring
+               % 2548 2549 2550 2551 2552;   % 640N/m
+               % 2557 2556 2555 2554 2553;]; % 960N/m
+                
+sessions_all = sessions_mat(:);
+ for session_i = 1:length(sessions_all)
+     eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
+         num2str(sessions_all(session_i)) ');']);
+ end
+%%
+color_arr = colormap('lines');
+figure();
+for stiffness_i = 1:size(sessions_mat,1)
+    axh = subplot(1,4,stiffness_i); hold on;
+    for ss_i = 1:size(sessions_mat,2)
+        if sessions_mat(stiffness_i,ss_i) == 2550 || ...
+           sessions_mat(stiffness_i,ss_i) == 2543 || ...
+           sessions_mat(stiffness_i,ss_i) == 2544 % bad session
+            continue
+        end
+        %num2str(sessions_mat(stiffness_i, ss_i)); % display which session
+        eval(['sstmp = ss' num2str(sessions_mat(stiffness_i, ss_i)) ';']);
+        sstmp.plotSameTrial();
+    end
+    title(['stiffness ' num2str(SpringStiff_list(stiffness_i)) 'N/m']);
+    set(gca, 'Ygrid', 'on');
+    xlim([-0.1 1]);
+    ylim([-5 30]);
+end

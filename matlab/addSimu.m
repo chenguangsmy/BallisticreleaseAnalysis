@@ -261,22 +261,24 @@ title('Theoretical x0 with interacting with WAM');
 %   5cm: 5N : 17N
 % 7.5cm: 8N : 21N
 % 0.1cm: 7N : 21N
-Force_list = {[3, 6], [6, 9, 12, 15], [9:3:21], [9:3:21]};
+%Force_list = {[3, 6], [6, 9, 12, 15], [9:3:21], [9:3:21]};
+%Force_list = [3 9 15 21];
 %dist = [2.5 5 7.5 10]/100;
-dist = [5 7.5 10]/100;
+spring_list = [89, 106.67, 160, 320]; % N/m
+dist = [2.5 5 7.5 10]/100;
 k0 = 2500;
 colors = colormap('lines');
-fce_list = 3:3:21; 
 stiffness0 = 300; % robot stiffness
-for fce_i = 1:length(fce_list)
+for dist_i = 1:length(dist)
     %fce_list = Force_list{dist_i};
-    for dist_i = 1:length(dist)
+    fce_list = dist(dist_i) * spring_list; 
+    for fce_i = 1:length(fce_list)
         x0 = dist(dist_i);
         fce = fce_list(fce_i);
         %stiffness = fce/(x0-fce/k0);
         stiffness = fce/x0;
         damping = 10;
-        x0r = fce/stiffness0;
+        xr0 = fce/stiffness0;
         %stiffness_mat(fce/3, dist_i) = stiffness;
         %simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease');
         simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
@@ -285,9 +287,10 @@ for fce_i = 1:length(fce_list)
 end
 %% plot out 
 figure(); 
-fce_list = 3:6:21; 
+
 %for fce_i = 1:length(fce_list)
 for dist_i = 1:length(dist)
+    fce_list = spring_list*dist(dist_i); 
     %subplot(1,length(fce_list),fce_i); hold on;
     subplot(1,length(dist),dist_i); hold on;
     %figure(); hold on;
@@ -300,15 +303,16 @@ for dist_i = 1:length(dist)
         posidx = postime>0.5 & postime<0.8;
         pos0= mean(pos(posidx));
         vel = simout(dist_i, fce_i).vel.Data;
-        time = simout(dist_i, fce_i).vel.Time - 1;
+        time = simout(dist_i, fce_i).vel.Time - 4; % 1 for pert, 4 for release
         fce = simout(dist_i, fce_i).fce.Data;
         timeF= simout(dist_i, fce_i).fce.Time;
         %plot(time, pos-pos0, 'color', colors(fce_i,:));
         %plot(time, vel, 'color', colors(fce_i,:));
         %plot(time, pos, 'color', colors(fce_i,:));
         %plot(time, pos, 'color', colors(dist_i,:));
-        plot(time, fce-fce(1), 'color', colors(fce_i,:));
-        legend_arr{fce_i} = [num2str(fce_list(fce_i)) 'N'];
+        %plot(time, fce-fce(1), 'color', colors(fce_i,:));
+        plot(time, fce, 'color', colors(fce_i,:));
+        %legend_arr{fce_i} = [num2str(fce_list(fce_i)) 'N'];
         %legend_arr{dist_i} = [num2str(dist(dist_i)) 'm'];
     end
     legend(legend_arr);
@@ -317,7 +321,7 @@ for dist_i = 1:length(dist)
     %ylim([-0.04, 0.14]);
     %ylim([-0.15, 0.6]);
     %ylim([-0.35, 0.35]);
-    xlim([-0.5, 1]);
+    xlim([-0.1, 1]);
     %if dist_i == 1
     if fce_i == 1
         ylabel('position (m)')
@@ -327,8 +331,8 @@ for dist_i = 1:length(dist)
         %set(gca, 'yTickLabel', {});
     end
     set(gca, 'Ygrid', 'on');
-    %title(['target ' num2str(dist(dist_i)*100) 'cm']);
-    title(['force ' num2str(fce_list(fce_i)) 'N']);
+    title(['target ' num2str(dist(dist_i)*100) 'cm']);
+    %title(['force ' num2str(fce_list(fce_i)) 'N']);
 end
 
 %% recognize damping through different simulation values 
@@ -412,3 +416,59 @@ for damp_i = 1:length(damping_list)
 end
 damping_list
 damp_est
+
+%% to test perturbation at equilibrium position
+SpringStiff_list = [160, 320, 640, 960];
+PertFce_list = [5,10,15,20,25];
+colors = colormap('lines');
+for stiffness_i = 1:length(SpringStiff_list)
+    %fce_list = Force_list{dist_i};
+    for PertFce_i = 1:length(PertFce_list)
+        stiffness = SpringStiff_list(stiffness_i);
+        PertFce = PertFce_list(PertFce_i);
+        simout(stiffness_i, PertFce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
+            'FixedStep','0.002');
+    end    
+end
+%%
+figure(); 
+SpringStiff_list = [160, 320, 640, 960];
+PertFce_list = [5,10,15,20,25];
+for stiffness_i = 1:length(SpringStiff_list)
+    axh = subplot(1,length(SpringStiff_list),stiffness_i); hold on;
+    for PertFce_i = 1:length(PertFce_list)
+        pos = simout(stiffness_i, PertFce_i).pos.Data;
+        postime= simout(stiffness_i, PertFce_i).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simout(stiffness_i, PertFce_i).vel.Data;
+        time = simout(stiffness_i, PertFce_i).vel.Time - 1;
+        fce = simout(stiffness_i, PertFce_i).fce.Data;
+        timeF= simout(stiffness_i, PertFce_i).fce.Time;
+        %plot(time, pos-pos0, 'color', colors(fce_i,:));
+        %plot(time, vel, 'color', colors(fce_i,:));
+        %plot(time, pos, 'color', colors(fce_i,:));
+        %plot(time, pos, 'color', colors(dist_i,:));
+        plot(time, fce, 'color', colors(PertFce_i,:));
+        legend_arr{PertFce_i} = [num2str(PertFce_list(PertFce_i)) 'N'];
+        %legend_arr{dist_i} = [num2str(dist(dist_i)) 'm'];
+    end
+    legend(legend_arr);
+    %ylim([-0.01, 0.04]);
+    %ylim([-0.02, 0.06]);
+    %ylim([-0.04, 0.14]);
+    %ylim([-0.15, 0.6]);
+    ylim([-5, 30]);
+    xlim([-0.1, 1.0]);
+    %if dist_i == 1
+    if fce_i == 1
+        ylabel('Force (N)')
+        %ylabel('velocity (m/s)')
+        xlabel('time at perturbation (s)');
+    else
+        %set(gca, 'yTickLabel', {});
+    end
+    set(gca, 'Ygrid', 'on');
+    %title(['target ' num2str(dist(dist_i)*100) 'cm']);
+    title(['stiffness ' num2str(SpringStiff_list(stiffness_i)) 'N/m']);
+end

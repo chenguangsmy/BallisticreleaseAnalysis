@@ -90,7 +90,8 @@ classdef TrialScan
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
             try 
-                obj.ifpert  = unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn));
+                obj.ifpert  = ...
+                double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
             catch
                 obj.ifpert = [];
             end
@@ -191,7 +192,9 @@ classdef TrialScan
             if obj.ifpert == 0 || isempty(wam_pert_init_idx)
                 obj.pert_rdt_bgn = [];
                 obj.pert_rdt_edn = [];
-                obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
+                % The comming line, only works at the real experiment,
+                % if were conducting spring test, can comment it out.
+                %obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
                 return
             end
             fin_pert_init_idx = wam_pert_init_idx(end); % ONLY use the final perturb 

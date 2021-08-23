@@ -2475,14 +2475,17 @@ classdef (HandleCompatible)SessionScan < handle
             
             % for each trial
             for trial_i = trials_pert
+                if trial_i == 1
+                    continue;
+                end
                 % make the time aligned for the perturbation
                 %time = obj.trials(trial_i).position_t;
                 time = obj.trials(trial_i).force_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
-                resp_p = obj.trials(trial_i).position_h(2,:);
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
+                %resp_p = obj.trials(trial_i).position_h(2,:);
+                %resp_v = obj.trials(trial_i).velocity_h(2,:);
                 %resp_f = obj.trials(trial_i).force_h(2,:);
-                resp_f = obj.trials(trial_i).force_h(1,:);
+                resp_f = obj.trials(trial_i).force_h(2,:);
                 %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
