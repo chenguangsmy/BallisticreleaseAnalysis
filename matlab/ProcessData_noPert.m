@@ -282,47 +282,65 @@ ylabel('displacement');
 title('raw data on step-perturbation');
 
 %% figure for position against time categorized by target as subplots 
-%sessions_all = [[2468, 2457, 2458, 2459]; [2469, 2460, 2461, 2462]; [2470, 2456, 2463, 2455]; [2471, 2464, 2466, 2467]];
-sessions_all = [[2481, 2482, 2483]; [2484, 2486, 2487]; [2479, 2488, 2480]; [2489, 2490, 2492]];
+sessions_all = [[2468, 2457, 2458, 2459]; [2469, 2460, 2461, 2462]; [2470, 2456, 2463, 2455]; [2471, 2464, 2466, 2467]];
+%sessions_all = [[2481, 2482, 2483]; [2484, 2486, 2487]; [2479, 2488, 2480]; [2489, 2490, 2492]]; % backward movement, forward perturbation
 sessions_all_arr = sessions_all(:);
 for session_i = 1:length(sessions_all_arr)
     sstmp = sessions_all_arr(session_i);
     %['ss' num2str(sstmp) ' = SessionScan(' num2str(sstmp) ');']
     eval(['ss' num2str(sstmp) ' = SessionScan(' num2str(sstmp) ');']);
 end
-    
+%% plot...
 force_all = 3:6:21; 
 figure();
+sessions_all = [[2468, 2457, 2458, 2459]; [2469, 2460, 2461, 2462]; [2470, 2456, 2463, 2455]; [2471, 2464, 2466, 2467]];
+%sessions_all = [[2481, 2482, 2483]; [2484, 2486, 2487]; [2479, 2488, 2480]; [2489, 2490, 2492]]';
 for fce_i = 1:size(sessions_all, 1)
     axh = subplot(1, size(sessions_all, 1), fce_i); hold on; 
-    for dist_i = 1:size(sessions_all, 2)
+    for dist_i = 1:size(sessions_all, 1)
         sstmp = eval(['ss' num2str(sessions_all(fce_i, dist_i))]);
-        axh = plotMeantrialPosPert(sstmp, axh, dist_i);
+        %axh = plotMeantrialPosPert(sstmp, axh, dist_i); % perturbation
+        %axh = plotMeantrialForcePert(sstmp, axh, dist_i); % perturbation
+        %axh = plotMeantrialVel(sstmp, axh, dist_i); % perturbation
+        %plotMeantrialVel(sstmp, axh, dist_i); % perturbation
+        plotMeantrialForce(sstmp, axh, dist_i);
+        %axh = plotMeantrialPos(sstmp, axh, dist_i); % release
     end
-    %ylim([-0.045, 0.005]);
-    ylim([-0.005, 0.045]);
+    %ylim([-0.045, 0.005]); % pos, -
+    %xlim([-0.1, 0.8]);
+    %ylim([-0.005, 0.035]);
+    xlim([-0.1, 0.7]); % perturb
+    %ylim([-0.1, 0.5]); % velocity
+    ylim([-4, 25]);    % force, -
     xlabel('time'); 
     if (fce_i == 1)
-        ylabel('perturbation response position');
+        %ylabel('perturbation response position');
+        ylabel(' ');
     end
     set(gca, 'Ygrid', 'on');
     title([num2str(force_all(fce_i)) 'N']);
 end
 
 % figure for position against time categorized by target as subplots 
-%sessions_all = [[2468, 2457, 2458, 2459]; [2469, 2460, 2461, 2462]; [2470, 2456, 2463, 2455]; [2471, 2464, 2466, 2467]]';
-sessions_all = [[2481, 2482, 2483]; [2484, 2486, 2487]; [2479, 2488, 2480]; [2489, 2490, 2492]]';
-%dist_all = [0.025 0.05, 0.075, 0.10]; 
-dist_all = [0.05, 0.075, 0.10];
+sessions_all = [[2468, 2457, 2458, 2459]; [2469, 2460, 2461, 2462]; [2470, 2456, 2463, 2455]; [2471, 2464, 2466, 2467]]';
+%sessions_all = [[2481, 2482, 2483]; [2484, 2486, 2487]; [2479, 2488, 2480]; [2489, 2490, 2492]]';
+dist_all = [0.025 0.05, 0.075, 0.10]; 
+%dist_all = [0.05, 0.075, 0.10];
 figure();
-for dist_i = 1:size(sessions_all, 1)
-    axh = subplot(1, size(sessions_all, 1), dist_i); hold on; 
+for dist_i = 1:size(sessions_all, 2)
+    axh = subplot(1, size(sessions_all, 2), dist_i); hold on; 
     for fce_i = 1:size(sessions_all, 2)
         sstmp = eval(['ss' num2str(sessions_all(dist_i, fce_i))]);
-        axh = plotMeantrialPosPert(sstmp, axh, fce_i);
+        %axh = plotMeantrialPosPert(sstmp, axh, fce_i);
+        %axh = plotMeantrialVel(sstmp, axh, fce_i); % perturbation
+        plotMeantrialForce(sstmp, axh, fce_i);
+        %axh = plotMeantrialForcePert(sstmp, axh, fce_i); % perturbation
     end
-    %ylim([-0.045, 0.005]);
-    ylim([-0.005, 0.045]);
+    %ylim([-0.045, 0.005]); % pos -
+    %ylim([-0.005, 0.045]); % pos +
+    xlim([-0.1, 0.7]); % perturb
+    %ylim([-0.1, 0.5]); % velocity
+    ylim([-4, 25]); % force - 
     xlabel('time'); 
     if (dist_i == 1)
         ylabel('perturbation response position');
@@ -387,7 +405,7 @@ end
 legend(lnh_lgd, arr_lgd);
 title('trajectories of "insteability dyamics"');
 
-%% plot spring test with perturbations 
+%% plot SPRING TEST with perturbations, non-0 offset
 % 2524, 2527, 2529, 2530
 % color 
 color_arr = colormap('lines');
@@ -433,16 +451,18 @@ ss2540.plotStepPertResponse_raw(subplot(1,2,1), color_arr(6,:));
 ss2540.plotStepPertResponse_rawF(subplot(1,2,2),color_arr(6,:));
 
 %% spring perturbation test, with x0 start at 0 positions
-sessions_mat = [2558 2560 2562 2563 2564;   % 160N/m
-                2547 2546 2543 2545 2544;   % 320N/m, external spring
-                2548 2549 2550 2551 2552;   % 640N/m
-                2557 2556 2555 2554 2553;]; % 960N/m
+% sessions_mat = [2558 2560 2562 2563 2564;   % 160N/m
+%                 2547 2546 2605 2545 2602;   % 320N/m, external spring
+%                 2548 2549 2606 2551 2552;   % 640N/m
+%                 2557 2556 2555 2554 2553;]; % 960N/m
+sessions_mat = [2611 2610 2612 2613;        % 160N/m
+                2614 2615 2617 2619];       % 320N/m
                 
 sessions_all = sessions_mat(:);
-% for session_i = 1:length(sessions_all)
-%     eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
-%         num2str(sessions_all(session_i)) ');']);
-% end
+for session_i = 1:length(sessions_all)
+     eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
+         num2str(sessions_all(session_i)) ');']);
+end
 %%
 color_arr = colormap('lines');
 figure();
@@ -456,42 +476,105 @@ for stiffness_i = 1:size(sessions_mat,1)
         end
         %num2str(sessions_mat(stiffness_i, ss_i)); % display which session
         eval(['sstmp = ss' num2str(sessions_mat(stiffness_i, ss_i)) ';']);
-        sstmp.plotStepPertResponse_rawF(axh,color_arr(ss_i,:));
+        %sstmp.plotStepPertResponse_rawF(axh,color_arr(ss_i,:));
+        sstmp.plotStepPertResponse_raw(axh,color_arr(ss_i,:));
     end
     title(['stiffness ' num2str(SpringStiff_list(stiffness_i)) 'N/m']);
     set(gca, 'Ygrid', 'on');
     xlim([-0.1 1]);
-    ylim([-5 30]);
+    ylim([-0.07 0.01]); % posision
+    % ylim([-5 30]); % force
 end
 
 %% spring ballistic release test, with x0 start at 0 positions
-sessions_mat = ...%[2558 2560 2562 2563 2564;   % 160N/m
-                [2566 2567 2568 2569 2544];   % 320N/m, external spring
-               % 2548 2549 2550 2551 2552;   % 640N/m
-               % 2557 2556 2555 2554 2553;]; % 960N/m
-                
+sessions_mat = [2584 2585 2586 2587;   % 320    N/m, external spring
+                2588 2589 2590 2591;    % 160   N/m
+                2592 2593 2594 2596;    % 106.7 N/m
+                -1   2597 2598 2599];    % 89    N/m
+% read data                
 sessions_all = sessions_mat(:);
- for session_i = 1:length(sessions_all)
-     eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
-         num2str(sessions_all(session_i)) ');']);
+for session_i = 1:length(sessions_all)
+ try
+    eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
+        num2str(sessions_all(session_i)) ');']);
+ catch 
+     display('unable to load this session!');
  end
-%%
+end
+%% plots 
+SpringStiff_list = [320, 160, 107, 89]; % spring test with fixed stiffness
+targets_list = [10, 7.5, 5.0, 2.5]/100; %targets position (m)
+
 color_arr = colormap('lines');
 figure();
-for stiffness_i = 1:size(sessions_mat,1)
-    axh = subplot(1,4,stiffness_i); hold on;
-    for ss_i = 1:size(sessions_mat,2)
-        if sessions_mat(stiffness_i,ss_i) == 2550 || ...
-           sessions_mat(stiffness_i,ss_i) == 2543 || ...
-           sessions_mat(stiffness_i,ss_i) == 2544 % bad session
+%for stiffness_i = 1:size(sessions_mat,1)
+for target_i = 1:length(targets_list)
+    target_tmp = targets_list(target_i);
+    axh = subplot(1,4,target_i); hold on;
+    %for ss_i = 1:size(sessions_mat,2)
+    for stiffness_i = 1:size(sessions_mat,1)
+        if sessions_mat(stiffness_i,target_i) == -1 
             continue
         end
         %num2str(sessions_mat(stiffness_i, ss_i)); % display which session
-        eval(['sstmp = ss' num2str(sessions_mat(stiffness_i, ss_i)) ';']);
-        sstmp.plotSameTrial();
+        eval(['sstmp = ss' num2str(sessions_mat(stiffness_i, target_i)) ';']);
+        %sstmp.plotSameTrial();
+        %axh=sstmp.plotReleaseResponse_rawF(axh, color_arr(stiffness_i,:));
+        %axh=sstmp.plotReleaseResponse_rawP(axh, color_arr(stiffness_i,:));
+        axh=sstmp.plotReleaseResponse_rawV(axh, color_arr(stiffness_i,:));
     end
-    title(['stiffness ' num2str(SpringStiff_list(stiffness_i)) 'N/m']);
+    title(['target ' num2str(targets_list(target_i)) 'm']);
     set(gca, 'Ygrid', 'on');
-    xlim([-0.1 1]);
-    ylim([-5 30]);
+    xlim([-0.1 1.2]);
+    %ylim([-0.01 0.16]);
+    ylim([-1.1 1.2]);
 end
+
+%% Perturb position summary 
+% Only focus on the front and back movement for now.
+% Sessions choose from: 9N/21N * 0.05m & 0.10m. 
+% |sessions: | 9N*10cm  | 9N*5cm   | 21N*10cm | 21N*5cm  |
+% | -------- | -------- | -------- | -------- | -------- |
+% |front     | 2462     | 2460     | 2467     | 2464     | 
+% |back      | 2487     | 2484     | 2492     | 2489     |
+% |left      | -------------- pending ------------------ |
+% |right     | -------------- pending ------------------ |
+
+sessions_mat = [2462 2460 2467 2464;    % front
+                2487 2484 2492 2489;    % back
+                2487 2484 2492 2489;    % left
+                2487 2484 2492 2489;];  % right
+% read data
+sessions_all = sessions_mat(:);
+for session_i = 1:length(sessions_all)
+ try
+    eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
+        num2str(sessions_all(session_i)) ');']);
+ catch 
+     display('unable to load this session!');
+ end
+end
+% only look through the front now
+pert_avg_mat = nan(size(sessions_mat));
+pert_std_mat = nan(size(sessions_mat));
+for direction_i = 1:size(sessions_mat, 1)
+    for session_i = 1:size(sessions_mat, 2) 
+        sstmp = eval(['ss' num2str(sessions_mat(direction_i,session_i))]);
+        positions = sstmp.getPosPert();
+        positions_nnan = positions(~isnan(positions));
+        if positions_nnan < 0
+            positions_nnan = -positions_nnan;
+        end
+        pert_avg_mat(direction_i, session_i) = mean(positions_nnan, 'omitnan');
+        pert_std_mat(direction_i, session_i) = std(positions_nnan, 'omitnan');
+    end
+end
+axh = figure(); hold on;
+sessions_num = size(sessions_mat, 2);
+% bar(1:sessions_num, pert_avg_mat(1,:)); 
+% errorbar(1:sessions_num, pert_avg_mat(1,:), pert_std_mat(1,:));
+% bar(5:4+sessions_num, pert_avg_mat(2,:));
+% errorbar(5:4+sessions_num, pert_avg_mat(2,:), pert_std_mat(2,:));
+bar(1:sessions_num, pert_avg_mat(:,:));% errorbar(pert_std_mat(1:2,:));
+title('perturbed average position');
+

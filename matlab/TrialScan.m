@@ -246,9 +246,9 @@ classdef TrialScan
             % Just do linear shift, do not skew time
             time = obj.time;
             % should use the # to find the exact perturb time
-            if obj.ifpert == 0
+            if obj.ifpert == 0 || isempty(obj.pert_rdt_bgn) % there is no perturbation in the current trial
                 return
-            end
+            end 
             idx_t = find(obj.pert_rdt_bgn == obj.wamrdt);
             time_offset = obj.position_t(idx_t); 
             

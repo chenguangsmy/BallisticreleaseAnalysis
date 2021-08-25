@@ -68,8 +68,8 @@ classdef (HandleCompatible)SessionScan < handle
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
-%             file_dir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/Formatted';
-            file_dir = ['data/'];
+            file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
+            %file_dir = ['data/'];
             fname0 = ([file_dir '/' file_name]);
             flag_progress = 1;      % show something to make me less anxious
             try 
@@ -1371,8 +1371,32 @@ classdef (HandleCompatible)SessionScan < handle
             title('force y ');
             xlim([-1 1]);
         end
-        function axhf = plotMeantrialForce(obj)
+        function axhf = plotMeantrialForce(obj, axhf, color_arr)
             % plot the meaned trial Force according to the task condition
+             % plot the meaned trial Velocity according to the task condition
+            % if did not calculate the mean and var, calculate
+            if isempty(axhf)
+                axhf = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axhf, 'matlab.ui.Figure')
+                axhf = figure(axhf); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axhf, 'matlab.graphics.axis.Axes')
+                subplot(axhf); hold on;
+                flag_stak = 1;
+            else
+                axhf = figure(); hold on;
+                flag_stak = 0;
+            end
+            % conditions:
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
@@ -1386,13 +1410,14 @@ classdef (HandleCompatible)SessionScan < handle
                 xyi = 2;
             end
             xy_char = 'xy';
-            axhf = figure();
+            %axhf = figure();
             l_h = [];
             labels = {};
             label_i = 0;
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
-                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    col_i = color_arr;
                     hold on;
 
                     %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
@@ -1407,8 +1432,8 @@ classdef (HandleCompatible)SessionScan < handle
                     % mean line
                     l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
                     % 1std shade
-                    force_up = force_mean + force_std/2;
-                    force_dn = force_mean - force_std/2;
+                    force_up = force_mean + force_std;
+                    force_dn = force_mean - force_std;
                     [axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
                 end
             end
@@ -1499,9 +1524,30 @@ classdef (HandleCompatible)SessionScan < handle
             %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
             legend(l_h, labels);
         end
-        function axhp = plotMeantrialPos(obj)
+        function axhp = plotMeantrialPos(obj, axhp, col_i)
             % plot the meaned trial Position according to the task condition
             % if did not calculate the mean and var, calculate
+            if ~exist('axhp', 'var')
+                axhp = figure();
+            else
+                % for figure
+                if strcmp(axhp.Type, 'figure')
+                    axhp = figure(axhp);
+                    hold on;
+                elseif strcmp(axhp.Type, 'axes')
+                % for axis
+                    axhp = subplot(axhp);
+                    hold on;
+                else
+                    disp('Uknown handle type, return!');
+                    return;
+                end
+            end
+            % plot color
+            if ~exist('col_i', 'var')
+                col_i = 1;
+            end
+            
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
@@ -1516,26 +1562,26 @@ classdef (HandleCompatible)SessionScan < handle
             end
             xy_char = 'xy';
             % plot position
-            axhp = figure();
+            % axhp = figure(); % when plot in a single figure
             l_h = [];
             labels = {};
             label_i = 0;
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
-                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     label_i = label_i + 1;
                     labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
-                    force_std = std(resample_p(:,:,xyi), 'omitnan');  
+                    pos_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
+                    pos_std = std(resample_p(:,:,xyi), 'omitnan');  
                     % mean line
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
+                    l_h = [l_h plot(resample_t, pos_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
                     % 1std shade
-                    force_up = force_mean + force_std/2;
-                    force_dn = force_mean - force_std/2;
-                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
+                    pos_up = pos_mean + pos_std/2;
+                    pos_dn = pos_mean - pos_std/2;
+                    [axh, msg] = jbfill(resample_t, pos_up, pos_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
                 end
             end
             xlabel('time aligned at MOV signal');
@@ -1630,15 +1676,42 @@ classdef (HandleCompatible)SessionScan < handle
             %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
             legend(l_h, labels);
         end
-        function axhv = plotMeantrialVel(obj)
+        function axhv = plotMeantrialVel(obj, axhv, color_arr)
             % plot the meaned trial Velocity according to the task condition
             % if did not calculate the mean and var, calculate
+            if isempty(axhv)
+                axhv = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axhv, 'matlab.ui.Figure')
+                axhv = figure(axhv); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axhv, 'matlab.graphics.axis.Axes')
+                subplot(axhv); hold on;
+                flag_stak = 1;
+            else
+                axhv = figure(); hold on;
+                flag_stak = 0;
+            end
+            
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
             all_tarL = unique([obj.trials.tarL]);
             all_tarL = all_tarL(~isnan(all_tarL));
             all_tarR = unique([obj.trials.tarR]);
             all_tarR = all_tarR(~isnan(all_tarR));
+            
+            % exceptations: 
+            if obj.ssnum == 2459
+                all_tarL = setdiff(all_tarL, [0.01]);
+            end
             % assume this session only have x- or y- trials
             if isempty(setdiff(all_tarR, [0,4])) %only y direction
                 xyi = 1;
@@ -1647,31 +1720,32 @@ classdef (HandleCompatible)SessionScan < handle
             end
             xy_char = 'xy';
             % plot velocity
-            axhv = figure();
+            %axhv = figure();
             l_h = [];
             labels = {};
             label_i = 0;
             for fTH_i = 1:length(all_fTH)
                 for tarL_i = 1:length(all_tarL)
-                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+                    col_i = color_arr;
                     hold on;
                     trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
                     label_i = label_i + 1;
                     labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
-                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
+                    vel_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
+                    vel_std = std(resample_v(:,:,xyi), 'omitnan');  
                     % mean line
                     try
                         col_tmp = obj.col_vec(col_i,:);
                     catch
                         col_tmp = obj.col_vec(mod(col_i, size(obj.col_vec, 1)),:);
                     end
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
+                    l_h = [l_h plot(resample_t, vel_mean, 'LineWidth', 3, 'Color', col_tmp)];
                     % 1std shade
-                    force_up = force_mean + force_std/2;
-                    force_dn = force_mean - force_std/2;
-                    [axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
+                    vel_up = vel_mean + vel_std;
+                    vel_dn = vel_mean - vel_std;
+                    [~, ~] = jbfill(resample_t, vel_up, vel_dn, col_tmp, col_tmp, 1, 0.3);
                 end
             end
             xlabel('time aligned at MOV signal');
@@ -1925,6 +1999,69 @@ classdef (HandleCompatible)SessionScan < handle
             title(['3, 12, 21N at ' num2str(all_tarL(tarL_i)*100) 'cm']);
             %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
             %legend(l_h, labels);
+            end
+        end
+        function positions = getPosPert(obj)
+            % return each trial Position according to the task condition
+            % (if more than 1 task conditions, may cause error).
+            % The position was calculated the average value from .25~.30
+            % after the positive step, and this is immediately before the 
+            % negative step. 
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot position
+            
+            % plot color
+            if ~exist('col_i', 'var')
+                col_i = 1;
+            end
+            label_i = 0;  
+            % align for the perturbation time
+            for trial_i = 1:length(obj.trials)
+                if (obj.trials(trial_i).ifpert)
+                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
+                end
+            end
+            positions = [];
+            % get the mean
+            %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+            hold on;
+            trials_idx = [obj.trials.ifpert];
+            label_i = label_i + 1;
+            
+            [resample_t, resample_p, ~] = trialDataAlignWAM(obj, find(trials_idx));
+            % substract average before pert
+            resample_t_0idx = find(resample_t == 0);
+            if resample_t_0idx >= 50
+                resample_t_idx = (resample_t_0idx - 49):resample_t_0idx;
+            else
+                resample_t_idx = 1:resample_t_0idx;
+            end
+            % process each trial to subtract the average
+            for trial_i = 1:size(resample_p(:,:,xyi),1)
+                data = resample_p(trial_i,resample_t_idx,xyi);
+                resample_p(trial_i, :, xyi) = resample_p(trial_i, :, xyi) - mean(data);
+            end
+            % pos_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
+            pos_mean = mean(resample_p(:,:,xyi), 'omitnan'); %only y direction
+            pos_std = std(resample_p(:,:,xyi), 'omitnan');
+            % mean values
+            positions = nan(size(resample_p,1),1);
+            resample_t_idx_mean = [find(resample_t >= 0.25 & resample_t <0.3)];
+            for trial_i = 1:size(resample_p(:,:,xyi),1)
+                data = resample_p(trial_i,resample_t_idx_mean,xyi);
+                positions(trial_i) = mean(data, 'omitnan');
             end
         end
 
@@ -2397,6 +2534,7 @@ classdef (HandleCompatible)SessionScan < handle
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
             trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
             
             % plot
             
@@ -2409,16 +2547,19 @@ classdef (HandleCompatible)SessionScan < handle
                 time0 = obj.trials(trial_i).pert_t_bgn;
                 resp_p = obj.trials(trial_i).position_h(2,:);
                 resp_v = obj.trials(trial_i).velocity_h(2,:);
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                position_offset = 0.482;
+                position_offset = mean(obj.trials(trial_i).position_h(2,...
+                    find(time>time0-0.1 & time<time0)));
+                resp_p_net= resp_p - position_offset; %obj.trials(trial_i).position_offset;
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
                 if ifcolor == 1
-                    plot(time-time0, resp_p, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
+                    %plot(time-time0, resp_p, 'color', color_arr);
+                    plot(time-time0, resp_p_net, 'color', color_arr);
                     %plot(time-time0, resp_v, 'color', color_arr); %velocity
                 else
-                    plot(time-time0, resp_p, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
+                    %plot(time-time0, resp_p, 'color', color_arr);
+                    plot(time-time0, resp_p_net);
                     %plot(time-time0, resp_v, 'color', color_arr);
                 end
             end
@@ -2510,6 +2651,245 @@ classdef (HandleCompatible)SessionScan < handle
                 xlim([-0.2, 0.6]);
                 %ylim([-0.015, 0.015]);
                 ylabel('force (N)');
+                xlabel('time');
+                title(['session' num2str(obj.ssnum) ' perturbation']);
+            end
+            
+        end
+        
+        function axh = plotReleaseResponse_rawF(obj, axh, color_arr)
+            % axh = plotReleaseResponse_rawF % plot the raw response of
+            % ballistic release, in terms of force. of all trials in this session 
+            % Assuming all trials are at the same task condition
+            % It requires the same stiffness so that response magnitudes are
+            % the same.
+             
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            %obj = updatePertEachTrial(obj);
+            %trials_pert = find([obj.trials(:).ifpert]);
+            trials_all = find([obj.trials(:).outcome]); % outcome not 0
+            % plot
+            
+            % figure properties
+            
+            % for each trial
+            for trial_i = trials_all
+                if trial_i == 1
+                    continue;
+                end
+                % make the time aligned for the perturbation
+                %time = obj.trials(trial_i).position_t;
+                time = obj.trials(trial_i).force_t;
+                %time0 = obj.trials(trial_i).pert_t_bgn;
+                %resp_p = obj.trials(trial_i).position_h(2,:);
+                %resp_v = obj.trials(trial_i).velocity_h(2,:);
+                %resp_f = obj.trials(trial_i).force_h(2,:);
+                resp_f = obj.trials(trial_i).force_h(2,:);
+                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    %plot(time-time0, resp_p, 'color', color_arr);
+                    plot(time, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net, 'color', color_arr);
+                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
+                else
+                    %plot(time-time0, resp_p, 'color', color_arr);
+                    plot(time, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net);
+                    %plot(time-time0, resp_v, 'color', color_arr);
+                end
+            end
+            if flag_stak == 0
+                xlim([-0.1, 1]);
+                ylabel('force (N)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.1, 1]);
+                %ylim([-0.015, 0.015]);
+                ylabel('force (N)');
+                xlabel('time');
+                title(['session' num2str(obj.ssnum) ' perturbation']);
+            end
+            
+        end
+        function axh = plotReleaseResponse_rawP(obj, axh, color_arr)
+            % axh = plotReleaseResponse_rawP % plot the raw response of
+            % ballistic release, in terms of position of all trials in this session 
+            % Assuming all trials are at the same task condition
+            % It requires the same stiffness so that response magnitudes are
+            % the same.
+             
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            %obj = updatePertEachTrial(obj);
+            %trials_pert = find([obj.trials(:).ifpert]);
+            trials_all = find([obj.trials(:).outcome]); % outcome not 0
+            % plot
+            
+            % figure properties
+            
+            % for each trial
+            for trial_i = trials_all
+                if trial_i == 1
+                    continue;
+                end
+                % make the time aligned for the perturbation
+                time = obj.trials(trial_i).position_t;
+                %time = obj.trials(trial_i).force_t;
+                %time0 = obj.trials(trial_i).pert_t_bgn;
+                resp_p = obj.trials(trial_i).position_h(2,:);
+                %resp_v = obj.trials(trial_i).velocity_h(2,:);
+                %resp_f = obj.trials(trial_i).force_h(2,:);
+                %resp_f = obj.trials(trial_i).force_h(2,:);
+                position_offset = 0.482;
+                resp_p_net= resp_p - position_offset; %obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    %plot(time, resp_p, 'color', color_arr);
+                    %plot(time, resp_f, 'color', color_arr);
+                    plot(time, resp_p_net, 'color', color_arr);
+                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
+                else
+                    %\plot(time, resp_p, 'color', color_arr);
+                    %plot(time, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net);
+                    %plot(time-time0, resp_v, 'color', color_arr);
+                end
+            end
+            if flag_stak == 0
+                xlim([-0.1, 1]);
+                ylabel('position (m)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.1, 1]);
+                %ylim([-0.015, 0.015]);
+                ylabel('position (m)');
+                xlabel('time');
+                title(['session' num2str(obj.ssnum) ' perturbation']);
+            end
+            
+        end
+        function axh = plotReleaseResponse_rawV(obj, axh, color_arr)
+            % axh = plotReleaseResponse_rawV % plot the raw response of
+            % ballistic release, in terms of velocity of all trials in this session 
+            % Assuming all trials are at the same task condition
+            % It requires the same stiffness so that response magnitudes are
+            % the same.
+             
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            %obj = updatePertEachTrial(obj);
+            %trials_pert = find([obj.trials(:).ifpert]);
+            trials_all = find([obj.trials(:).outcome]); % outcome not 0
+            % plot
+            
+            % figure properties
+            
+            % for each trial
+            for trial_i = trials_all
+                if trial_i == 1
+                    continue;
+                end
+                % make the time aligned for the perturbation
+                time = obj.trials(trial_i).position_t;
+                %time = obj.trials(trial_i).force_t;
+                %time0 = obj.trials(trial_i).pert_t_bgn;
+                %resp_p = obj.trials(trial_i).position_h(2,:);
+                resp_v = obj.trials(trial_i).velocity_h(2,:);
+                %resp_f = obj.trials(trial_i).force_h(2,:);
+                %resp_f = obj.trials(trial_i).force_h(2,:);
+                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    %plot(time, resp_p, 'color', color_arr);
+                    %plot(time, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net, 'color', color_arr);
+                    plot(time, resp_v, 'color', color_arr); %velocity
+                else
+                    %\plot(time, resp_p, 'color', color_arr);
+                    %plot(time, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net);
+                    plot(time, resp_v, 'color', color_arr);
+                end
+            end
+            if flag_stak == 0
+                xlim([-0.1, 1]);
+                ylabel('position (m)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.1, 1]);
+                %ylim([-0.015, 0.015]);
+                ylabel('position (m)');
                 xlabel('time');
                 title(['session' num2str(obj.ssnum) ' perturbation']);
             end

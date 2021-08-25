@@ -21,8 +21,8 @@ classdef SessionScanFT
         function obj = SessionScanFT(ss_num)
             %FTSEPERATEDAT Construct an instance of this class
             %   Detailed explanation goes here
-%             fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/FT.data';
-            fdir = ['data/'];
+            fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
+            %fdir = ['data/'];
             %fname = 'KingKongFT01865.csv';
             fname = sprintf('KingKongFT%05d.csv', ss_num);
             Data = readtable([fdir '/' fname]);

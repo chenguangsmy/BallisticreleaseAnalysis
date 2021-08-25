@@ -34,8 +34,8 @@ classdef SessionScanWam
             %FTSEPERATEDAT Construct an instance of this class
             %   read file according to the data sequence
             obj.ss_num = ss_num;
-%             fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/WAM.data';
-            fdir = ['data/'];
+            fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
+            %fdir = ['data/'];
             %fname = '20210127aft00.csv';
             fname = sprintf('KingKongWAM%05d.csv', ss_num);
             filename = [fdir '/' fname];

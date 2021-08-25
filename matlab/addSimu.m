@@ -12,7 +12,7 @@ for F_i = 1:length(F_list)
     x0 = 0.05;     % m
     ks = F/x0;   % N/m  % assume subject can alter his/her stiffness
     kr = 25;    % N/(m*s)
-    % specify ODE
+    % specify ODEds
     % m*x'' = ks(x0 - x) - kr*x'
     % x'(0) = 0;
     % x(0) = 0;
@@ -165,13 +165,16 @@ subplot(3,1,1);
 title('K 320, B 15, M 1');
 
 %% execute a series of simulink 
-force_all = [5 10 15 20];
-target_all = [0.05 0.075 0.10];
+% force_all = [5 10 15 20];
+target_all = [2.5 5.0 7.5 10.0]/100;
+stiffness_all = [320, 160, 107, 89];
 stiffness_col = ['rgbc'];
-for target_i = 1:3
-    target_set = target_all(target_i);
-    stiffness_all = force_all/target_set; 
-    for stiffness_i = 1:4
+for stiffness_i = 1:length(stiffness_all)
+    % target_set = target_all(target_i);
+    stiffness_set   = stiffness_all(stiffness_i);
+    force_all       = target_all * stiffness_set;
+    % stiffness_all   = force_all/target_set; 
+    for target_i = 1:length(target_all)
         stiffness_set = stiffness_all(stiffness_i);
         simOut(target_i, stiffness_i) = sim('../ballisticReleaseSimu/SpringMass_2019_show');
     end
@@ -262,76 +265,91 @@ title('Theoretical x0 with interacting with WAM');
 % 7.5cm: 8N : 21N
 % 0.1cm: 7N : 21N
 %Force_list = {[3, 6], [6, 9, 12, 15], [9:3:21], [9:3:21]};
-%Force_list = [3 9 15 21];
+Force_list = [3 9 15 21];
 %dist = [2.5 5 7.5 10]/100;
-spring_list = [89, 106.67, 160, 320]; % N/m
-dist = [2.5 5 7.5 10]/100;
+spring_list = [320, 160, 106.67, 89]; % N/m
+%dist = [10 7.5 5 2.5]/100;
 k0 = 2500;
 colors = colormap('lines');
 stiffness0 = 300; % robot stiffness
-for dist_i = 1:length(dist)
-    %fce_list = Force_list{dist_i};
-    fce_list = dist(dist_i) * spring_list; 
-    for fce_i = 1:length(fce_list)
-        x0 = dist(dist_i);
+%for dist_i = 1:length(dist)
+%for spring_i = 1:length(spring_list)
+for fce_i = 1:length(spring_list)
+    fce_list = Force_list;%{dist_i};
+    %dist = fce_list/spring_list(spring_i);
+    %fce_list = dist(dist_i) * spring_list; 
+    %for fce_i = 1:length(fce_list)
+    for spring_i = 1:length(fce_list)
+        %x0 = dist(spring_i);
         fce = fce_list(fce_i);
+        dist = fce/spring_list(spring_i);
+        x0 = dist;
         %stiffness = fce/(x0-fce/k0);
-        stiffness = fce/x0;
+        %stiffness = fce/x0;
+        stiffness = spring_list(spring_i);
         damping = 10;
         xr0 = fce/stiffness0;
         %stiffness_mat(fce/3, dist_i) = stiffness;
         %simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease');
-        simout(dist_i, fce_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
+        simout(fce_i, spring_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
             'FixedStep','0.002');
     end    
 end
 %% plot out 
 figure(); 
 
-%for fce_i = 1:length(fce_list)
-for dist_i = 1:length(dist)
-    fce_list = spring_list*dist(dist_i); 
+for fce_i = 1:length(fce_list)
+%for dist_i = 1:length(dist)
+%for spring_i = 1:length(spring_list)
+    fce_list = spring_list*dist;%dist(dist_i); 
     %subplot(1,length(fce_list),fce_i); hold on;
-    subplot(1,length(dist),dist_i); hold on;
+    %subplot(1,length(dist),dist_i); hold on;
+    subplot(1,length(spring_list),fce_i); hold on;
     %figure(); hold on;
     %x0 = 0.05;
     %fce_list = Force_list{dist_i};
     %for dist_i = 1:length(dist)
-    for fce_i = 1:length(fce_list)
-        pos = simout(dist_i, fce_i).pos.Data;
-        postime= simout(dist_i, fce_i).tout;
+    %for fce_i = 1:length(fce_list)
+    for spring_i = 1:length(spring_list)
+        pos = simout(fce_i, spring_i).pos.Data;
+        postime= simout(fce_i, spring_i).tout;
         posidx = postime>0.5 & postime<0.8;
         pos0= mean(pos(posidx));
-        vel = simout(dist_i, fce_i).vel.Data;
-        time = simout(dist_i, fce_i).vel.Time - 4; % 1 for pert, 4 for release
-        fce = simout(dist_i, fce_i).fce.Data;
-        timeF= simout(dist_i, fce_i).fce.Time;
+        vel = simout(fce_i, spring_i).vel.Data;
+        time = simout(fce_i, spring_i).vel.Time - 1; % 1 for pert, 4 for release
+        fce = simout(fce_i, spring_i).fce.Data;
+        timeF= simout(fce_i, spring_i).fce.Time;
         %plot(time, pos-pos0, 'color', colors(fce_i,:));
         %plot(time, vel, 'color', colors(fce_i,:));
-        %plot(time, pos, 'color', colors(fce_i,:));
+        plot(time, pos, 'color', colors(spring_i,:));
         %plot(time, pos, 'color', colors(dist_i,:));
         %plot(time, fce-fce(1), 'color', colors(fce_i,:));
-        plot(time, fce, 'color', colors(fce_i,:));
+        %plot(time, fce, 'color', colors(fce_i,:));
         %legend_arr{fce_i} = [num2str(fce_list(fce_i)) 'N'];
         %legend_arr{dist_i} = [num2str(dist(dist_i)) 'm'];
+        legend_arr{fce_i} = [num2str(spring_list(fce_i)) 'N/m'];
     end
     legend(legend_arr);
-    %ylim([-0.01, 0.04]);
+    %ylim([-18, 35]); % force 
     %ylim([-0.02, 0.06]);
-    %ylim([-0.04, 0.14]);
+    %ylim([-0.01, 0.16]); % position
+    %ylim([-0.01, 0.25]); % position, bigger
+    ylim([-0.16, 0.01]); % -position
     %ylim([-0.15, 0.6]);
-    %ylim([-0.35, 0.35]);
-    xlim([-0.1, 1]);
+    %ylim([-0.35, 0.35]); % velocity
+    xlim([-0.1, 1.2]);
+    %ylim([-1.1, 1.2]); % velocity
     %if dist_i == 1
-    if fce_i == 1
-        ylabel('position (m)')
+    if dist_i == 1
+        %ylabel('position (m)')
         %ylabel('velocity (m/s)')
+        ylabel('censored force (N)')
         xlabel('time at movement (s)');
     else
         %set(gca, 'yTickLabel', {});
     end
     set(gca, 'Ygrid', 'on');
-    title(['target ' num2str(dist(dist_i)*100) 'cm']);
+    %title(['target ' num2str(dist(dist_i)*100) 'cm']);
     %title(['force ' num2str(fce_list(fce_i)) 'N']);
 end
 
@@ -420,6 +438,8 @@ damp_est
 %% to test perturbation at equilibrium position
 SpringStiff_list = [160, 320, 640, 960];
 PertFce_list = [5,10,15,20,25];
+x0 = 0;
+xr0 = 0;
 colors = colormap('lines');
 for stiffness_i = 1:length(SpringStiff_list)
     %fce_list = Force_list{dist_i};
@@ -445,7 +465,7 @@ for stiffness_i = 1:length(SpringStiff_list)
         time = simout(stiffness_i, PertFce_i).vel.Time - 1;
         fce = simout(stiffness_i, PertFce_i).fce.Data;
         timeF= simout(stiffness_i, PertFce_i).fce.Time;
-        %plot(time, pos-pos0, 'color', colors(fce_i,:));
+        %plot(time, pos-pos0, 'color', colors(PertFce_i,:));
         %plot(time, vel, 'color', colors(fce_i,:));
         %plot(time, pos, 'color', colors(fce_i,:));
         %plot(time, pos, 'color', colors(dist_i,:));
@@ -456,13 +476,15 @@ for stiffness_i = 1:length(SpringStiff_list)
     legend(legend_arr);
     %ylim([-0.01, 0.04]);
     %ylim([-0.02, 0.06]);
-    %ylim([-0.04, 0.14]);
+    %ylim([-0.04, 0.14]); % position
+    %ylim([-0.08, 0.03]); % position of perturbation
     %ylim([-0.15, 0.6]);
-    ylim([-5, 30]);
-    xlim([-0.1, 1.0]);
+    ylim([-5, 30]); % force
+    xlim([-0.08, 1.0]);
     %if dist_i == 1
-    if fce_i == 1
+    if stiffness_i == 1
         ylabel('Force (N)')
+        %ylabel('endpoint position (m)')
         %ylabel('velocity (m/s)')
         xlabel('time at perturbation (s)');
     else
