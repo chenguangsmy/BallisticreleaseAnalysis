@@ -1,14 +1,14 @@
-%% Process Data stiffness analysis
+% Process Data stiffness analysis
 
 clear all
-close all
+% close all
 clc
 dbstop if error
 
 addpath('func/');
 
 
-%% Human analysis
+% % Human analysis
 % ss2005 = SessionScan(2005); % Human (test 1)
 % ss2007 = SessionScan(2007); % Human (test 2)
 % 
@@ -150,7 +150,7 @@ addpath('func/');
 
 %% Test sys ID on impulse preturbations 6/9/21 
 %% Analysis with Springs
-ss = SessionScan(2084);     % during this part already do [1]
+ss = SessionScan(2262);     % during this part already do [1]
 % connect data
 % Elliminates half the trials due to "failure" 
 ss.generateWamPertData();   %                          do [2]
@@ -159,5 +159,31 @@ ss.generateWamPertData();   %                          do [2]
 ss.generateWamPertData_ensemble();
 
 get_Z_ensemble(ss.wam.Data_pert_ensemble);
+
+
+load('/Users/jhermus/Desktop/robot.mat');
+robot = z_cut_pos_mean;
+load('/Users/jhermus/Desktop/human5N10cm_.mat');
+human1 = z_cut_pos_mean;
+load('/Users/jhermus/Desktop/human25N5cm_.mat');
+human2 = z_cut_pos_mean;
+
+ 
+figure; 
+plot(robot,'linewidth',2.5); hold on;
+plot(human1,'linewidth',2.5); hold on;
+plot(human2,'linewidth',2.5); hold on;
+legend('robot','human 5 N 10 cm', 'human 25 N 5 cm');
+
+figure; 
+plot(human1 - robot,'linewidth',2.5); hold on;
+plot(human2 - robot,'linewidth',2.5); hold on;
+
+
+
+
+
+
+
 
 

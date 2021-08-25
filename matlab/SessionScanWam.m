@@ -141,7 +141,7 @@ classdef SessionScanWam
                 rdt_ranges = rdt_ranges_all{conditioni};
                 rdt_mov = rdt_mov_all{conditioni};
                 for pair_i = 1:size(rdt_ranges,2)
-                    rdt_idx = [rdt_ranges(1,pair_i):5: ... % Added 5 to take every 5th sample
+                    rdt_idx = [rdt_ranges(1,pair_i):... % Added 5 to take every 5th sample
                                         rdt_ranges(2,pair_i)];
                 
 %                 Data_pert_ensemble(conditioni,pair_i).FT     = fTh_list(conditioni);

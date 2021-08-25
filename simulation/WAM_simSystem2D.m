@@ -197,8 +197,8 @@ classdef WAM_simSystem2D < handle
                 % Create bandwidthlimited 50 Hz gausian white noise (std before or after filt?)
                 this.F_pret = [this.get_StepPreturbation();...
                     zeros(1,this.N_tot)]';
-                %                 this.F_pret = [this.get_instanceOrRandomPreturbation();...
-                %                                zeros(1,this.N_tot)]';
+%                                 this.F_pret = [this.get_instanceOrRandomPreturbation();...
+%                                                zeros(1,this.N_tot)]';
                 
                 % Use ode45 to solve state equations
                 [tvec, xvec] = ode45(@(t,y)this.getStates(t,y), this.t, xx0);
@@ -861,8 +861,8 @@ classdef WAM_simSystem2D < handle
             fp(dexDown) = (0.5)*(sin(t_up)+1);
             
             fp = A.*fp;
-            
-            % Sanity check interp problem
+             
+%             % Sanity check interp problem
 %             clear all
 %             close all
 %             clc
@@ -918,7 +918,17 @@ classdef WAM_simSystem2D < handle
 %                     t,x3,'g-o',t_high,x3_interp,'g-+',...
 %                     t_r,x_r,'k--','linewidth',2,'markersize',10);
 %                 ylim([-0.25 1.25]); title(['r = ',int2str(r)]);
+%                 ylabel('Position (au)');
+%                 xlabel('Time (s)'); set(gca,'fontsize',16);
+%                 
 %             end
+%             
+%             figure;plot(t,x1,'r-o',t_high,x1_interp,'r-+',...
+%                 t,x3,'g-o',t_high,x3_interp,'g-+',...
+%                 t_r,x_r,'k--','linewidth',2,'markersize',10);
+%             ylim([-0.25 1.25]); %title(['r = ',int2str(r)]);
+%             ylabel('Position (au)');
+%             xlabel('Time (s)'); set(gca,'fontsize',16);
             
         end
         
