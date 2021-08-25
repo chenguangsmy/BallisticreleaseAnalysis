@@ -21,8 +21,8 @@ classdef SessionScanFT
         function obj = SessionScanFT(ss_num)
             %FTSEPERATEDAT Construct an instance of this class
             %   Detailed explanation goes here
-%             fdir = '/Users/cleave/Documents/projPitt/Ballistic_release_data/FT.data';
-            fdir = ['data/'];
+            fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
+            %fdir = ['data/'];
             %fname = 'KingKongFT01865.csv';
             fname = sprintf('KingKongFT%05d.csv', ss_num);
             Data = readtable([fdir '/' fname]);
@@ -87,7 +87,9 @@ classdef SessionScanFT
            title(['force offset every trial']);
         end
         function obj = forceFTconvert(obj) % convert from select into world axis
-            obj.force = obj.FTrot_M * obj.force_origin;
+            %obj.force = obj.FTrot_M * obj.force_origin;
+            obj.force = obj.FTrot_M * obj.force_net;
+            %obj.force_net = obj.FTrot_M * obj.force_net;
         end
         function plotElapse(obj)
            figure();
@@ -98,6 +100,17 @@ classdef SessionScanFT
             plot(diff(obj.FT'));
         end
         % function align the data here?
+        % plots here
+        function plotSmoothedForce(obj)
+            % smooth data
+            force_smt = smoothdata(obj.force,2, 'movmean',20); % window 20
+            %force_smt(1,:) = smoothdata(obj.force(1,:),'movmean',20);
+            % plot
+            figure(); hold on;
+            plot(force_smt(1,:));
+            plot(force_smt(2,:));
+            plot(force_smt(3,:));
+        end
         
         function plotForceTorque(obj, sample_r)
            figure();
@@ -109,6 +122,16 @@ classdef SessionScanFT
            xlabel('read timepints');
            ylabel('force / N'); 
            title('original force');
+        end
+        function plotForcexy_ss2271(obj)
+            force0 = mean(obj.force_origin(:,1:50), 2);
+            forceNet = obj.force_origin(:,:) - force0;
+            force_xy = zeros(size(forceNet(1:2,:),2), 1);
+            for time_i = 1:size(obj.force_origin, 2)
+                force_xy(time_i) = norm(forceNet(1:2,time_i), 2);
+            end
+            force_z  = forceNet(3,:)';
+            plot([force_xy, force_z]);
         end
     end
 end
