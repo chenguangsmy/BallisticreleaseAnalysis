@@ -451,12 +451,12 @@ ss2540.plotStepPertResponse_raw(subplot(1,2,1), color_arr(6,:));
 ss2540.plotStepPertResponse_rawF(subplot(1,2,2),color_arr(6,:));
 
 %% spring perturbation test, with x0 start at 0 positions
-% sessions_mat = [2558 2560 2562 2563 2564;   % 160N/m
-%                 2547 2546 2605 2545 2602;   % 320N/m, external spring
-%                 2548 2549 2606 2551 2552;   % 640N/m
-%                 2557 2556 2555 2554 2553;]; % 960N/m
-sessions_mat = [2611 2610 2612 2613;        % 160N/m
-                2614 2615 2617 2619];       % 320N/m
+ sessions_mat = [2558 2560 2562 2563 2564;   % 160N/m
+                 2547 2546 2605 2545 2602;   % 320N/m, external spring
+                 2548 2549 2606 2551 2552;   % 640N/m
+                 2557 2556 2555 2554 2553;]; % 960N/m
+%sessions_mat = [2611 2610 2612 2613;        % 160N/m
+%                2614 2615 2617 2619];       % 320N/m
                 
 sessions_all = sessions_mat(:);
 for session_i = 1:length(sessions_all)

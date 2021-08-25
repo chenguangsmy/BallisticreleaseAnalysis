@@ -169,6 +169,14 @@ classdef (HandleCompatible)SessionScan < handle
 %             axh = plotTrialfyForceh_xy(obj);
             %[axhF, axhP] = plotSameTrial(obj);
             
+            % remove error task conditions to avoid code error 
+            obj = obj.dealingSessionsExceptions();
+
+        end
+        function obj = dealingSessionsExceptions(obj)
+            % solve some data-code inconsistant problem, specify for each
+            % sessions
+
         end
         function obj = convert0toNan(obj) % dealing with some Nan-int confliction
             rdt = double(obj.Data.Position.RDT);
@@ -1403,6 +1411,9 @@ classdef (HandleCompatible)SessionScan < handle
             all_tarL = all_tarL(~isnan(all_tarL));
             all_tarR = unique([obj.trials.tarR]);
             all_tarR = all_tarR(~isnan(all_tarR));
+            if obj.ssnum == 2459 % 
+                all_tarL = setdiff(all_tarL, [0.01]);
+            end
             % assume this session only have x- or y- trials
             if isempty(setdiff(all_tarR, [0,4])) %only y direction
                 xyi = 1;
@@ -1505,7 +1516,7 @@ classdef (HandleCompatible)SessionScan < handle
                     % substract the <0 average value
                     time_idx = resample_t < 0;
                     for trial_i = 1:size(resample_f, 1)
-                        resample_f(trial_i,:,xyi) = resample_f(trial_i,:,xyi) - mean(resample_f(trial_i,time_idx,xyi));
+                        resample_f(trial_i,:,xyi) = resample_f(trial_i,:,xyi); %- mean(resample_f(trial_i,time_idx,xyi));
                     end
                     force_mean = mean(resample_f(:,:,xyi)); %only y direction
                     force_std = std(resample_f(:,:,xyi));  
@@ -1554,6 +1565,10 @@ classdef (HandleCompatible)SessionScan < handle
             all_tarL = all_tarL(~isnan(all_tarL));
             all_tarR = unique([obj.trials.tarR]);
             all_tarR = all_tarR(~isnan(all_tarR));
+            if obj.ssnum == 2459
+                all_tarL = setdiff(all_tarL, [0.01]);
+            end
+            
             % assume this session only have x- or y- trials
             if isempty(setdiff(all_tarR, [0,4])) %only y direction
                 xyi = 1;
@@ -1574,8 +1589,8 @@ classdef (HandleCompatible)SessionScan < handle
                     label_i = label_i + 1;
                     labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
                     [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    pos_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
-                    pos_std = std(resample_p(:,:,xyi), 'omitnan');  
+                    pos_mean = mean(resample_p(:,:,xyi), 1, 'omitnan') - obj.endpoint0(xyi); %only y direction
+                    pos_std = std(resample_p(:,:,xyi), 1, 'omitnan');  
                     % mean line
                     l_h = [l_h plot(resample_t, pos_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
                     % 1std shade
@@ -1600,6 +1615,9 @@ classdef (HandleCompatible)SessionScan < handle
             all_tarL = all_tarL(~isnan(all_tarL));
             all_tarR = unique([obj.trials.tarR]);
             all_tarR = all_tarR(~isnan(all_tarR));
+            if obj.ssnum == 2459 % 
+                all_tarL = setdiff(all_tarL, [0.01]);
+            end
             % assume this session only have x- or y- trials
             if isempty(setdiff(all_tarR, [0,4])) %only y direction
                 xyi = 1;
