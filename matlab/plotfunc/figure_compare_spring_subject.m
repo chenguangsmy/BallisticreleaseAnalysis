@@ -31,8 +31,9 @@ end
     save([interDataDir '/' 'ss2611Springtests.mat'], 'ss26*');
 end
 %
-color_arr = colormap('lines');
+
 figure();
+color_arr = colormap('lines');
 %% 1st line, spring Ks = 160N/m
 for force_i = 1:size(force_list,2)
     axh = subplot(3,4,force_i); hold on;
