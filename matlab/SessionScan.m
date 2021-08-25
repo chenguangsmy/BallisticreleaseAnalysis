@@ -466,45 +466,74 @@ classdef (HandleCompatible)SessionScan < handle
             % send data into wam function to help SessionScanWam generate perturbation-only data
             % perturbation rdt already saved in TrialScan
             
-            % Figure out state
-            
             % Find and talk out start up time in zero state
             dexStart = max(find(obj.wam.state == 0))+1;
 %             dexEnd = max(find(abs(diff(obj.wam.state(1:499999))) == 6)); % Temporarly cut end due to change in sampling rate
             dexEnd = max(find(abs(diff(obj.wam.state)) == 6)); % Keep all
 
             state = obj.wam.state(dexStart:dexEnd);
-            % Find trial onset
-            dexForceRampStart = find(state == 3 & [0;abs(diff(state))>=1])+dexStart;
-            dexMovOnset = find(state == 4 & [0;abs(diff(state))>=1])+dexStart-1;
-            dexHoldEnd = find(state == 7 & [0;abs(diff(state))>=1])+dexStart-2;
-                        
-            % Chop first trial
-            dexForceRampStart = dexForceRampStart(2:end);
-            dexMovOnset = dexMovOnset(2:end);
-            dexHoldEnd = dexHoldEnd(2:end);
             
-            % Check if the size of the dexs are the same. If not check
-            % order
-            if(0~=sum(diff([length(dexForceRampStart),length(dexMovOnset),length(dexHoldEnd)])))
-                if(dexMovOnset(1) > dexForceRampStart(1)) % remove extra trial
-                    dexMovOnset = dexMovOnset(2:end);
-                    dexHoldEnd = dexHoldEnd(2:end);
+            % Figure out state
+            success = zeros(size(state));
+            last_dexForceRamp = 0;
+            for i = 1:length(state)-1
+                % Set last to 1 if its the start of the force hold
+                if(state(i) == 2 && state(i+1) == 3)
+                    last_dexForceRamp = i;
                 end
                 
-                if(length(dexHoldEnd) > length(dexForceRampStart)+100) % If weird problem
-                    dexHoldEnd = dexHoldEnd(1:length(dexMovOnset));
-                    dexForceRampStart = dexForceRampStart(1:length(dexMovOnset));
+                % Set state last to zero if trial progreses to fast
+                if((state(i+1)-state(i)~=0))
+                    if((state(i+1)-state(i))~=1)
+                        % leave success at zero
+                        last_dexForceRamp = 0;
+                    end
+                end
+                
+                % If both checks are passed and 6 is reached consider it a
+                % success
+                if(last_dexForceRamp ~= 0 && state(i+1) == 6)
+                    success(last_dexForceRamp:i) = 1;
                 end
             end
             
-            % Check for failed trials that did not go through all states
-            % If length is all the same dont bother checking
-            if ~(length(dexHoldEnd) == length(dexMovOnset))
-                dexSkip = find(dexHoldEnd(1:length(dexMovOnset)) - dexMovOnset<0,1); 
-                dexForceRampStart = dexForceRampStart([1:dexSkip-1,dexSkip+1:length(dexForceRampStart)]);
-                dexHoldEnd = dexHoldEnd([1:dexSkip-1,dexSkip+1:length(dexHoldEnd)]);
-            end
+            % Find trial onset
+            dexForceRampStart = find(state.*success == 3 & [0;abs(diff(state))>=1])+dexStart;
+            dexMovOnset = find(state.*success == 4 & [0;abs(diff(state))>=1])+dexStart-1;
+            dexHoldEnd = find(state.*success == 6 & [0;abs(diff(state))>=1])+dexStart-2;
+            
+            state_advance = zeros(size(state));
+            state_advance(dexForceRampStart) = 1;
+            state_advance(dexMovOnset) = 2;
+            state_advance(dexHoldEnd) = 3;
+            
+                            
+            % Chop first trial
+            dexForceRampStart = dexForceRampStart(2:end-3);
+            dexMovOnset = dexMovOnset(2:end-3);
+            dexHoldEnd = dexHoldEnd(2:end-3);
+            
+%             % Check if the size of the dexs are the same. If not check
+%             % order
+%             if(0~=sum(diff([length(dexForceRampStart),length(dexMovOnset),length(dexHoldEnd)])))
+%                 if(dexMovOnset(1) > dexForceRampStart(1)) % remove extra trial
+%                     dexMovOnset = dexMovOnset(2:end);
+%                     dexHoldEnd = dexHoldEnd(2:end);
+%                 end
+%                 
+%                 if(length(dexHoldEnd) > length(dexForceRampStart)+100) % If weird problem
+%                     dexHoldEnd = dexHoldEnd(1:length(dexMovOnset));
+%                     dexForceRampStart = dexForceRampStart(1:length(dexMovOnset));
+%                 end
+%             end
+            
+%             % Check for failed trials that did not go through all states
+%             % If length is all the same dont bother checking
+%             if ~(length(dexHoldEnd) == length(dexMovOnset))
+%                 dexSkip = find(dexHoldEnd(1:length(dexMovOnset)) - dexMovOnset<0,1); 
+%                 dexForceRampStart = dexForceRampStart([1:dexSkip-1,dexSkip+1:length(dexForceRampStart)]);
+%                 dexHoldEnd = dexHoldEnd([1:dexSkip-1,dexSkip+1:length(dexHoldEnd)]);
+%             end
 
             
             % Check the ranges were chosen correctly
@@ -518,6 +547,7 @@ classdef (HandleCompatible)SessionScan < handle
             
             ax2 = subplot(3,1,2);
             plot(obj.wam.time,obj.wam.state,'linewidth',2.5); hold on; grid on; ylim([0 8]);
+%             plot(obj.wam.time(dexStart:dexEnd),success);
             plot(obj.wam.time(dexForceRampStart),obj.wam.state(dexForceRampStart),'o','linewidth',2.5); hold on;
             plot(obj.wam.time(dexMovOnset),obj.wam.state(dexMovOnset),'*','linewidth',2.5); grid on;
             plot(obj.wam.time(dexHoldEnd),obj.wam.state(dexHoldEnd),'+','linewidth',2.5); grid on;

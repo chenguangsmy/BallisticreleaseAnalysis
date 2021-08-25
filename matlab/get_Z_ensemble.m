@@ -35,47 +35,109 @@ classdef get_Z_ensemble < handle
             u_r_2 = Data_pert_ensemble.u_r_2;
             
             time = Data_pert_ensemble(1).time_r(1,:);
-            this.sfrq = 100;%500;
+            this.sfrq = 100;
             this.dt = 1/this.sfrq;
             
             figure;
             subplot(2,1,1); plot(time, z_r_1); ylabel('x_r (m)');
             subplot(2,1,2); plot(time, z_r_2); ylabel('y_r (m)'); xlabel('Time (s)');
             
-            z_r_1_mean = mean(z_r_1);
-            z_r_2_mean = mean(z_r_2);
-            
-            z_r_1 = z_r_1 - z_r_1_mean;
-            z_r_2 = z_r_2 - z_r_2_mean;
+%             z_r_1_mean = mean(z_r_1);
+%             z_r_2_mean = mean(mean(z_r_2(:,3000:3500))); % FIX - hack to deal with few preturbations
+%             
+%             z_r_1 = z_r_1 - z_r_1_mean;
+%             z_r_2 = z_r_2 - z_r_2_mean;
             
             figure;
-            subplot(2,1,1); plot(time, z_r_1); ylabel('x_r (m)');
-            subplot(2,1,2); plot(time, z_r_2); ylabel('y_r (m)'); xlabel('Time (s)');
+            subplot(2,1,1); plot(time, z_r_1); ylabel('x_r (m)'); set(gca, 'fontsize',16);
+            subplot(2,1,2); plot(time, z_r_2); ylabel('y_r (m)'); xlabel('Time (s)'); set(gca, 'fontsize',16);
             
+%             dexPos = find(u_r_2(:,1000+1) < 0);
+%             tmp = mean(z_r_2(dexPos,1000:1000+300));
+%             tmp = tmp - tmp(end);
+%             
+%             cf = 10;
+%             [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
+%             tmp = filtfilt(b,a,tmp); % apply fitler
+% 
+%             [q,r] = deconv(tmp,mean(u_r_2(dexPos,1000:1000+500)));
+%             [m_hat, b_hat, k_hat, h_model, VAFirf] = get_SISO_Prony_single(this, r, length(r));
+            
+            figure;
+            plot(r); hold on;
+            plot(h_model,'--');
+
             %% ID and fit tangential
             
             [R,N] = size(z_r_1);
             lagBuffer = 5;
             M1 = 0;
-            M2 = 0.5*this.sfrq+lagBuffer;
+            M2 = 148; %0.3*this.sfrq+lagBuffer;
             L = M2-M1+1;
             this.tvec = 0:this.dt:this.dt*(L-1);
+            
+            %% Subtract ossylation
+%             s = tf('s');
+%             zeta1 = 0.25;
+%             wn1 = 9.5;
+%             G1 = (1/(2500+310))*(wn1^2/(s^2 + 2*zeta1*wn1*s+wn1^2));
+%             
+%             zeta2 = 0.60;
+%             wn2 = 31;
+%             G2 = 0*(1/1e+5)*(wn2^2/(s^2 + 2*zeta2*wn2*s+wn2^2));
+% 
+%             G1_step = zeros(size(z_r_1));
+%             G2_sub = zeros(size(z_r_1));
+% 
+%             time_g = 0:this.dt:1.5;
+%             G1_step(:,1000:1000+length(time_g)-1) = step(G1,time_g)'.*ones(R,length(time_g));
+%             G2_sub(:,1000:1000+length(time_g)-1) = impulse(G2,time_g)'.*ones(R,length(time_g));
+% 
+%             xx = figure(1);
+%             set(gcf,'Position',[-1919 1 1920 976]); 
+%             set(0, 'CurrentFigure', xx)
+%             ax1 = subplot(2,1,1); plot(time,u_r_2(1,:)); ylabel('u_r (m)');            
+%             set(gca, 'fontsize',16);
+% 
+%             ax2 = subplot(2,1,2); plot(time, z_r_2(1,:),'-',...
+%                                        time, 25*[G1_step(1,:) + G2_sub(1,:)] + z_r_2(1,950),'--k',...
+%                                        time, z_r_2(1,:)-25*G2_sub,':','linewidth',2.5); ylabel('z_r (m)'); xlabel('Time (s)');
+%             set(gca, 'fontsize',16);
+%             linkaxes([ax1,ax2],'x');
+%             xlim([-1.1 -0.5]);
+%             
+%             figure; plot(time, z_r_2(1,:) - G1_step);
+%             
+%             
+%             figure; 
+%             plot(time,z_r_2(1,:),'linewidth',2.5); hold on;
+%             plot(time,u_r_2(1,:),'linewidth',2.5);
+%             ylabel('Position (m)');
+%             xlabel('Time (s)');
+% %             ylim([-0.005 0.015]); xlim([time(950) time(1250)]);
+%             set(gca, 'fontsize',16);
+%             
+            [M_opt,  B_opt,  K_opt] = this.fitPostionIRF(z_r_2,u_r_2);
 
             [H_hat_MA, MAwindow] = this.ensambleSysID_Matrix(z_r_1, z_r_2, u_r_1, u_r_2, N, L, R, M1, M2);
             h_hat_11 = H_hat_MA(:,:,1);
             h_hat_12 = H_hat_MA(:,:,2);
             h_hat_21 = H_hat_MA(:,:,3);
             h_hat_22 = H_hat_MA(:,:,4);
+
+%              [H_hat_MA, MAwindow] = this.ensambleSysID(z_r_2, u_r_2, N, L, R, M1, M2);
+%             h_hat_11 = H_hat_MA;
             
-            iDex = M2+1+40:N+M1-40; %floor(linspace(M2+1+40,N+M1-40,25));
+%             iDex = M2+1+40:N+M1-40; 
+            iDex = floor(linspace(M2+1+40,N+M1-40,25));
          
             %% Add filter
-            cf = 15; % cutoff freqnency
+            cf = 20; % cutoff freqnency
             [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
             h_hat_11_filt = zeros(L,N);
-            h_hat_12_filt = zeros(L,N);
-            h_hat_21_filt = zeros(L,N);
-            h_hat_22_filt = zeros(L,N);
+%             h_hat_12_filt = zeros(L,N);
+%             h_hat_21_filt = zeros(L,N);
+%             h_hat_22_filt = zeros(L,N);
             dexNonZero = M2-M1+1+MAwindow/2:N+M1-MAwindow/2;
             for i = dexNonZero
                 h_hat_11_filt(:,i) = filtfilt(b,a,h_hat_11(:,i)); % apply fitler
@@ -87,10 +149,13 @@ classdef get_Z_ensemble < handle
             % Fit Model Prony
 %             [K_hat, h_model_11, h_model_12, h_model_21, h_model_22, VAFirf] = get_MIMO_Prony(this,iDex, h_hat_11_filt, h_hat_12_filt, h_hat_21_filt, h_hat_22_filt, M2);
             
+            %% Model least squares fit
+%             [h_model, M_hand, B_hand, K_hand, VAFirf] =  this.fitModel(h_hat_22_filt, N, L, M1, M2, iDex)
+
             %% Make fit plots 
 %             K_hat(1,1,:) =  K_hat(1,1,:)-2500; % Subtract something
 %             B_ne11 = B_ne11-40;
-                        
+
             %% Check Impulse Reponse Function and their fits
             figure('position',[289 231 895 527]);
             ax1 = subplot(2,2,1);
@@ -98,7 +163,7 @@ classdef get_Z_ensemble < handle
             ax3 = subplot(2,2,3);
             ax4 = subplot(2,2,4);
             
-            for i = iDex(1):10:iDex(end)
+            for i = 500:10:2000%iDex(1):10:iDex(end)
                 axes(ax1);
                 plot3(this.tvec,time(i)*ones(1,L),h_hat_11_filt(:,i),'.r'); hold on;
 %                 plot3(this.tvec,time(i)*ones(1,L),h_model_11(:,i),'-b'); hold on;
@@ -118,7 +183,7 @@ classdef get_Z_ensemble < handle
                 
                 axes(ax4);
                 plot3(this.tvec,time(i)*ones(1,L),h_hat_22_filt(:,i),'.r'); hold on;
-%                 plot3(this.tvec,time(i)*ones(1,L),h_model_22(:,i),'-b'); hold on;
+                plot3(this.tvec,time(i)*ones(1,L),h_model(:,i),'-b'); hold on;
 %                 plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_true_model(:,2,2,i),'-k'); hold on;
 
             end
@@ -393,8 +458,8 @@ classdef get_Z_ensemble < handle
             toc;
             
             
-            % Moving average with MAstep and MAwindow width
-            % h_hat smoothing with moving average window (40 ms)
+%             % Moving average with MAstep and MAwindow width
+%             % h_hat smoothing with moving average window (40 ms)
             MAwindow = 0.06*this.sfrq;  % Moving average window size: 40ms
             MAstep = 0.06*this.sfrq;
             for i = (M2+1+MAwindow/2) : (N+M1-MAwindow/2)
@@ -410,6 +475,8 @@ classdef get_Z_ensemble < handle
             H_hat_MA(:,:,2) = h_hat12_MA;
             H_hat_MA(:,:,3) = h_hat21_MA;
             H_hat_MA(:,:,4) = h_hat22_MA;
+
+            
             
             %             figure;plot(h_hat_MA,'linewidth',2);
             %             xlabel('lag (s)');ylabel('magnitude'); set(gca,'fontsize',18);
@@ -447,6 +514,153 @@ classdef get_Z_ensemble < handle
             
         end
         
+        function [H_hat_MA, MAwindow] = ensambleSysID(this, z1_r, u1_r, N, L, R, M1, M2)
+            
+            
+            %% Symbolic santity check
+            %             syms Phi_z1u1 Phi_z1u2 Phi_z2u1 Phi_z2u2
+            %             syms Phi_u1u1 Phi_u1u2 Phi_u2u1 Phi_u2u2
+            %             syms h11 h12 h21 h22
+            %             syms z1 z2 u1 u2
+            %
+            %             [z1;z2] == [h11,h12;h21,h22].'*[u1;u2]
+            %
+            %
+            %             [Phi_z1u1, Phi_z2u1; Phi_z1u2 Phi_z2u2]==[Phi_u1u1, Phi_u2u1; Phi_u1u2, Phi_u2u2]*[h11, h12; h21, h22].'
+            
+            
+            %% Estimates
+            h_hat11 = zeros(L,N);
+
+            
+            % MA: moving average with window size MAwindow
+            h_hat11_MA = zeros(L,N);
+
+            
+            Phi_z1u1_hat = zeros(L,1);
+
+            Phi_u1u1_hat = zeros(L,L);
+
+            
+            tic;
+            for i = M2+1:N+M1
+                
+                for k = M1:M2
+                    Phi_z1u1_hat(k-M1+1,1) = get_PHI(this,z1_r,u1_r,i,-k,R,M2);
+                end
+                
+                %                 if (i == M2+1)
+                %
+                for k = M1:M2
+                    for j = M1:M2
+                        Phi_u1u1_hat(k-M1+1,j-M1+1) = get_PHI(this,u1_r,u1_r,i-k,k-j,R,M2);
+
+                    end
+                end
+
+                %
+                %                 prev_Phi_uu_hat = Phi_uu_hat;
+                
+                %                   figure;
+                %                   subplot(2,2,1); plot(Phi_z1u1_hat); title(11);
+                %                   subplot(2,2,2); plot(Phi_z2u1_hat); title(12);
+                %                   subplot(2,2,3); plot(Phi_z1u2_hat); title(21);
+                %                   subplot(2,2,4); plot(Phi_z2u2_hat); title(22);
+                % %
+                % %
+                %                 figure;
+                %                   ax1 = subplot(2,2,1);
+                %                   ax2 = subplot(2,2,2);
+                %                   ax3 = subplot(2,2,3);
+                %                   ax4 = subplot(2,2,4);
+                %                 axes(ax1);
+                %                 for i = 1:L
+                %                     plot3(1:L,i*ones(1,L),Phi_u1u1_hat(:,i),'-'); hold on;
+                %                 end
+                %                 axes(ax2);
+                %                 for i = 1:L
+                %                     plot3(1:L,i*ones(1,L),Phi_u2u1_hat(:,i),'-'); hold on;
+                %                 end
+                %                 axes(ax3);
+                %                 for i = 1:L
+                %                     plot3(1:L,i*ones(1,L),Phi_u1u2_hat(:,i),'-'); hold on;
+                %                 end
+                %                 axes(ax4);
+                %                 for i = 1:L
+                %                     plot3(1:L,i*ones(1,L),Phi_u2u2_hat(:,i),'-'); hold on;
+                %                 end
+                %                             plot3(M2,L,X(:,1)','--k','linewidth',2.5);
+                %                 xlabel('lag');
+                %                 ylabel('i');
+                %                 zlabel('magnitude');
+                
+                % Invert matrix to solve for impulse response function
+                
+                
+                h_hat11(:,i) = this.sfrq*pinv(Phi_u1u1_hat)*Phi_z1u1_hat;
+                
+                % Use SVD to compute faster?
+                %                  [U,S,V] = svd(Phi_uu_hat(:,:));
+                %                  h_hat(:,i) = this.sfrq*V*inv(S)*U'*Phi_zu_hat(:,1);
+                
+                if(mod(i,500)==0)
+                    disp([int2str(i),'/',int2str(N+M1)]);
+                end
+            end
+            
+            toc;
+            
+            
+            % Moving average with MAstep and MAwindow width
+            % h_hat smoothing with moving average window (40 ms)
+            MAwindow = 0.06*this.sfrq;  % Moving average window size: 40ms
+            MAstep = 0.06*this.sfrq;
+            for i = (M2+1+MAwindow/2) : (N+M1-MAwindow/2)
+                for j=1:L
+                    h_hat11_MA(j,i) = mean(h_hat11(j,i-MAwindow/2:i+MAwindow/2));
+
+                end
+            end
+            
+            H_hat_MA = h_hat11_MA;
+
+            
+            %             figure;plot(h_hat_MA,'linewidth',2);
+            %             xlabel('lag (s)');ylabel('magnitude'); set(gca,'fontsize',18);
+            %
+            %             figure;
+            %             for i = M2+1:N+M1
+            %                 plot3(this.tvec(1:L),i*ones(1,L),h_hat_MA(:,i),'-','linewidth',2); hold on;
+            %             end
+            % %             plot3(M2,L,X(:,1)','--k','linewidth',2.5);
+            %             xlabel('lag (s)');
+            %             ylabel('Time (sec)');
+            %             zlabel('magnitude'); set(gca,'fontsize',18);
+            
+            %             [X,Y] = meshgrid(1:N+M1,1:L);
+            %             figure; s = surf(X,Y,h_hat_MA);
+            
+            %             cf = 20; % cutoff freqnency
+            %             [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
+            %             h_hat11_MA_filt = zeros(L,N);
+            %             h_hat12_MA_filt = zeros(L,N);
+            %             h_hat21_MA_filt = zeros(L,N);
+            %             h_hat22_MA_filt = zeros(L,N);
+            %             dexNonZero = M2-M1+1+MAwindow/2:N+M1-MAwindow/2;
+            %             for i = dexNonZero
+            %                 h_hat11_MA_filt(:,i) = filtfilt(b,a,h_hat11_MA(:,i)); % apply fitler
+            %                 h_hat12_MA_filt(:,i) = filtfilt(b,a,h_hat12_MA(:,i)); % apply fitler
+            %                 h_hat21_MA_filt(:,i) = filtfilt(b,a,h_hat21_MA(:,i)); % apply fitler
+            %                 h_hat22_MA_filt(:,i) = filtfilt(b,a,h_hat22_MA(:,i)); % apply fitler
+            %             end
+            %
+            %             H_hat_MA(:,:,1) = h_hat11_MA_filt;
+            %             H_hat_MA(:,:,2) = h_hat12_MA_filt;
+            %             H_hat_MA(:,:,3) = h_hat21_MA_filt;
+            %             H_hat_MA(:,:,4) = h_hat22_MA_filt;
+            
+        end
+
         function [h_model, M_hand, B_hand, K_hand, VAFirf] =  fitModel(this, h_hat_MA, N, L, M1, M2, iDex)
             
             %% Part 2-2: 2nd order model approximation
@@ -561,6 +775,27 @@ classdef get_Z_ensemble < handle
                     weight = 2*(1-j/M2);
                     fval = fval + (h_hat(j-M1+1,1)-h_model(j-M1+1,1))^2*weight;
                 end
+            end
+            fval = sqrt(fval/L);
+        end
+        
+        function fval = StepFitting(this,x,h_hat,M1,M2,lagBuffer)
+            M2=M2-lagBuffer;
+            L=M2-M1+1;
+            Y_model = tf(1,[x(1),x(2),x(3)]);
+            h_model = step(Y_model,this.tvec);
+            
+            fval=0;
+            for j=M1:M2
+                        fval = fval + (h_hat(j-M1+1,1)-h_model(j-M1+1,1))^2;
+                
+%                 % Weighted cost function 2
+%                 if(j<M2/2)
+%                     fval = fval + (h_hat(j-M1+1,1)-h_model(j-M1+1,1))^2;
+%                 else
+%                     weight = 2*(1-j/M2);
+%                     fval = fval + (h_hat(j-M1+1,1)-h_model(j-M1+1,1))^2*weight;
+%                 end
             end
             fval = sqrt(fval/L);
         end
@@ -799,6 +1034,66 @@ classdef get_Z_ensemble < handle
             
         end
         
+        function [M_opt,  B_opt,  K_opt] = fitPostionIRF(this, z_r, u_r)
+            
+            % Assume one impulse per trial, only look at prerelease
+            [R,N] = size(z_r);
+            count_pos = 1;
+            count_neg = 1;
+            z_cut_pos = [];
+            z_cut_neg = [];
+            
+%             startDex = this.tvec(1)/this.dt;
+            for r = 1:R
+                
+                % Postive
+                if(sum(u_r(r,:)) > 0 && u_r(r,1) == 0 )
+                    dex = find(u_r(r,:) > 0);
+                    z_cut_pos(count_pos,:) = (1./u_r(r,dex)).*(z_r(r,dex) - z_r(r,dex(1)));
+                    count_pos = count_pos+1;
+                end
+                
+                % Negative
+                 if(sum(u_r(r,:)) < 0 && u_r(r,1) == 0 )
+                    dex = find(u_r(r,:) < 0);
+                    z_cut_neg(count_neg,:) = (1./u_r(r,dex)).*(z_r(r,dex) - z_r(r,dex(1)));
+                    count_neg = count_neg+1;
+                 end
+                
+            end
+
+            z_cut_pos_mean = mean(z_cut_pos,1)';  
+%             save('/Users/jhermus/Desktop/human5N10cm_.mat','z_cut_pos_mean');
+            
+            figure; 
+            subplot(2,1,1); 
+            plot(z_cut_pos'); hold on;
+            plot(z_cut_pos_mean,'-k','linewidth',2.5);
+            subplot(2,1,2); plot(z_cut_neg');
+            
+                %% Part 2-2: 2nd order model approximation
+            % Optimization to find the best I,B,K approximates (cost function may change..)
+            M0 = 2;
+            B0 = 40;
+            K0 = 2500;
+            
+            LB = [-20, -200, -10000];
+            UB = [20,  200, 10000];
+            
+            % Bounded Nonlinear Optimization
+            options = optimset('MaxFunEvals', 1000, 'MaxIter', 1000, 'TolFun',0.01);
+            [x fval exitflags outputs] = fminsearchbnd(@(x) this.StepFitting(x, z_cut_pos_mean,0,length(z_cut_pos_mean)-1,5),[M0 B0 K0],LB,UB,options);
+            M_opt = x(1);   B_opt = x(2);   K_opt = x(3);
+            
+            % FIX CHECK fit cost function
+            Y_model = tf(1,[M_opt,B_opt,K_opt]);
+            h_model = step(Y_model,this.tvec);
+            
+            figure; plot(this.tvec, z_cut_pos_mean, this.tvec, h_model,'-k');
+            xlim([0 1.4]); %ylim([0 0.0125]);
+            
+        end
+        
         function [] = comparePret(this,N)
             
             X1 = rand(1,N);
@@ -840,93 +1135,107 @@ classdef get_Z_ensemble < handle
             
         end
         
-        function [] = testPronyApproach(this)
+        function [] = testPronyApproach_1D(this)
             
             this.sfrq = 500; % Change later this will change window size
             this.dt = 1/this.sfrq;
             t = 0:this.dt:3;
             
-            [C_hat_c11] = get_PronyAnalysis(this,1,1,t);
-            [C_hat_c12] = get_PronyAnalysis(this,1,2,t);
-            [C_hat_c21] = get_PronyAnalysis(this,2,1,t);
-            [C_hat_c22] = get_PronyAnalysis(this,2,2,t);
+              s = tf('s');
+            m = [1.7099];
+            b = [5.2510];
+            k = [105.0196];
             
-            syms s m11 m12 m21 m22 b11 b12 b21 b22 k11 k12 k21 k22
-            
-            M = [m11 m12; m21 m22];
-            B = [b11 b12; b21 b22];
-            K = [k11 k12; k21 k22];
-            
-            Z = M*s^2+B*s+K;
-            C = inv(Z);
-            
-            [N,D] = numden(C);
-            n(:,1,1) = flip(coeffs(N(1,1),s));
-            d(:,1,1) = flip(coeffs(D(1,1),s));
-            
-            n(:,1,2) = flip(coeffs(N(1,2),s));
-            d(:,1,2) = flip(coeffs(D(1,2),s));
-            
-            n(:,2,1) = flip(coeffs(N(2,1),s));
-            d(:,2,1) = flip(coeffs(D(2,1),s));
-            
-            n(:,2,2) = flip(coeffs(N(2,2),s));
-            d(:,2,2) = flip(coeffs(D(2,2),s));
-            
-            %             eqns = [n(:,1,1) == C_hat_c11.numerator{1}(end-2:end)';...
-            %                      d(:,1,1) == C_hat_c11.Denominator{1}(:);...
-            %                      n(:,1,2) == C_hat_c12.numerator{1}(end-2:end)';...
-            %                      d(:,1,2) == C_hat_c12.Denominator{1}(:);...
-            %                      n(:,2,1) == C_hat_c21.numerator{1}(end-2:end)';...
-            %                      d(:,2,1) == C_hat_c21.Denominator{1}(:);...
-            %                      n(:,2,2) == C_hat_c22.numerator{1}(end-2:end)';...
-            %                      d(:,2,2) == C_hat_c22.Denominator{1}(:)];
-            
-            eqns = [n(:,1,1)./d(1,1,1) == C_hat_c11.numerator{1}(end-2:end)';...
-                n(:,1,2)./d(1,1,1) == C_hat_c12.numerator{1}(end-2:end)';...
-                n(:,2,1)./d(1,1,1) == C_hat_c21.numerator{1}(end-2:end)';...
-                n(:,2,2)./d(1,1,1) == C_hat_c22.numerator{1}(end-2:end)'];
-            %
-            %             eqns = [d(2:end,1,1)/d(1,1,1) == C_hat_c11.Denominator{1}(2:end)';...
-            %                     d(2:end,1,2)/d(1,1,2) == C_hat_c12.Denominator{1}(2:end)';...
-            %                     d(2:end,1,2)/d(1,2,2) == C_hat_c22.Denominator{1}(2:end)'];
-            
-            vars = [m11 m12 m21 m22 b11 b12 b21 b22 k11 k12 k21 k22];
-            
-            [m11 m12 m21 m22 b11 b12 b21 b22 k11 k12 k21 k22] = solve(eqns,vars.');
-            
-            M = double([m11 m12; m21 m22]);
-            B = double([b11 b12; b21 b22]);
-            K = double([k11 k12; k21 k22]);
-            
-        end
-        
-        function [C_hat_c] = get_PronyAnalysis(this,dex1,dex2,t)
-            
-            s = tf('s');
-            M = [1.7099, -0.2566; -0.2566, 2.1775];
-            B = [5.2510, -1.0215; -1.0215, 39.0782];
-            K = [105.0196, -20.4292; -20.4292, 781.5645];
-            
-            Z = M*s^2+B*s+K;
-            % Z = M(2,2)*s^2+B(2,2)*s+K(2,2);
-            C_total = inv(Z);
-            C_c = C_total(dex1,dex2);
+            Z = m*s^2+b*s+k;
+            C_c = inv(Z);
             H_c = impulse(C_c,t);
-            C_d = c2d(C_c,this.dt,'match');
+            C_d = c2d(C_c,this.dt,'tustin');
             H_d = impulse(C_d,t);
             % H_d2 = impz(C_d.numerator{1},C_d.Denominator{1},length(t));
             % figure;plot(t,H_d1,t,H_d2);
             
             %             figure; plot(t, H_c,'-',t,H_d,'o');
             
-            [b,a] = prony(H_d,4,4);
+            [b,a] = prony(H_d,2,2);
             C_hat_d = tf(b,this.sfrq*a,this.dt); % Why is this off by a factor of the sampling frequency??
-            C_hat_c = d2c(C_hat_d,'matched');
+            C_hat_c = d2c(C_hat_d,'tustin');
             H_hat_d = impulse(C_hat_d,t);
             H_hat_c = impulse(C_hat_c,t);
             
+           [Z_hat_coeffs] = C_hat_c.denominator{1}./C_hat_c.numerator{1}(end);       
+            m_hat = Z_hat_coeffs(1);
+            b_hat = Z_hat_coeffs(2);
+            k_hat = Z_hat_coeffs(3);
+            
         end
+        
+        function [m_hat, b_hat, k_hat, h_model, VAFirf] = get_SISO_Prony_single(this, h_hat, M2)
+           
+            h_model = zeros(size(h_hat));
+            
+            %             figure;
+            
+            orderProny = 2;
+            % If second peaks is not half as large as first use window
+            % default. If shorter use 0.3 s
+            [PKS,LOCS] = findpeaks(abs(h_hat));
+            
+            [b,a] = prony(h_hat, orderProny, orderProny);
+            C_hat_d = tf(b,this.sfrq*a,this.dt); % Why is this off by a factor of the sampling frequency??
+            %                 z = zero(C_hat_d11);
+            %                 if(~sum(z<0 & imag(z)==0)>0)
+            C_hat_c = d2c(C_hat_d,'tusting');
+            h_model = impulse(C_hat_c,0:1/this.sfrq:M2/this.sfrq - this.dt)';
+            
+            VAFirf = this.get_VAF(h_model,h_hat);
+            %                 end
+            %                 subplot(2,2,1); plot(0:1/this.sfrq:M2/this.sfrq,h_hat_ne(:,i),0:1/this.sfrq:M2/this.sfrq,h_model_ne(:,i));
+            
+            [Z_hat_coeffs] = C_hat_c.denominator{1}./C_hat_c.numerator{1}(end);
+            m_hat = Z_hat_coeffs(1);
+            b_hat = Z_hat_coeffs(2);
+            k_hat = Z_hat_coeffs(3);
+            
+            
+        end
+        
+        function [m_hat, b_hat, k_hat, h_model, VAFirf] = get_SISO_Prony(this,iDex, h_hat, M2)
+           
+            h_model = zeros(size(h_hat));
+            VAFirf = zeros(4,length(iDex));
+            
+            %             figure;
+            
+            orderProny = 2;
+            for i = iDex
+                % If second peaks is not half as large as first use window
+                % default. If shorter use 0.3 s
+                [PKS,LOCS] = findpeaks(abs(h_hat(:,i)));
+                if(PKS(2) < 0.5*PKS(1))
+                    dex = 1:this.sfrq*0.3;
+                else
+                    dex = 1:length(this.tvec);
+                end
+                
+                [b,a] = prony(h_hat(dex,i), orderProny, orderProny);
+                C_hat_d = tf(b,this.sfrq*a,this.dt); % Why is this off by a factor of the sampling frequency??
+                %                 z = zero(C_hat_d11);
+                %                 if(~sum(z<0 & imag(z)==0)>0)
+                C_hat_c11 = d2c(C_hat,'tusting');
+                h_model_ne(:,i) = impulse(C_hat_c,0:1/this.sfrq:M2/this.sfrq);
+                
+                VAFirf(i) = this.get_VAF(h_model(dex,i),h_hat(dex,i));
+                %                 end
+                %                 subplot(2,2,1); plot(0:1/this.sfrq:M2/this.sfrq,h_hat_ne(:,i),0:1/this.sfrq:M2/this.sfrq,h_model_ne(:,i));
+                
+                [Z_hat_coeffs] = C_hat_c.denominator{1}./C_hat_c.numerator{1}(end);
+                m_hat(i) = Z_hat_coeffs(1);
+                b_hat(i) = Z_hat_coeffs(2);
+                k_hat(i) = Z_hat_coeffs(3);
+                
+            end
+            
+        end     
         
         function [K_ne_hat, h_model_ne11, h_model_ne12, h_model_ne21, h_model_ne22, VAFirf] = get_MIMO_Prony(this,iDex, h_hat_ne11, h_hat_ne12, h_hat_ne21, h_hat_ne22, M2)
            

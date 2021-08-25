@@ -326,8 +326,8 @@ classdef WAM_systemIDTest < handle
             h_hat_21 = H_hat_MA(:,:,3);
             h_hat_22 = H_hat_MA(:,:,4);
             
-%             iDex = M2+1+40:N+M1-40; 
-            iDex = floor(linspace(M2+1+40,N+M1-40,25));
+            iDex = M2+1+40:N+M1-40; 
+%             iDex = floor(linspace(M2+1+40,N+M1-40,25));
 
             %% Model least squares fit
 %             [K_par_hat, B_par_hat, M_par_hat] = get_parametricLeastSquares_1D(this,iDex,z_r_1, z_r_2, u_r_1, u_r_2);
@@ -456,7 +456,7 @@ classdef WAM_systemIDTest < handle
                 plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_true_model(:,1,1,i),'-k'); hold on;
             end
             fs = 15;
-            view(35,25); title(11); xlim([0 M2/this.sfrq]); %zlim([-0.011 0.011]); 
+            view(35,25); title(11); xlim([0 M2/this.sfrq]); zlim([-0.03 0.03]); 
             xlabel('lag (s)'); ylabel('Time (s)'); zlabel('\Delta x (m)'); grid on; set(gca,'fontsize',fs);
 
             i = iDex(10);
@@ -469,7 +469,7 @@ classdef WAM_systemIDTest < handle
 
             figure('Position',[88 318 1180 420]); 
             subplot(1,3,1);
-            plot(1:R,VAF_output(1,:),'b','linewidth',2.5); hold on;
+            plot(1:R,VAF_output(1,:),'b.','linewidth',2.5); hold on;
             ylabel('VAF_{output}'); xlabel('Ensemble Number'); set(gca, 'fontsize', 16); ylim([0 100]);
             xlim([0 300]); 
            
@@ -519,7 +519,7 @@ classdef WAM_systemIDTest < handle
 %             set(gca,'fontsize',16); %legend([p1(1), p2(1), p3(1), p4(1)],{'11','12','21','22'});
 %             
             disp('test');
-                           
+                                  
             
         end
 
@@ -1545,7 +1545,7 @@ classdef WAM_systemIDTest < handle
             
             pw = PoolWaitbar(R, ['Simulating System 2D ',int2str(R),' times.']);
             
-            for i = 1:R
+            parfor i = 1:R
                 if(~isempty(pretScale))
                     test = WAM_simSystem2D(movDuration,pretScale);
                 else
