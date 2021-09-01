@@ -537,22 +537,22 @@ end
 % | -------- | -------- | -------- | -------- | -------- |
 % |front     | 2462     | 2460     | 2467     | 2464     | 
 % |back      | 2487     | 2484     | 2492     | 2489     |
-% |left      | -------------- pending ------------------ |
-% |right     | -------------- pending ------------------ |
+% |left      | 2657     | 2655     | 2658     | 2661     |
+% |right     | 2674     | 2672     | 2675     | 2676     |
 
 sessions_mat = [2462 2460 2467 2464;    % front
                 2487 2484 2492 2489;    % back
-                2487 2484 2492 2489;    % left
-                2487 2484 2492 2489;];  % right
+                2657 2655 2658 2661;    % left
+                2674 2672 2675 2676;];  % right
 % read data
 sessions_all = sessions_mat(:);
 for session_i = 1:length(sessions_all)
- try
-    eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
-        num2str(sessions_all(session_i)) ');']);
- catch 
-     display('unable to load this session!');
- end
+    try
+        eval(['ss' num2str(sessions_all(session_i)) '= SessionScan(' ...
+            num2str(sessions_all(session_i)) ');']);
+    catch
+        display('unable to load this session!');
+    end
 end
 % only look through the front now
 pert_avg_mat = nan(size(sessions_mat));
@@ -578,3 +578,211 @@ sessions_num = size(sessions_mat, 2);
 bar(1:sessions_num, pert_avg_mat(:,:));% errorbar(pert_std_mat(1:2,:));
 title('perturbed average position');
 
+
+%% left movement subject 
+ss2655 = SessionScan(2655); ss2657 = SessionScan(2657); 
+ss2658 = SessionScan(2658); ss2661 = SessionScan(2661); 
+sessions_all = [2655        2657        2658        2661];
+color_arr = colormap('lines');
+%for session_i = 1:size(sessions_mat,1)
+    %axh = subplot(1,4,session_i); hold on;
+    axh = figure();
+    for ss_i = 1:size(sessions_all,2)
+        %num2str(sessions_mat(stiffness_i, ss_i)); % display which session
+        eval(['sstmp = ss' num2str(sessions_all(ss_i)) ';']);
+        %sstmp.plotStepPertResponse_rawF(axh,color_arr(ss_i,:));
+        sstmp.plotStepPertResponse_raw(axh,color_arr(ss_i,:));
+    end
+    %title(['stiffness ' num2str(SpringStiff_list(session_i)) 'N/m']);
+    set(gca, 'Ygrid', 'on');
+    xlim([-0.1 1]);
+    ylim([-0.07 0.01]); % posision
+    % ylim([-5 30]); % force
+%end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% mass test served for Scottt's method, predict that higher mass on subject side, lower initial force.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ss2697 = SessionScan(2697); % no mass on
+ss2700 = SessionScan(2700); % 277g
+ss2698 = SessionScan(2698); % 522g
+ss2699 = SessionScan(2699); % 799g
+% in a single plot
+axh1 = figure(1); 
+color_arr = colormap('lines');
+ss2697.plotReleaseResponse_rawF(axh1,[0.5 0.5 0.5])
+ss2700.plotReleaseResponse_rawF(axh1,color_arr(1,:));
+ss2698.plotReleaseResponse_rawF(axh1,color_arr(2,:));
+ss2699.plotReleaseResponse_rawF(axh1,color_arr(3,:));
+xlim([-0.1 2]); title('Force response with different subject mass');
+
+axh2 = figure(2); 
+axh21 = subplot(1,4,1); axh22 = subplot(1,4,2); axh23 = subplot(1,4,3); axh24 = subplot(1,4,4); 
+ss2697.plotReleaseResponse_rawF(axh21,[0.5 0.5 0.5]); xlim([-0.05 0.1]);  ylim([0, 22]);
+title('+0g'); yticks([0:5:20]); axh21.YGrid = 'on';
+ss2700.plotReleaseResponse_rawF(axh22,color_arr(1,:)); xlim([-0.05 0.1]); ylim([0, 22]);
+title('+277g'); ylabel(''); yticks([0:5:20]);axh22.YTickLabel=''; axh22.YGrid = 'on';
+ss2698.plotReleaseResponse_rawF(axh23,color_arr(2,:)); xlim([-0.05 0.1]); ylim([0, 22]);
+title('+522g'); ylabel(''); yticks([0:5:20]);axh23.YTickLabel=''; axh23.YGrid = 'on';
+ss2699.plotReleaseResponse_rawF(axh24,color_arr(3,:)); xlim([-0.05 0.1]); ylim([0, 22]);
+title('+799g'); ylabel(''); yticks([0:5:20]);axh24.YTickLabel=''; axh24.YGrid = 'on';
+
+%% continue mass test, Using regression to diagonize the sudden force change. 
+% 1. get raw data
+sstmp = ss2699; %97, 70 98 99
+y_raw = sstmp.trials(3).force_h(2,:);
+yt_raw = sstmp.trials(3).force_t;
+y = sstmp.trials(3).force_h(2,:);
+y_t = sstmp.trials(3).force_t;
+% 2. select time
+t_min = 0; t_max = 2.5; 
+y = y(y_t>=t_min & y_t<=t_max);
+y_t = y_t(y_t>=t_min & y_t<=t_max);
+subplot(4,1,1); 
+plot(y_t, y);
+subplot(4,1,2);
+plot(y_t(1:end-1), diff(y));
+% 3. find sudden change peak, select again
+y_d = diff(y); 
+[y_dmin, y_didx] = min(y_d);
+duration = 2000;
+y = y(y_didx:y_didx+2000-1);
+y_t = y_t(y_didx:y_didx+2000-1) - y_t(y_didx); % new 0-nize
+subplot(4,1,3);
+plot(y_t, y);
+% 4. regression model
+% y = e^(\ksai t)*sin(\omega t + \theta)
+B0 = -0.69/1;  % about 1 sec decrease half;
+B3 = 15;
+B1 = 1*2*pi; % The period is around 1
+B2 = pi/2; % looks like its dropping value
+X = y_t;
+% 5. regression
+myFit = NonLinearModel.fit(X,y, 'y ~ exp(b0*x1)*sin(b1*x1 + b2)*b3', [B0, B1, B2, B3]);
+subplot(4,1,4);
+plot(y_t, y, 'b');
+hold on
+plot(y_t', myFit.Fitted, 'r');
+% 6. Get the answer 
+myFit.Fitted(1)
+B3
+% plot (overlap) the raw force and the net force
+figure(); hold on;
+plot(yt_raw - y_t(y_didx), y_raw, 'b');
+% get the before release value
+y_raw_0 = mean(y_raw(yt_raw<0 & yt_raw>-0.1));
+y_t_temp = yt_raw(yt_raw<0 & yt_raw>-0.1);
+plot(yt_raw(yt_raw<0 & yt_raw>-0.1)', y_raw_0*ones(size(y_t_temp)),'r');
+plot(y_t', myFit.Fitted,'r');
+plot([y_t(1) y_t(1)], [y_raw_0 myFit.Fitted(1)],'r')
+xlim([-0.1 2]);
+legend('raw data', 'damped sinusoid fit')
+title('force immediatly after release');
+xlabel('time at release (s)'); ylabel('Censored force (N)');
+%% continue mass test, collect forces, and plot out a figure 
+%Force_0p = [];
+%Force_0p = [Force_0p myFit.Fitted(1)];
+Force_0n = 20*ones(size(Force_0p));
+% Force_0n/Force0p = 1+Ms/Mr;
+% Mr = Ms/(F(0-) - F(0+))/F(0+)
+% (Force_0n - Force_0p)/Force_0p = m/Mr + m_add/Mr; % 1/Mr slope, m/Mr intercept
+y_mass = ((Force_0n - Force_0p) ./ Force_0p);
+x_mass = [0, 0.277, 0.522, 0.799]; % m_add
+figure();
+plot(y_mass, x_mass, '*'); 
+xlim([0, 1.2]); ylim([-0.3, 0.9]);
+lsline();
+% m/Mr = 0.3549; 1/Mr = 1.413-0.3549;
+Mr = 1/(1.413-0.3549); m = 0.3549*Mr;
+ylabel('added mass (kg)'); 
+xlabel('(F_{0-} - F_{0+}) /F_{0+}');
+title('mass prediction from force')
+
+%% Scott's method with update, Using the immediate release to know the mass
+
+sstmp = ss2627;
+for trial_i = 2:length(sstmp.trials)-1
+    sstmp.trials(trial_i) = sstmp.trials(trial_i).predictStiffDampx0();
+end
+stiffness = [sstmp.trials.pred_K];
+damping = [sstmp.trials.pred_D];
+x0 = [sstmp.trials.pred_x0];
+m = [sstmp.trials.pred_A];
+
+%% stiffness varying 
+ss_num = [2586 2590 2594 2598]-1;
+%ss_num =[2594 2598]-1;
+ref = [89 107 160 320];
+color_arr = colormap('lines');
+for session_i = 1:length(ss_num)
+     eval(['sstmp = SessionScan(' num2str(ss_num(session_i)) ');']);
+    for trial_i = 2:length(sstmp.trials)-1
+        sstmp.trials(trial_i) = sstmp.trials(trial_i).predictStiffDampx0();
+    end
+    stiffness_all{session_i} = [sstmp.trials(2:end).pred_K];
+    damping_all{session_i} = [sstmp.trials(2:end).pred_D];
+    x0_all{session_i} = [sstmp.trials(2:end).pred_x0];
+    m_all{session_i} = [sstmp.trials(2:end).pred_A];
+    val_mean(session_i) = mean(stiffness_all{session_i});
+    val_std(session_i) = std(stiffness_all{session_i});
+end
+axh=subplot(1,3,1); hold on;
+bar(1:4, val_mean, 'FaceColor', color_arr(1,:)); 
+for i = 1:4
+    errorbar(i, val_mean(i), val_std(i),'k');
+end
+yticks(ref);
+axh.YGrid='on';
+ylabel('stiffness (N/m)');
+xticks('');
+
+% x0 varying 
+ss_num = [2584 2585 2586 2587];
+ref = [2.5 5 7.5 10]/100;
+for session_i = 1:length(ss_num)
+     eval(['sstmp = SessionScan(' num2str(ss_num(session_i)) ');']);
+    for trial_i = 2:length(sstmp.trials)-1
+        sstmp.trials(trial_i) = sstmp.trials(trial_i).predictStiffDampx0();
+    end
+    stiffness_all{session_i} = [sstmp.trials(2:end).pred_K];
+    damping_all{session_i} = [sstmp.trials(2:end).pred_D];
+    x0_all{session_i} = [sstmp.trials(2:end).pred_x0];
+    m_all{session_i} = [sstmp.trials(2:end).pred_A];
+    val_mean(session_i) = mean(x0_all{session_i});
+    val_std(session_i) = std(x0_all{session_i});
+end
+axh=subplot(1,3,2); hold on;
+bar(1:4, val_mean, 'FaceColor', color_arr(2,:)); 
+for i = 1:4
+    errorbar(i, val_mean(i), val_std(i),'k');
+end
+yticks(ref);
+axh.YGrid='on';
+ylabel('x_0 position (m)');
+title('various prediction on regression method');
+xticks('');
+
+% mass varying
+ss_num = [2697 2700 2698 2699];
+ref = ([0 277 522 799]+300) / 1000;
+for session_i = 1:length(ss_num)
+     eval(['sstmp = SessionScan(' num2str(ss_num(session_i)) ');']);
+    for trial_i = 2:length(sstmp.trials)-1
+        sstmp.trials(trial_i) = sstmp.trials(trial_i).predictStiffDampx0();
+    end
+    stiffness_all{session_i} = [sstmp.trials(2:end).pred_K];
+    damping_all{session_i} = [sstmp.trials(2:end).pred_D];
+    x0_all{session_i} = [sstmp.trials(2:end).pred_x0];
+    m_all{session_i} = [sstmp.trials(2:end).pred_A];
+    val_mean(session_i) = mean(m_all{session_i});
+    val_std(session_i) = std(m_all{session_i});
+end
+axh = subplot(1,3,3); hold on;
+bar(1:4, val_mean, 'FaceColor', color_arr(3,:)); 
+for i = 1:4
+    errorbar(i, val_mean(i), val_std(i),'k');
+end
+yticks(ref);
+axh.YGrid='on';
+ylabel('M_s (kg)');
+xticks('');

@@ -48,6 +48,13 @@ classdef TrialScan
         ifpert
         % predicted varialbes:
           % predicted linear variables just as Scott Did in thesis::pg44
+          % ==> Now use cleave updated Scott's method?
+          % F(t) + Ms*x``(t) = Kx0 - Kx(t) - Dx`(t)
+          % Only focus on mass on robot side, but can write as this form
+          % F(t): censored force, need 0-aligned;
+          % Ms:   subject side mass, get from Immediate release mass
+          % x``(t): mass side acceleration;
+          
         pred_x0
         pred_K
         pred_D
@@ -675,6 +682,206 @@ classdef TrialScan
             if(0)
                 fprintf('trial%03d, K=%.3f, B=%.3f, M=%.3f, J=%.3f, S=%.3f, x0=%.3f', ...
                     obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_J, obj.pred_S, obj.pred_x0 );
+            end
+        end
+        function obj = predictMass(obj, ifplot)
+            % This function use the force immediate before and after the
+            % release to estimate the mass of the subject side. The mass is
+            % with the FT subject side plate.  
+            % obj = predictMass(obj, ifplot)
+            % The raw force data is needed. Current version use 1000Hz force data
+            % 1. get raw data
+            if (~exist('ifplot', 'var'))
+                ifplot = 0;
+            end
+            % other defined values:
+            Mr = 1/(1.413-0.3549); % mass on the robot side % value may inaccurate
+            Ms0= 0.3549*Mr;
+            y_raw = obj.force_h(2,:);
+            yt_raw = obj.force_t;
+            y = y_raw; % only on y direction
+            y_t = yt_raw;
+            % 2. time truncate
+            t_min = 0; t_max = 1.5;
+            y_truncate = y(y_t>=t_min & y_t<=t_max);
+            y_t_truncate = y_t(y_t>=t_min & y_t<=t_max);
+            % 3. time shift according to the sudden change peak
+            y_d = diff(y_truncate);
+            [y_dmin, y_didx] = min(y_d);
+            duration = floor(1.2/mean(diff(y_t_truncate)));
+            try
+                y_shift = y_truncate(y_didx:y_didx+duration-1);
+                y_t_shift = y_t_truncate(y_didx:y_didx+duration-1) - y_t_truncate(y_didx); % new 0-nize
+            catch 
+                display('too short data after release'); 
+                return
+            end
+            % 4. regression model
+            % y = e^(\ksai t)*sin(\omega t + \theta)
+            [pks,locs] = findpeaks(lowpass(y_shift, pi/100));
+            pks_num = length(pks);
+            try 
+                B0 = -0.69/y_t_shift(locs(2)-locs(1));  % about 1 sec decrease half;
+            catch 
+                B0 = -0.69/1;
+            end
+            B3 = max(y_shift);
+            B1 = 2*pi/(range(y_t_shift)/pks_num*2); % The period is around 1
+            B2 = pi/2; % looks like its dropping value
+            X = y_t_shift;
+            % 5. regression
+            myFit = NonLinearModel.fit(X,y_shift, 'y_shift ~ exp(b0*x1)*sin(b1*x1 + b2)*b3', [B0, B1, B2, B3]);
+            y_fit = myFit.Fitted;
+            if (ifplot)
+%                 subplot(4,1,1);
+%                 plot(yt_raw, y_raw);
+%                 subplot(4,1,2);
+%                 plot(y_t_truncate(1:end-1), diff(y_truncate));
+%                 subplot(4,1,3);
+%                 plot(y_t_shift, y_shift);
+%                 subplot(4,1,4);
+%                 plot(y_t_shift, y_shift, 'b');
+%                 hold on
+%                 plot(y_t_shift', y_fit, 'r');
+%                 
+                figure(); hold on;
+                plot(yt_raw - y_t_truncate(y_didx), y_raw, 'b');
+                plot(y_t_shift', myFit.Fitted,'r');
+                xlim([-0.1 1]);
+                legend('raw data', 'damped sinusoid fit')
+                title('force immediatly after release');
+                xlabel('time at release (s)'); ylabel('Censored force (N)');
+            end
+            % 6. Get the Force0+
+            Force_0p = y_fit(1);
+            % 7. Compare it with Force0-
+            force_0n_arr = mean(y_raw(yt_raw>-0.1 & yt_raw<0)); 
+            Force_0n = mean(force_0n_arr)*ones(size(Force_0p));
+            % Force_0n/Force0p = 1+Ms/Mr;
+            Ms = (Force_0n/Force_0p - 1)*Mr; % only known Mr could we ger Ms
+            obj.pred_A = Ms;
+        end
+        function obj = predictStiffDampx0(obj, ifplot)
+            % Use regression method (Scott's proach) to estimate stiffness,
+            % damping and equilibrium position
+            if (~exist('ifplot', 'var'))
+                ifplot = 0;
+            end
+            % 1. get raw data
+            f_raw = obj.force_h(2,:);
+            ft_raw= obj.force_t;
+            x_raw = obj.position_h(2,:);
+            xt_raw= obj.position_t;
+            x_offset = mean(x_raw(xt_raw>-0.1 & xt_raw<0));
+            if (isempty(obj.pred_A))
+                try
+                    obj = obj.predictMass();
+                catch 
+                    disp('mass fit failure, return blank');
+                    return
+                end
+            end
+            % 2. time truncate
+            t_min = 0; t_max = 2; 
+            f_truncate = f_raw(ft_raw>=t_min & ft_raw<=t_max);
+            f_t_truncate = ft_raw(ft_raw>=t_min & ft_raw<=t_max);
+            x_truncate = x_raw(xt_raw>=t_min & xt_raw<=t_max)-x_offset;
+            x_t_truncate = xt_raw(xt_raw>=t_min & xt_raw<=t_max);
+            % 3. time shift according to the sudden change peak
+                % the FT
+            f_d = diff(f_truncate);
+            [~, y_didx] = min(f_d);
+            duration = 1.2; % seconds
+            duration_ct = floor(duration/mean(diff(f_t_truncate)));
+            f_shift = f_truncate(y_didx:y_didx+duration_ct-1);
+            f_t_shift = f_t_truncate(y_didx:y_didx+duration_ct-1) - f_t_truncate(y_didx); % new 0-nize
+                % the robot
+            x_d = diff(diff(x_truncate(x_t_truncate < 0.03)));
+            [~, x_didx] = max(x_d);
+            duration_ct = floor(duration/mean(diff(x_t_truncate)));
+            x_shift = x_truncate(x_didx:x_didx+duration_ct-1);
+            x_t_shift = x_t_truncate(x_didx:x_didx+duration_ct-1) - x_t_truncate(x_didx); % new 0-nize
+            
+            % 4a. First choice, try resample and do the regression
+            iffilterF = 1; %smooth F for better recognize
+            if (iffilterF)
+            % 4b. If not, try use filtered force and do regression
+            % raw force?
+            % y = e^(\ksai t)*sin(\omega t + \theta)
+            % 4a-1 fit the force
+            [pks,locs] = findpeaks(lowpass(x_shift, pi/100), 'MinPeakDistance',100);
+            pks_num = length(pks);
+            try 
+                B0 = -0.69/f_t_shift(locs(2)-locs(1));  % about 1 sec decrease half;
+            catch 
+                B0 = -0.69/1;
+            end
+            B3 = max(f_shift);
+            B1 = 2*pi/(range(f_t_shift)/pks_num*2); % The period is around 1
+            B2 = pi/2; % looks like its dropping value
+            X1 = f_t_shift; 
+            X2 = min(X1):mean(diff(X1)):max(X1);
+            % 5. regression
+            %myFit1 = NonLinearModel.fit(X1,f_shift, 'f_t_shift ~ exp(b0*x1)*sin(b1*x1 + b2)*b3', [B0, B1, B2, B3]);
+            myFit1 = NonLinearModel.fit(X2,f_shift, 'f_t_shift ~ exp(b0*x1)*sin(b1*x1 + b2)*b3', [B0, B1, B2, B3]);
+            f_fit = myFit1.Fitted;
+            % 4a-2 fit the displacement
+            % y = e^(\ksai t)*sin(\omega t + \theta) + a
+            B3 = x_shift(end);
+            X2 = x_t_shift;
+            %   PROBLEMATIC EQUATION HERE! 
+            myFit2 = NonLinearModel.fit(X2,x_shift, 'f_t_shift ~ exp(b0*x1)*sin(b1*x1 + b2)*b3+b3', [B0, B1, B2, B3]);
+            xfit = myFit2.Fitted;
+            end
+            
+            % resample 
+            time = 0:1/500:1.5;
+            %tsinf = timeseries(f_shift',f_t_shift);
+            %tsinf = timeseries(f_fit,f_t_shift);
+            tsinf = myFit1.predict(time');
+            tsinx = myFit2.predict(time');
+            %tsinx = timeseries(x_shift',x_t_shift);
+            %tsinx = timeseries(xfit,x_t_shift);
+            %tsoutf = resample(tsinf,time);
+            %tsoutx = resample(tsinx,time);
+            % regression 
+            % Ft+Mx``(t) = Kx0 - Kx(t) - Dx`(t);
+            x = tsinx;%tsoutx.Data;
+            dx = diff(x)./[diff(time)]';
+            ddx = diff(dx)./[diff(time(1:end-1))]';
+            x = x(1:length(ddx));
+            dx = dx(1:length(ddx));
+            f = tsinf(1:length(ddx));%tsoutf.Data(1:length(ddx));
+            m = obj.pred_A;
+            try 
+                y = (f + m*ddx)';
+            catch
+                display(['Error: m is:' num2str(m)]);
+                return
+            end
+            X = [ones(size(x))'; x'; dx'];
+            % A: Kx0, -K, -D
+            A = y*X'/(X*X');
+            
+            obj.pred_K = -A(2);
+            obj.pred_D = -A(3);
+            obj.pred_x0= A(1)/obj.pred_K;
+           
+            if (ifplot) % need to plot the raw data, interpretation, and the result
+                 subplot(2,1,1); hold on
+                 plot(x_t_shift, x_shift, 'b');
+                 plot(time, tsinx, 'r');
+                 xlim([0,0.5]); 
+                 %legend('raw data', 'damped sinusoid fit')
+                 title('raw data and fitted data');
+                 ylabel('displacement (m)')
+                 subplot(2,1,2); hold on;
+                 plot(f_t_shift, f_shift, 'b');
+                 plot(time, tsinf, 'r');
+                 xlim([0,0.5]);
+                 legend('raw data', 'damped sinusoid fit')
+                 %title('force');
+                 ylabel('censored force (N)')
             end
         end
         function axh = visualizeFrcVelDelay(obj)

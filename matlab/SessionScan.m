@@ -2593,6 +2593,7 @@ classdef (HandleCompatible)SessionScan < handle
                 % make the time aligned for the perturbation
                 time = obj.trials(trial_i).position_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
+                if isempty(time0), continue; end
                 resp_p = obj.trials(trial_i).position_h(2,:);
                 resp_v = obj.trials(trial_i).velocity_h(2,:);
                 position_offset = 0.482;

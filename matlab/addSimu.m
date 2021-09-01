@@ -81,8 +81,9 @@ ss2080.plotMeantrialPos_sameCond();
 
 
 %% Use simulation to test Scott's method if right
+ss2333 = SessionScan(2333);
 trialtmp = ss2333.trials(20); % an example trial in the example session;  
-trialtmp = strialtmp.simuTrialusingODE(226, 28, 3) % K, D, M
+trialtmp = trialtmp.simuTrialusingODE(226, 28, 3) % K, D, M
 trialtmp_pred = trialtmp.predictImpedanceLinDev2ndOrderFixM()
 
 % only shift M
@@ -119,12 +120,14 @@ for trial_i = 1:length(M_list)
 end
 
 %% Simscope simulation, and prediction use Scott's method
-x  = out.pos.Data;
-dx = out.vel.Data;
+idx_stt = 2000;
+idx_edn = 3000;
+x  = out.pos.Data(idx_stt:idx_edn);
+dx = out.vel.Data(idx_stt:idx_edn);
 %ddx= [0; diff(dx)]; % this one needs resample
 ddx= [diff(dx); 0]; % this one needs resample
-F  = out.force2.Data(2:end);
-%F  = out.force.Data(1:end-1);
+%F  = out.force2.Data(2:end);
+F  = out.fce.Data(idx_stt:idx_edn-1);
 length(x)
 length(dx)
 length(ddx)
@@ -133,11 +136,24 @@ length(F)
 X = [ones(size(x(2:end))), x(2:end), dx(2:end), ddx(1:end-1)];
 b = (X'*X) \ (X'*F);
 % b(1) = kx0; b(2) = -k; b(3) = b; b(4) = m
+% Scott's way
 m = b(4);
 B = b(3);
 K = -b(2);
 x0 = b(1)/K;
 fprintf('m: %fkg, B: %fN/(m/s)^-1, K: %fN/m, x0: %fm\n', m, B, K, x0);
+
+% My way
+m0 = 1.1685*1/3;
+m = (F(1)-F(2))/F(2) * m0;
+X = [ones(size(x(2:end))), x(2:end), dx(2:end)];
+y = F + m*ddx(1:end-1);
+b1= (X'*X) \ (X'*y);
+B = b(3);
+K = -b(2);
+x0 = b(1)/K;
+fprintf('m: %fkg, B: %fN/(m/s)^-1, K: %fN/m, x0: %fm\n', m, B, K, x0);
+
 
 %% plot simulation resuts in a different figure
 pos_data = out.pos.Data;
@@ -264,8 +280,10 @@ title('Theoretical x0 with interacting with WAM');
 %   5cm: 5N : 17N
 % 7.5cm: 8N : 21N
 % 0.1cm: 7N : 21N
+clear all; clc;
 %Force_list = {[3, 6], [6, 9, 12, 15], [9:3:21], [9:3:21]};
 Force_list = [3 9 15 21];
+PertFce = 5; 
 %dist = [2.5 5 7.5 10]/100;
 spring_list = [320, 160, 106.67, 89]; % N/m
 %dist = [10 7.5 5 2.5]/100;
@@ -494,3 +512,64 @@ for stiffness_i = 1:length(SpringStiff_list)
     %title(['target ' num2str(dist(dist_i)*100) 'cm']);
     title(['stiffness ' num2str(SpringStiff_list(stiffness_i)) 'N/m']);
 end
+
+%% 
+%% simulate the mass before- and after- FT plates
+% According to the simscape simulation, plot the release duration force 
+% when varying force
+
+clear all; clc;
+force_list = [20];
+PertFce = 5; 
+spring_list = [320]; % N/m
+mass12 = [0 0.2 0.4 0.6 0.8 1.0]; % mass1/mass2
+mass_all = 1.6;
+k0 = 300;
+colors = colormap('lines');
+stiffness0 = 300; % robot stiffness
+
+for mass_i = 1:length(mass12)
+    m1 = 1.6 * mass12(mass_i);
+    m2 = 1.6 * (1-mass12(mass_i));
+    
+    if (m1==0)
+        m1 = 1e-16;
+    end
+    if (m2==0)
+        m2 = 1e-16;
+    end
+    
+    fce = force_list(1);
+    dist = fce/spring_list(1);
+    x0 = dist;
+    stiffness = spring_list(1);
+    damping = 10;
+    xr0 = fce/stiffness0;
+    simout(mass_i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_stepPert',...
+            'FixedStep','0.002');  
+end
+
+% plot out
+figure(); hold on;
+for mass_i = length(mass12):-1:1
+
+    
+        pos = simout(mass_i).pos.Data;
+        postime= simout(mass_i).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simout(mass_i).vel.Data;
+        time = simout(mass_i).vel.Time - 4; % 1 for pert, 4 for release
+        fce = simout(mass_i).fce.Data;
+        timeF= simout(mass_i).fce.Time;
+        plot(time, fce, 'color', colors(mass_i,:));
+        legend_arr{mass_i} = ['M_s/(M_s+M_r)=' num2str(mass12(mass_i)) ];
+end
+legend(legend_arr);
+ylim([-10, 21]); % force
+xlim([-0.1, 0.4]);
+yticks([-3:5]*4);
+ylabel('censored force (N)')
+xlabel('time at movement (s)');
+title('Force change at immediate release');
+set(gca, 'Ygrid', 'on');
