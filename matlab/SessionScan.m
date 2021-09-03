@@ -452,7 +452,7 @@ classdef (HandleCompatible)SessionScan < handle
                 %resample_t = Ty;  % still have 1ms variance between different trials, why?
             end
         end
-        function [resample_t, resample_p, resample_v] = trialDataAlignWAM(obj, trial_idx)
+        function [resample_t, resample_p, resample_v] = trialDataAlignWAM(obj, trial_idx, timezone)
             % for all trials align the original data and time into one
             % matrix
             % Assuming they are uniformlly sampled within one trial
@@ -460,11 +460,17 @@ classdef (HandleCompatible)SessionScan < handle
             if nargin<2
                 trial_idx = [obj.trials.outcome]==1;
             end
+            if exist('timezone', 'var')
+                tz_bgn = timezone(1);
+                tz_edn = timezone(2);
+            else
+                tz_bgn = -0.5; %time-zone
+                tz_edn =  0.8;
+            end
             trial_idx_num = find(trial_idx);
             trials = (obj.trials(trial_idx));
             display(['Enter function Resample;']);
-            tz_bgn = -0.5; %time-zone
-            tz_edn =  0.8;
+
             resample_freq = 500;   % 500Hz, same with WAM
             resample_t = [tz_bgn: (1/resample_freq): tz_edn];
             [~,idx_tmp] = sort(abs(resample_t - 0),2,'ascend'); 
@@ -807,7 +813,7 @@ classdef (HandleCompatible)SessionScan < handle
                 pert_ct = pert_ct + double(ifpert);
             end
         end
-        %%% plot
+        %%% plot all session as a line
         function taskScanTrials(obj)
             % I need true combo here! see the ProcessRawData
             all_fTH = unique([obj.trials.fTh]);
@@ -872,6 +878,7 @@ classdef (HandleCompatible)SessionScan < handle
             for ii = unique(var_SF(~isnan(var_SF)))
                 idx = find(var_SF == ii);
                 plot(idx, var_ST(idx), [col(ii) '*']);
+                plot(idx, var_ST(idx), [col(ii) ]);
             end
             % notations
             yticks([1 2 3 4 5 6 7]);
@@ -997,228 +1004,6 @@ classdef (HandleCompatible)SessionScan < handle
             legend('x', 'y', 'z');
             title('relative endpoint positions');
         end 
-        function axh = plotRecordedEndPointPosition(obj)
-            % for testing if the recorded endpoint position is the actual
-            % endpoint position.  
-            if obj.ssnum == 1931
-            % Moving endpoint +y direction seperately +2cm and +4cm in a
-            % series of stiffness values, and plot the endpoint position. 
-            % see RSHJournal in 2020-02-19
-            
-            % see if right session
-            
-            % the timepoints
-            idx_y2cm = ...
-                [17518	30069	41191	51895	61208	
-                76916	97865	108529	121239	132379	
-                149379	160977	171482	182723	195245
-                209273	220054	230728	244754	258236	
-                274799	286833	299005	315583	329559	
-                345472	359380	372882	386543	400317	];
-            idx_y2cm0= ...
-                [15169	27988	37924	49741	58777	
-                71535	94548	106463	118717	130513	
-                146341	158098	169219	180817	193081
-                207714	216974	228342	241758	255598	
-                271838	284246	296775	312843	327006	
-                342348	356617	370249	383523	398407	];
-            idx_y4cm = ...
-                [24318  35789   46173   55960    67382 
-                86651	103401	114704  126840  138965 
-                154638	166043	176801	188376	200769 
-                214114	225145	237655	251155	265044 
-                280841  292825	306851  322512	336332	
-                353173	366509	379671	394934	409571	];
-            idx_y4cm0 = ...
-                [19720  32640   42790   53780   62890 
-                80827	101112  111708  122994  135267 
-                152425	163047	174486	185108	197908 
-                212059	222592	233587	247945	262185 
-                277513	289391	302883	318693	333144 
-                349605	363426	376401	390174	406454 ];
-            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
-            Kx0_mat = repmat(Kx0, 5, 1);
-            % the y position
-            y2cm = (obj.wamp_h(idx_y2cm',2) - obj.wamp_h(idx_y2cm0',2))/0.01;
-            y4cm = (obj.wamp_h(idx_y4cm',2) - obj.wamp_h(idx_y4cm0',2))/0.01;
-            y2cm_= (2 - y2cm);
-            y4cm_= (4 - y4cm);
-            % plot the point 
-            axh = figure();
-            hold on;
-            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
-            refline;
-            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
-            refline; 
-            ax = gca;
-            ax.XGrid = 'off';
-            ax.YGrid = 'on';
-            legend([dth2, dth1], 'x=4cm', 'x=2cm');
-            xlim([-100, 2600]);
-            %ylim([0, 0.05]);
-            ylim([-0.5, 1.5]);
-            xlabel('Kx N/m');
-            ylabel('error cm');
-            title('Measurement error');
-            end
-            
-            if obj.ssnum == 1934
-            % Moving endpoint +y direction seperately +0.5cm and +1cm in a
-            % series of stiffness values, and plot the endpoint position. 
-            % see RSHJournal in 2020-02-23
-            
-            % see if right session
-            
-            % the timepoints
-            idx_y_5cm0= ...
-                [[43166,53354,63125,72204,81101]	
-                [89780,106318,116129,124344,132576]	
-                [143097,161871,171277,179980,190026]
-                [200306,217437,225979,234183,242343]	
-                [250829,264622,272934,281923,292109]	
-                [304025,314258,322328,331534,340066]	];
-            idx_y_5cm = ...
-                [[46052,55908,65660,74400,83165]	
-                [91784,107985,117586,125554,134182]	
-                [144755,163484,172414,181250,191748]
-                [202181,218802,227254,234940,243731]	
-                [253131,265462,274172,282870,293272]	
-                [305771,315204,323240,332306,340835]	];
-            idx_y1cm0 = ...
-                [[49192,58610,67509,76634,85295] 
-                [100851,111147,119954,128350,138854] 
-                [156048,166584,175455,184630,194119] 
-                [212717,221631,230274,238428,246602] 
-                [259946,268730,277192,287910,296635] 
-                [309366,318166,326597,335150,343811] ];
-            idx_y1cm = ...
-                [[51273,61318,69998,78522,87425] 
-                [103086,113438,121879,130060,140598] 
-                [158274,167181,176712,185685,195731] 
-                [214212,222956,231080,239580,247831] 
-                [261365,269693,277854,288737,297834]	
-                [310857,319299,328166,336458,345126]	];
-            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
-            Kx0_mat = repmat(Kx0, 5, 1);
-            % the y position
-            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
-            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
-            y2cm_= (0.5 - y2cm);
-            y4cm_= (1 - y4cm);
-            % plot the point 
-            axh = figure();
-            hold on;
-            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
-            refline;
-            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
-            refline; 
-            ax = gca;
-            ax.XGrid = 'off';
-            ax.YGrid = 'on';
-            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
-            xlim([-100, 2600]);
-            %ylim([0, 0.05]);
-            ylim([-0.2, 0.5]);
-            xlabel('Kx N/m');
-            ylabel('error cm');
-            title('Measurement error');
-            end
-            
-            if obj.ssnum == 1935
-            % Moving endpoint +y direction using force measurement in a
-            % series of stiffness values, and plot the endpoint position. 
-            % see RSHJournal in 2020-02-23
-            
-            % see if right session
-            
-            % the timepoints
-            idx_y_5cm0= ...
-                [[43166,53354,63125,72204,81101]	
-                [89780,106318,116129,124344,132576]	
-                [143097,161871,171277,179980,190026]
-                [200306,217437,225979,234183,242343]	
-                [250829,264622,272934,281923,292109]	
-                [304025,314258,322328,331534,340066]	];
-            idx_y_5cm = ...
-                [[46052,55908,65660,74400,83165]	
-                [91784,107985,117586,125554,134182]	
-                [144755,163484,172414,181250,191748]
-                [202181,218802,227254,234940,243731]	
-                [253131,265462,274172,282870,293272]	
-                [305771,315204,323240,332306,340835]	];
-            idx_y1cm0 = ...
-                [[49192,58610,67509,76634,85295] 
-                [100851,111147,119954,128350,138854] 
-                [156048,166584,175455,184630,194119] 
-                [212717,221631,230274,238428,246602] 
-                [259946,268730,277192,287910,296635] 
-                [309366,318166,326597,335150,343811] ];
-            idx_y1cm = ...
-                [[51273,61318,69998,78522,87425] 
-                [103086,113438,121879,130060,140598] 
-                [158274,167181,176712,185685,195731] 
-                [214212,222956,231080,239580,247831] 
-                [261365,269693,277854,288737,297834]	
-                [310857,319299,328166,336458,345126]	];
-            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
-            Kx0_mat = repmat(Kx0, 5, 1);
-            % the y position
-            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
-            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
-            y2cm_= (0.5 - y2cm);
-            y4cm_= (1 - y4cm);
-            % plot the point 
-            axh = figure();
-            hold on;
-            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
-            refline;
-            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
-            refline; 
-            ax = gca;
-            ax.XGrid = 'off';
-            ax.YGrid = 'on';
-            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
-            xlim([-100, 2600]);
-            %ylim([0, 0.05]);
-            ylim([-0.2, 0.5]);
-            xlabel('Kx N/m');
-            ylabel('error cm');
-            title('Measurement error');
-            end
-            
-            if obj.ssnum == 1937 % ........ remember to do it later today-cg, tell the difference of force 
-            % Moving endpoint +y direction using force measurement in a
-            % series of stiffness values, and plot the endpoint position. 
-            % see RSHJournal in 2020-02-24
-            
-            % see if right session
-            
-            % the timepoints
-            mark_points_pidx = [[98711,106238,115289,121453,128060,134232,140822,146860,154532,164123;170039,176956,183303,190006,195974,202767,207357,213104,218773,225426;229908,234749,240283,245042,251434,256594,262023,267078,273125,278855;283931,288132,294089,298720,303960,308201,314518,320204,326198,332360;336335,340619,346080,350330,355241,360779,365989,370401,375789,380547]];
-            mark_points_fidx = [[131649,141811,153296,161952,171277,181191,190031,199230,208382,221735;230949,239667,249602,257913,267645,277198,283658,292322,298482,307948;314907,320869,328917,335411,344123,352020,360516,366502,376120,381122;389864,396727,404140,411256,418624,424603,432600,440484,448752,457617;463822,470138,475846,483106,489594,496613,504303,510249,517776,524549]];
-            mark_point_p = obj.wamp_h(mark_points_pidx,2)-0.481;
-            mark_point_f = obj.force_h(2,mark_points_fidx)+3.2; % add 3 newton bias
-            mark_point_f_theoretic = ones(5,10)*16;
-            figure();
-            hold on;
-            plot(mark_point_f(:), mark_point_p(:), '*');
-            plot(mark_point_f_theoretic(:), mark_point_p(:), '*');
-            title('force vs position');
-            figure();
-            hold on;
-            title('position vs stiffness');
-            plot(mark_point_p(:),mark_point_f(:)./mark_point_p(:), '*');
-            plot( mark_point_p(:), mark_point_f_theoretic(:)./mark_point_p(:), '*');
-            legend('measured', 'theoretical');
-            
-            ax = gca;
-            ax.XGrid = 'off';
-            ax.YGrid = 'on';
-            xlabel('position cm');
-            ylabel('Stiffness');
-            title('Measurement error');
-            end
-        end
         function axh = taskEPP_FToverlap_ns(obj) % overlapping endpoint position and FT in one axis, non-scale
             figure(); hold on;
             position = obj.Data.Position.Actual'; 
@@ -1253,6 +1038,7 @@ classdef (HandleCompatible)SessionScan < handle
             
         end
         function axh = addmark_STMOV(obj, axh) % add lines showing mov state. 
+            % not good for now, as I do not align it good with time.
             % how to addline without add the legend???
             mov_mask = obj.Data.TaskStateMasks.Move;
             mov_diff = [0 diff(mov_mask)]; 
@@ -1270,6 +1056,54 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
+        function positions = getPosPert(obj)
+            % return each trial Position according to the task condition
+            % (if more than 1 task conditions, may cause error).
+            % The position was calculated the average value from epecified
+            % time zone, of the last time during perturbation. (on the last
+            % datapoint in the pulse).
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot position
+            
+            % plot color
+            if ~exist('col_i', 'var')
+                col_i = 1;
+            end
+            % align for the perturbation time
+            for trial_i = 1:length(obj.trials)
+                if (obj.trials(trial_i).ifpert)
+                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
+                end
+            end
+            positions = [];
+            % get the mean
+            % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+            hold on;
+            trials_idx = find([obj.trials.ifpert]);     % SHOULD SPECIFY A FUNCTION TO DO THIS JOB FOR CONSISTANCE!!!!!!!
+            % get the perturbation time
+                % go with the first peturbed trial
+            pert_time_idx = find(obj.trials(trials_idx(1)).pertfce_h ~= 0);
+            pert_tz = [obj.trials(trials_idx(1)).position_t(pert_time_idx([1,end]))];
+            clearance = 0.2;
+            tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
+            [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx,tz_interest);
+            % find stady values of resample_p
+            steadyVal = findSteadyValue(resample_p(:,:,2));
+            positions = steadyVal;
+        end
+        %%% plot overlapped release curves
         function axh = plotTrialfyPosition(obj, axh)
             if nargin < 2
                 axh = figure();
@@ -2049,70 +1883,7 @@ classdef (HandleCompatible)SessionScan < handle
             %legend(l_h, labels);
             end
         end
-        function positions = getPosPert(obj)
-            % return each trial Position according to the task condition
-            % (if more than 1 task conditions, may cause error).
-            % The position was calculated the average value from .25~.30
-            % after the positive step, and this is immediately before the 
-            % negative step. 
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            label_i = 0;  
-            % align for the perturbation time
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            positions = [];
-            % get the mean
-            %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-            hold on;
-            trials_idx = [obj.trials.ifpert];
-            label_i = label_i + 1;
-            
-            [resample_t, resample_p, ~] = trialDataAlignWAM(obj, find(trials_idx));
-            % substract average before pert
-            resample_t_0idx = find(resample_t == 0);
-            if resample_t_0idx >= 50
-                resample_t_idx = (resample_t_0idx - 49):resample_t_0idx;
-            else
-                resample_t_idx = 1:resample_t_0idx;
-            end
-            % process each trial to subtract the average
-            for trial_i = 1:size(resample_p(:,:,xyi),1)
-                data = resample_p(trial_i,resample_t_idx,xyi);
-                resample_p(trial_i, :, xyi) = resample_p(trial_i, :, xyi) - mean(data);
-            end
-            % pos_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
-            pos_mean = mean(resample_p(:,:,xyi), 'omitnan'); %only y direction
-            pos_std = std(resample_p(:,:,xyi), 'omitnan');
-            % mean values
-            positions = nan(size(resample_p,1),1);
-            resample_t_idx_mean = [find(resample_t >= 0.25 & resample_t <0.3)];
-            for trial_i = 1:size(resample_p(:,:,xyi),1)
-                data = resample_p(trial_i,resample_t_idx_mean,xyi);
-                positions(trial_i) = mean(data, 'omitnan');
-            end
-        end
-
+        
         function [axhf, axhp, axhv] = plotSameTrial(obj)
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
@@ -2549,7 +2320,7 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('y component');
             title('force vector before release');
         end
-        
+        %%% plot overlapped pert responses
         function axh = plotStepPertResponse_raw(obj, axh, color_arr)
             % axh = plotStepPertResponse_raw % plot the raw response of
             % step perturbation, of all trials in this session 
@@ -2593,13 +2364,15 @@ classdef (HandleCompatible)SessionScan < handle
                 % make the time aligned for the perturbation
                 time = obj.trials(trial_i).position_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
-                if isempty(time0), continue; end
+                if (isempty(obj.trials(trial_i).pert_t_bgn))
+                    time0 = pert_t_last;
+                end
                 resp_p = obj.trials(trial_i).position_h(2,:);
                 resp_v = obj.trials(trial_i).velocity_h(2,:);
                 position_offset = 0.482;
                 position_offset = mean(obj.trials(trial_i).position_h(2,...
                     find(time>time0-0.1 & time<time0)));
-                resp_p_net= resp_p - position_offset; %obj.trials(trial_i).position_offset;
+                resp_p_net= resp_p;% - position_offset; %obj.trials(trial_i).position_offset;
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
                 if ifcolor == 1
@@ -2611,6 +2384,7 @@ classdef (HandleCompatible)SessionScan < handle
                     plot(time-time0, resp_p_net);
                     %plot(time-time0, resp_v, 'color', color_arr);
                 end
+                pert_t_last = time0;
             end
             if flag_stak == 0
                 xlim([-0.2, 0.8]);
@@ -2626,8 +2400,8 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
         end
-        function axh = plotStepPertResponse_rawF(obj, axh, color_arr)
-            % axh = plotStepPertResponse_raw % plot the raw response of
+        function axh = plotStepPertResponse_rawV(obj, axh, color_arr)
+            % axh = plotStepPertResponse_rawV % plot the raw velocity response of
             % step perturbation, of all trials in this session 
             % Assuming all trials are at the same task condition (e.g.
             % requires the same stiffness so that response magnitudes are
@@ -2658,7 +2432,85 @@ classdef (HandleCompatible)SessionScan < handle
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
             trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
             
+            % plot
+            
+            % figure properties
+            
+            % for each trial
+            for trial_i = trials_pert
+                % make the time aligned for the perturbation
+                time = obj.trials(trial_i).position_t;
+                time0 = obj.trials(trial_i).pert_t_bgn;
+                if (isempty(obj.trials(trial_i).pert_t_bgn))
+                    time0 = pert_t_last;
+                end
+                resp_p = obj.trials(trial_i).position_h(2,:);
+                resp_v = obj.trials(trial_i).velocity_h(2,:);
+                position_offset = mean(obj.trials(trial_i).position_h(2,...
+                    find(time>time0-0.1 & time<time0)));
+                resp_p_net= resp_p;% - position_offset; %obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    %plot(time-time0, resp_p, 'color', color_arr);
+                    plot(time-time0, resp_v, 'color', color_arr);
+                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
+                else
+                    %plot(time-time0, resp_p, 'color', color_arr);
+                    plot(time-time0, resp_v);
+                    %plot(time-time0, resp_v, 'color', color_arr);
+                end
+                pert_t_last = time0;
+            end
+            if flag_stak == 0
+                xlim([-0.2, 0.8]);
+                ylabel('endpoint velocity (m/s)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.2, 0.6]);
+                %ylim([-0.015, 0.015]);
+                ylabel('endpoint velocity (m)');
+                xlabel('time'); 
+                title(['session' num2str(obj.ssnum) ' perturbation']);
+            end
+            
+        end
+        function axh = plotStepPertResponse_rawF(obj, axh, color_arr)
+            % axh = plotStepPertResponse_rawF % plot the raw response of
+            % step perturbation, of all trials in this session 
+            % Assuming all trials are at the same task condition (e.g.
+            % requires the same stiffness so that response magnitudes are
+            % the same.
+             
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            obj = updatePertEachTrial(obj);
+            trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
             % plot
             
             % figure properties
@@ -2704,8 +2556,7 @@ classdef (HandleCompatible)SessionScan < handle
                 title(['session' num2str(obj.ssnum) ' perturbation']);
             end
             
-        end
-        
+        end       
         function axh = plotReleaseResponse_rawF(obj, axh, color_arr)
             % axh = plotReleaseResponse_rawF % plot the raw response of
             % ballistic release, in terms of force. of all trials in this session 
@@ -2980,6 +2831,7 @@ classdef (HandleCompatible)SessionScan < handle
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
             trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
             trials_fin  = find([obj.trials(:).outcome] == 1);
             pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
             pert_pltavg_neg = []; 
@@ -2990,7 +2842,11 @@ classdef (HandleCompatible)SessionScan < handle
                 time = obj.trials(trial_i).position_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
                 resp_p = obj.trials(trial_i).position_h(2,:); % resting position
-                time_idx = (time-time0) > -0.1 & (time-time0) < 0;
+                if min(time-time0) < -0.1
+                    time_idx = (time-time0) > -0.1 & (time-time0) < 0;
+                else
+                    [~, time_idx] = min(abs(time - time0));
+                end
                 resp_p0= mean(obj.trials(trial_i).position_h(2,time_idx));
                 resp_v = obj.trials(trial_i).velocity_h(2,:);
                 
@@ -3035,7 +2891,7 @@ classdef (HandleCompatible)SessionScan < handle
             val{1} = pert_pltavg_pos;
             val{2} = pert_pltavg_neg;
         end
-        function [axh, val, lnh] = plotStepPertResponse_rawFce_subavg(obj, axh, color_arr)
+        function [axh, val, lnh] = plotStepPertResponse_raw_pertfce(obj, axh, color_arr)
             % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
             % step perturbation, of all trials in this session 
             % Assuming all trials are at the same task condition (e.g.
@@ -3071,6 +2927,112 @@ classdef (HandleCompatible)SessionScan < handle
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
             trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            trials_fin  = find([obj.trials(:).outcome] == 1);
+            pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
+            pert_pltavg_neg = []; 
+            % for each trial
+            trials_list = intersect(trials_pert, trials_fin);
+            for trial_i = trials_list %trials_pert
+                % make the time aligned for the perturbation
+                time = obj.trials(trial_i).position_t;
+                time0 = obj.trials(trial_i).pert_t_bgn;
+                if (isempty(time0))
+                    time0 = pert_t_last;
+                end
+                resp_fp = obj.trials(trial_i).pertfce_h(:); % resting position
+                if min(time-time0) < -0.1
+                    time_idx = (time-time0) > -0.1 & (time-time0) < 0;
+                else
+                    [~, time_idx] = min(abs(time - time0));
+                end
+                resp_p0= mean(obj.trials(trial_i).position_h(2,time_idx));
+                resp_v = obj.trials(trial_i).velocity_h(2,:);
+                
+                time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
+                pert_pleateu_avg = mean(obj.trials(trial_i).position_h(2,time_pleateu_idx)) - resp_p0;
+                if pert_pleateu_avg > 0
+                    pert_pltavg_pos = [pert_pltavg_pos, pert_pleateu_avg];
+                else
+                    pert_pltavg_neg = [pert_pltavg_neg, pert_pleateu_avg];
+                end
+                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    plot(time-time0, resp_fp, 'color', color_arr);
+                    %plot(time-time0, resp_p_net, 'color', color_arr);
+                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
+                    if trial_i == trials_list(1)
+                        lnh = plot(time-time0, resp_fp, 'color', color_arr);
+                    end
+                else
+                    plot(time-time0, resp_fp, 'color', color_arr);
+                    %plot(time-time0, resp_p_net);
+                    %plot(time-time0, resp_v, 'color', color_arr);
+                    if trial_i == trials_list(1)
+                        lnh = plot(time-time0, resp_fp, 'color', color_arr);
+                    end
+                end
+                pert_t_last = time0;
+            end
+            if flag_stak == 0
+                xlim([-0.2, 0.8]);
+                ylabel('perturbation force (N)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.2, 0.6]);
+                %ylim([-0.015, 0.015]);
+            end
+            
+            % send out the peak values
+            
+            val{1} = pert_pltavg_pos;
+            val{2} = pert_pltavg_neg;
+        end
+        function [axh, val, lnh] = plotStepPertResponse_rawFce(obj, axh, color_arr, low_pass_freq)
+            % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
+            % step perturbation, of all trials in this session 
+            % Assuming all trials are at the same task condition (e.g.
+            % requires the same stiffness so that response magnitudes are
+            % the same.
+            %   axh: the axis handle, for future plot. 
+            %   val: the value (avg) of peak, val{1} positive, val{2}
+            %           negative
+            %   lnh: the line handle, for the futrue legend on
+             
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if ~exist('low_pass_freq', 'var')
+                ifLowpass = false;
+            else
+                ifLowpass = true;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            obj = updatePertEachTrial(obj);
+            trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
             trials_fin  = find([obj.trials(:).outcome] == 1);
             pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
             pert_pltavg_neg = []; 
@@ -3080,10 +3042,121 @@ classdef (HandleCompatible)SessionScan < handle
                 % make the time aligned for the perturbation
                 time = obj.trials(trial_i).force_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
+                if (isempty(obj.trials(trial_i).pert_t_bgn))
+                    continue;
+                end
                 resp_f = obj.trials(trial_i).force_h(2,:); % resting position
                 time_idx = (time-time0) > -0.1 & (time-time0) < 0;
                 resp_f0= mean(obj.trials(trial_i).force_h(2,time_idx)); % may need change
                 resp_v = obj.trials(trial_i).velocity_h(2,:);
+                freq = 1/mean(diff(time));
+                if (ifLowpass)
+                    resp_f = smooth(resp_f, floor(freq/low_pass_freq));
+                end
+                
+                time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
+                pert_pleateu_avg = mean(obj.trials(trial_i).force_h(2,time_pleateu_idx)) - resp_f0;
+                if pert_pleateu_avg > 0
+                    pert_pltavg_pos = [pert_pltavg_pos, pert_pleateu_avg];
+                else
+                    pert_pltavg_neg = [pert_pltavg_neg, pert_pleateu_avg];
+                end
+                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
+                %plot each trial's perturbation response
+                %plot(time-time0, resp_p);
+                if ifcolor == 1
+                    plot(time-time0, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net, 'color', color_arr);
+                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
+                    if trial_i == trials_list(1)
+                        lnh = plot(time-time0, resp_f, 'color', color_arr);
+                    end
+                else
+                    plot(time-time0, resp_f, 'color', color_arr);
+                    %plot(time-time0, resp_p_net);
+                    %plot(time-time0, resp_v, 'color', color_arr);
+                    if trial_i == trials_list(1)
+                        lnh = plot(time-time0, resp_f, 'color', color_arr);
+                    end
+                end
+            end
+            if flag_stak == 0
+                xlim([-0.2, 0.8]);
+                ylabel('endpoint position (m)');
+                xlabel('time');
+                title(['step pert response for session' num2str(obj.ssnum)]);
+            else
+                xlim([-0.2, 0.6]);
+                %ylim([-0.015, 0.015]);
+            end
+            
+            % send out the peak values
+            
+            val{1} = pert_pltavg_pos;
+            val{2} = pert_pltavg_neg;
+        end
+        function [axh, val, lnh] = plotStepPertResponse_rawFce_subavg(obj, axh, color_arr, low_pass_freq)
+            % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
+            % step perturbation, of all trials in this session 
+            % Assuming all trials are at the same task condition (e.g.
+            % requires the same stiffness so that response magnitudes are
+            % the same.
+            %   axh: the axis handle, for future plot. 
+            %   val: the value (avg) of peak, val{1} positive, val{2}
+            %           negative
+            %   lnh: the line handle, for the futrue legend on
+             
+            % check input 
+            if isempty(axh)
+                axh = 0;
+            end
+            if isempty(color_arr)
+                color_arr = 0;
+            end
+            if length(color_arr) ~= 3
+                ifcolor = 0;
+            else
+                ifcolor = 1;
+            end
+            if ~exist('low_pass_freq', 'var')
+                ifLowpass = false;
+            else
+                ifLowpass = true;
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+                flag_stak = 1; 
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+                flag_stak = 1;
+            else
+                axh = figure(); hold on;
+                flag_stak = 0;
+            end
+            % list all trials that being perturbed
+            obj = updatePertEachTrial(obj);
+            trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            trials_fin  = find([obj.trials(:).outcome] == 1);
+            pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
+            pert_pltavg_neg = []; 
+            % for each trial
+            trials_list = intersect(trials_pert, trials_fin);
+            for trial_i = trials_list %trials_pert
+                % make the time aligned for the perturbation
+                time = obj.trials(trial_i).force_t;
+                time0 = obj.trials(trial_i).pert_t_bgn;
+                if (isempty(obj.trials(trial_i).pert_t_bgn))
+                    time0 = pert_t_last;
+                end
+                resp_f = obj.trials(trial_i).force_h(2,:); % resting position
+                time_idx = (time-time0) > -0.1 & (time-time0) < 0;
+                resp_f0= mean(obj.trials(trial_i).force_h(2,time_idx)); % may need change
+                resp_v = obj.trials(trial_i).velocity_h(2,:);
+                freq = 1/mean(diff(time));
+                if (ifLowpass)
+                    resp_f = smooth(resp_f, floor(freq/low_pass_freq));
+                end
                 
                 time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
                 pert_pleateu_avg = mean(obj.trials(trial_i).force_h(2,time_pleateu_idx)) - resp_f0;
@@ -3110,10 +3183,11 @@ classdef (HandleCompatible)SessionScan < handle
                         lnh = plot(time-time0, resp_f-resp_f0, 'color', color_arr);
                     end
                 end
+                pert_t_last = time0;
             end
             if flag_stak == 0
                 xlim([-0.2, 0.8]);
-                ylabel('endpoint position (m)');
+                ylabel('sensored force (N)');
                 xlabel('time');
                 title(['step pert response for session' num2str(obj.ssnum)]);
             else
@@ -3139,7 +3213,7 @@ classdef (HandleCompatible)SessionScan < handle
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
             trials_pert = find([obj.trials(:).ifpert]);
-            
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
             % plot
             axh = figure(); hold on;
             % figure properties
@@ -3170,7 +3244,301 @@ classdef (HandleCompatible)SessionScan < handle
                 title(['step pert response for session' num2str(obj.ssnum)]);
             
         end
+        
+        % exception figures for specific sessions:
+             function axh = plotRecordedEndPointPosition(obj)
+            % for testing if the recorded endpoint position is the actual
+            % endpoint position.  
+            if obj.ssnum == 1931
+            % Moving endpoint +y direction seperately +2cm and +4cm in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-19
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y2cm = ...
+                [17518	30069	41191	51895	61208	
+                76916	97865	108529	121239	132379	
+                149379	160977	171482	182723	195245
+                209273	220054	230728	244754	258236	
+                274799	286833	299005	315583	329559	
+                345472	359380	372882	386543	400317	];
+            idx_y2cm0= ...
+                [15169	27988	37924	49741	58777	
+                71535	94548	106463	118717	130513	
+                146341	158098	169219	180817	193081
+                207714	216974	228342	241758	255598	
+                271838	284246	296775	312843	327006	
+                342348	356617	370249	383523	398407	];
+            idx_y4cm = ...
+                [24318  35789   46173   55960    67382 
+                86651	103401	114704  126840  138965 
+                154638	166043	176801	188376	200769 
+                214114	225145	237655	251155	265044 
+                280841  292825	306851  322512	336332	
+                353173	366509	379671	394934	409571	];
+            idx_y4cm0 = ...
+                [19720  32640   42790   53780   62890 
+                80827	101112  111708  122994  135267 
+                152425	163047	174486	185108	197908 
+                212059	222592	233587	247945	262185 
+                277513	289391	302883	318693	333144 
+                349605	363426	376401	390174	406454 ];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y2cm',2) - obj.wamp_h(idx_y2cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y4cm',2) - obj.wamp_h(idx_y4cm0',2))/0.01;
+            y2cm_= (2 - y2cm);
+            y4cm_= (4 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=4cm', 'x=2cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.5, 1.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+            
+            if obj.ssnum == 1934
+            % Moving endpoint +y direction seperately +0.5cm and +1cm in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-23
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y_5cm0= ...
+                [[43166,53354,63125,72204,81101]	
+                [89780,106318,116129,124344,132576]	
+                [143097,161871,171277,179980,190026]
+                [200306,217437,225979,234183,242343]	
+                [250829,264622,272934,281923,292109]	
+                [304025,314258,322328,331534,340066]	];
+            idx_y_5cm = ...
+                [[46052,55908,65660,74400,83165]	
+                [91784,107985,117586,125554,134182]	
+                [144755,163484,172414,181250,191748]
+                [202181,218802,227254,234940,243731]	
+                [253131,265462,274172,282870,293272]	
+                [305771,315204,323240,332306,340835]	];
+            idx_y1cm0 = ...
+                [[49192,58610,67509,76634,85295] 
+                [100851,111147,119954,128350,138854] 
+                [156048,166584,175455,184630,194119] 
+                [212717,221631,230274,238428,246602] 
+                [259946,268730,277192,287910,296635] 
+                [309366,318166,326597,335150,343811] ];
+            idx_y1cm = ...
+                [[51273,61318,69998,78522,87425] 
+                [103086,113438,121879,130060,140598] 
+                [158274,167181,176712,185685,195731] 
+                [214212,222956,231080,239580,247831] 
+                [261365,269693,277854,288737,297834]	
+                [310857,319299,328166,336458,345126]	];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
+            y2cm_= (0.5 - y2cm);
+            y4cm_= (1 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.2, 0.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+            
+            if obj.ssnum == 1935
+            % Moving endpoint +y direction using force measurement in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-23
+            
+            % see if right session
+            
+            % the timepoints
+            idx_y_5cm0= ...
+                [[43166,53354,63125,72204,81101]	
+                [89780,106318,116129,124344,132576]	
+                [143097,161871,171277,179980,190026]
+                [200306,217437,225979,234183,242343]	
+                [250829,264622,272934,281923,292109]	
+                [304025,314258,322328,331534,340066]	];
+            idx_y_5cm = ...
+                [[46052,55908,65660,74400,83165]	
+                [91784,107985,117586,125554,134182]	
+                [144755,163484,172414,181250,191748]
+                [202181,218802,227254,234940,243731]	
+                [253131,265462,274172,282870,293272]	
+                [305771,315204,323240,332306,340835]	];
+            idx_y1cm0 = ...
+                [[49192,58610,67509,76634,85295] 
+                [100851,111147,119954,128350,138854] 
+                [156048,166584,175455,184630,194119] 
+                [212717,221631,230274,238428,246602] 
+                [259946,268730,277192,287910,296635] 
+                [309366,318166,326597,335150,343811] ];
+            idx_y1cm = ...
+                [[51273,61318,69998,78522,87425] 
+                [103086,113438,121879,130060,140598] 
+                [158274,167181,176712,185685,195731] 
+                [214212,222956,231080,239580,247831] 
+                [261365,269693,277854,288737,297834]	
+                [310857,319299,328166,336458,345126]	];
+            Kx0 = [0, 500, 1000, 1500, 2000, 2500];
+            Kx0_mat = repmat(Kx0, 5, 1);
+            % the y position
+            y2cm = (obj.wamp_h(idx_y_5cm',2) - obj.wamp_h(idx_y_5cm0',2))/0.01;
+            y4cm = (obj.wamp_h(idx_y1cm',2) - obj.wamp_h(idx_y1cm0',2))/0.01;
+            y2cm_= (0.5 - y2cm);
+            y4cm_= (1 - y4cm);
+            % plot the point 
+            axh = figure();
+            hold on;
+            dth1 = plot(Kx0_mat(:), y2cm_, '.', 'MarkerSize', 10);
+            refline;
+            dth2 = plot(Kx0_mat(:), y4cm_, '.', 'MarkerSize', 10);
+            refline; 
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            legend([dth2, dth1], 'x=1cm', 'x=0.5cm');
+            xlim([-100, 2600]);
+            %ylim([0, 0.05]);
+            ylim([-0.2, 0.5]);
+            xlabel('Kx N/m');
+            ylabel('error cm');
+            title('Measurement error');
+            end
+            
+            if obj.ssnum == 1937 % ........ remember to do it later today-cg, tell the difference of force 
+            % Moving endpoint +y direction using force measurement in a
+            % series of stiffness values, and plot the endpoint position. 
+            % see RSHJournal in 2020-02-24
+            
+            % see if right session
+            
+            % the timepoints
+            mark_points_pidx = [[98711,106238,115289,121453,128060,134232,140822,146860,154532,164123;170039,176956,183303,190006,195974,202767,207357,213104,218773,225426;229908,234749,240283,245042,251434,256594,262023,267078,273125,278855;283931,288132,294089,298720,303960,308201,314518,320204,326198,332360;336335,340619,346080,350330,355241,360779,365989,370401,375789,380547]];
+            mark_points_fidx = [[131649,141811,153296,161952,171277,181191,190031,199230,208382,221735;230949,239667,249602,257913,267645,277198,283658,292322,298482,307948;314907,320869,328917,335411,344123,352020,360516,366502,376120,381122;389864,396727,404140,411256,418624,424603,432600,440484,448752,457617;463822,470138,475846,483106,489594,496613,504303,510249,517776,524549]];
+            mark_point_p = obj.wamp_h(mark_points_pidx,2)-0.481;
+            mark_point_f = obj.force_h(2,mark_points_fidx)+3.2; % add 3 newton bias
+            mark_point_f_theoretic = ones(5,10)*16;
+            figure();
+            hold on;
+            plot(mark_point_f(:), mark_point_p(:), '*');
+            plot(mark_point_f_theoretic(:), mark_point_p(:), '*');
+            title('force vs position');
+            figure();
+            hold on;
+            title('position vs stiffness');
+            plot(mark_point_p(:),mark_point_f(:)./mark_point_p(:), '*');
+            plot( mark_point_p(:), mark_point_f_theoretic(:)./mark_point_p(:), '*');
+            legend('measured', 'theoretical');
+            
+            ax = gca;
+            ax.XGrid = 'off';
+            ax.YGrid = 'on';
+            xlabel('position cm');
+            ylabel('Stiffness');
+            title('Measurement error');
+            end
+        end
     end
 
 end
 
+function [steadyValue, duration] = findSteadyValue(intMat, durat, ifplot)
+    % steadyValue = findSteadyValue(interestMat)
+    % for a interestMatrix (intMat) with m-by-n values (which m serves as
+    % series and n is time series), find if the n is steady in the last
+    % some duration. 
+    % Will find the duration (data points) and report it if not specify a
+    % duration,
+    % minimum duration: 50, for 0.1s when the sampling rate is 500Hz
+    if ~exist('durat', 'var')
+        durat = -1;
+    end
+    if ~exist('ifplot', 'var')
+        ifplot = 0;
+    end
+    min_duration = 50;
+    [r,c] = size(intMat);
+    if c<min_duration
+        disp(['ERROR in findSteadyValue: not enough length of data']);
+        return;
+    end
+    if r == 0
+        disp('ERROR in findSteadyValue: not enough data points');
+        return;
+    end
+    % define a threshold th, smaller than which will be regarded as steady
+    % th = k*std(dat_value); k=0.05;
+    k = 0.01;
+    ths = zeros(r,1);
+    for r_i = 1:r
+        ths(r_i) = k*std(intMat(r_i,:), 'omitnan');
+    end
+    % sort and choose the second leatest to avoid when th==0
+    th_tmp = sort(unique(ths), 'ascend');
+    try
+        th = th_tmp(2);
+    catch % smaller than 2
+        th = th_tmp(1);
+    end
+    
+    % find the steady state index from end of the matrix
+    idx = prod([ones(r,1) diff(intMat, 1, 2)] < th, 1); 
+    % find the largest consequtive
+    i = find(diff(idx));
+    n = [i numel(idx)] - [0 i];
+    c = arrayfun(@(X) X-1:-1:0, n , 'un',0);
+    y = cat(2,c{:});
+    [~, idx_stt] = max(y.*idx);
+    idx_edn = idx_stt + y(idx_stt);
+    % change idx_stt according to durat specify
+    if (durat == -1) % unspecified length, use all steady state
+        duration = idx_edn - idx_stt + 1;
+    else
+        idx_stt = idx_edn - durat + 1;
+        duration = durat;
+    end
+    if idx_edn - idx_stt < 50
+        disp('CONDITION: not enough long steady state');
+    end
+    steadyValue = mean(intMat(:, idx_edn-duration+1:idx_edn),2);
+    % HOW TO FIND THE LAST CONSECUTIVE 1s? 
+    if (ifplot)
+        figure();
+        hold on; 
+        plot(intMat'); 
+        line([idx_stt, idx_stt], [min(intMat(:)), max(intMat(:))]);
+        line([idx_edn, idx_edn], [min(intMat(:)), max(intMat(:))]);
+        title('data selection demo');
+    end
+    return
+end

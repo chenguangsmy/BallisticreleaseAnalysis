@@ -563,7 +563,7 @@ for mass_i = length(mass12):-1:1
         fce = simout(mass_i).fce.Data;
         timeF= simout(mass_i).fce.Time;
         plot(time, fce, 'color', colors(mass_i,:));
-        legend_arr{mass_i} = ['M_s/(M_s+M_r)=' num2str(mass12(mass_i)) ];
+        legend_arr{mass_i} = ['M_r/(M_s+M_r)=' num2str(mass12(mass_i)) ];
 end
 legend(legend_arr);
 ylim([-10, 21]); % force
@@ -572,4 +572,35 @@ yticks([-3:5]*4);
 ylabel('censored force (N)')
 xlabel('time at movement (s)');
 title('Force change at immediate release');
+set(gca, 'Ygrid', 'on');
+%%
+figure(); hold on;
+
+for mass_i = length(mass12):-1:1
+        pos = simout(mass_i).pos.Data;
+        postime= simout(mass_i).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simout(mass_i).vel.Data;
+        time = simout(mass_i).vel.Time - 4; % 1 for pert, 4 for release
+        fce = simout(mass_i).fce.Data;
+        timeF= simout(mass_i).fce.Time;
+        subplot(2,1,1); hold on;
+        plot(time, fce, 'color', colors(mass_i,:));
+        subplot(2,1,2); hold on;
+        plot(time, pos, 'color', colors(mass_i,:));
+        legend_arr{mass_i} = ['M_r/(M_s+M_r)=' num2str(mass12(mass_i)) ];
+end
+
+legend(legend_arr);
+%ylim([-10, 21]); % force
+subplot(2,1,1); yticks([-3:5]*4);
+xlim([-0.1, 2]);
+ylabel('censored force (N)')
+title('simulation on ballistic release');
+set(gca, 'Ygrid', 'on');
+subplot(2,1,2); yticks([0:5]*0.02);
+xlim([-0.1, 2]);
+ylabel('position (m)')
+xlabel('time at movement (s)');
 set(gca, 'Ygrid', 'on');

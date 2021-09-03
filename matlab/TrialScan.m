@@ -96,12 +96,20 @@ classdef TrialScan
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
-            try 
+            if isfield('ifpert', sessionScanObj.Data.TaskJudging)
                 obj.ifpert  = ...
                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
-            catch
-                obj.ifpert = [];
+            else 
+                % look for perturbation message in wam.cf
+                obj.ifpert = ...
+                    obj.findPerturbationinWAMcf(sessionScanObj);
             end
+%             try 
+%                 obj.ifpert  = ...
+%                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
+%             catch
+%                 obj.ifpert = [];
+%             end
             maskMov     = sessionScanObj.Data.TaskStateMasks.Move;
             maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
             maskTrial(obj.bgn:obj.edn) = 1;   
@@ -164,6 +172,17 @@ classdef TrialScan
             % find perturbation time
             %obj = findStocPerterbTime(obj, sessionScanObj);
             obj = findStepPerterbTime(obj, sessionScanObj);
+        end
+        function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
+            % find if being perturbed via looking at wam.cf data 
+            % applicable for some sessions without ifpert variable
+            wam_t = sessionScanObj.wam.time; % may inaccurate as the wam time may not consistant with RTMA time
+            stt = obj.bgn_t;
+            edt = obj.edn_t;
+            [~, st_idx] = min(abs(wam_t-stt));
+            [~, ed_idx] = min(abs(wam_t-edt));
+            wam_cf = sessionScanObj.wam.cf(st_idx:ed_idx,:);
+            ifpert = ~sum(sum(wam_cf))==0;
         end
         function obj = findStocPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
@@ -817,7 +836,7 @@ classdef TrialScan
                 B0 = -0.69/1;
             end
             B3 = max(f_shift);
-            B1 = 2*pi/(range(f_t_shift)/pks_num*2); % The period is around 1
+            B1 = 2*pi/(range(f_t_shift)/pks_num);%*2); % The period is around 1
             B2 = pi/2; % looks like its dropping value
             X1 = f_t_shift; 
             X2 = min(X1):mean(diff(X1)):max(X1);
