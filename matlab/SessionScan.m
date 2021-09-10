@@ -29,6 +29,7 @@ classdef (HandleCompatible)SessionScan < handle
         pert_state = 3  % only perturb at force ramp pert_state == 3
         pert_time       % perturbation start and end time
         pert_rdt        % perturbation start read time, (same with wam)
+        pertCond
         %%% other modules
         ft              % object of force
         wam             % object of wam
@@ -106,6 +107,15 @@ classdef (HandleCompatible)SessionScan < handle
             obj.tarRs = unique(obj.Data.TaskJudging.Target(5,targets_idx)); %have 0
             obj.tarLs = setdiff(unique(obj.Data.TaskJudging.Target(6,targets_idx)),0); % deviate 0
             obj.fThs  = setdiff(unique(obj.Data.TaskJudging.Target(4,targets_idx)),0); % deviate 0
+            try 
+                obj.pertCond.pertdx0_mag = Data.TaskJudging.pertdx0_mag;
+                obj.pertCond.wamKp = Data.TaskJudging.wamKp;
+                obj.pertCond.wamBp = Data.TaskJudging.wamBp;
+            catch 
+                obj.pertCond.pertdx0_mag = [];
+                obj.pertCond.wamKp = [];
+                obj.pertCond.wamBp = [];
+            end
 
             
             % execution functions 
@@ -399,7 +409,7 @@ classdef (HandleCompatible)SessionScan < handle
         function force = forceFTconvert(obj) % convert from select into world axis
             force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
         end
-        function [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx)
+        function [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx, timezone)
             % [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx)
             % for all trials resample the original data and time
             % origin data and time are Nonuniformly sampled
@@ -411,8 +421,13 @@ classdef (HandleCompatible)SessionScan < handle
             trial_idx_num = find(trial_idx);
             trials = (obj.trials(trial_idx));
             %display(['Enter function Resample;']);
-            tz_bgn = -0.5;
-            tz_edn =  1.0;
+            if exist('timezone', 'var')
+                tz_bgn = timezone(1);
+                tz_edn = timezone(2);
+            else
+                tz_bgn = -0.5;
+                tz_edn =  1.0;
+            end
             resample_freq = 500;   % 500Hz
             resample_t = [tz_bgn: (1/resample_freq): tz_edn];
             resample_t = resample_t(2:end); % looks like this one is loger 1 element than Ty? how to deal withit?
@@ -537,6 +552,183 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
+        function pert_idx = getPerturbedTrialIdx(obj)
+                pert_idx = find([obj.trials.ifpert]);     % only depend on ifpert, is it safe?
+                pert_idx = setdiff(pert_idx, 1);          % first trial always have bad output, remvoe it
+                trials_fin  = find([obj.trials(:).outcome] == 1);
+                
+                pert_idx = intersect(pert_idx, trials_fin);
+                empty_idx = zeros(size(obj.trials));
+                for trial_i = 1:length(obj.trials)
+                    empty_idx(trial_i) = isempty(obj.trials(trial_i).pert_t_bgn);
+                end
+                pert_idx = setdiff(pert_idx, find(empty_idx));
+                
+            return
+        end
+        function yield_positions = getPertPos(obj, filtHz)
+            ifLowpass = 1; % read out the `$low_pass_freq` low pass force
+            if ~exist('filtHz', 'var')
+                low_pass_freq = 10; % Hz 
+            else
+                low_pass_freq = filtHz;
+            end
+            % return each trial Position according to the task condition
+            % (if more than 1 task conditions, may cause error).
+            % The position was calculated the average value from epecified
+            % time zone, of the last time during perturbation. (on the last
+            % datapoint in the pulse).
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot position
+            
+            % plot color
+            if ~exist('col_i', 'var')
+                col_i = 1;
+            end
+            % align for the perturbation time
+            for trial_i = 1:length(obj.trials)
+                if (obj.trials(trial_i).ifpert)
+                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
+                end
+            end
+            yield_positions = [];
+            % get the mean
+            % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+            hold on;
+            trials_idx = obj.getPerturbedTrialIdx();
+            % get the perturbation time
+                % go with the first peturbed trial
+            obj = obj.updatePertEachTrial;
+            trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            pert_tz = [obj.trials(trials_idx(1)).pert_t_bgn obj.trials(trials_idx(1)).pert_t_edn]; % timezone
+            clearance = 0.2;
+            tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
+            [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx,tz_interest);
+            freq = 1/mean(diff(resample_t));
+            respp = zeros(size(resample_p));
+            for axi = 1:size(resample_p,3) % xyz
+                for ti = 1:size(resample_p,1)
+                    if (ifLowpass)
+                        respp(ti,:,axi) = smooth(resample_p(ti,:,axi), floor(freq/low_pass_freq));
+                    end
+                end
+            end
+            if_substeady = 2;
+            if (if_substeady==1)
+                respp( :,:, 1) = respp(:,:,1) - mean(respp(:,1:50,1), 2);
+                respp( :,:, 2) = respp(:,:,2) - mean(respp(:,1:50,2), 2);
+                respp( :,:, 3) = respp(:,:,3) - mean(respp(:,1:50,3), 2);
+            elseif (if_substeady == 2)
+                respp( :,:, 1) = respp(:,:,1) - 0.482;
+                respp( :,:, 2) = respp(:,:,2) - 0.482;
+                respp( :,:, 3) = respp(:,:,3) - 0.482;
+            end
+            % find stady values of resample_p
+            steadyVal = findSteadyValue(respp(:,:,2), 50, 1);
+            yield_positions = steadyVal;
+        end
+        function yield_force = getPertFce(obj, filtHz)
+            % return each trial censored Force according to the task condition
+            % (if more than 1 task conditions, may cause error).
+            % The position was calculated the average value from epecified
+            % time zone, of the last time during perturbation. (on the last
+            % datapoint in the pulse).
+            ifLowpass = 1; % read out the `$low_pass_freq` low pass force
+            if ~exist('filtHz', 'var')
+                low_pass_freq = 10; % Hz 
+            else
+                low_pass_freq = filtHz;
+            end
+          
+            all_fTH = unique([obj.trials.fTh]);
+            all_fTH = all_fTH(~isnan(all_fTH));
+            all_tarL = unique([obj.trials.tarL]);
+            all_tarL = all_tarL(~isnan(all_tarL));
+            all_tarR = unique([obj.trials.tarR]);
+            all_tarR = all_tarR(~isnan(all_tarR));
+            % assume this session only have x- or y- trials
+            if isempty(setdiff(all_tarR, [0,4])) %only y direction
+                xyi = 1;
+            elseif isempty(setdiff(all_tarR, [2, 6]))
+                xyi = 2;
+            end
+            xy_char = 'xy';
+            % plot position
+            
+            % plot color
+            if ~exist('col_i', 'var')
+                col_i = 1;
+            end
+            % align for the perturbation time
+            for trial_i = 1:length(obj.trials)
+                if (obj.trials(trial_i).ifpert)
+                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
+                end
+            end
+            yield_force = [];
+            % get the mean
+            % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
+            trials_idx = obj.getPerturbedTrialIdx();
+            % get the perturbation time
+                % go with the first peturbed trial
+            obj = obj.updatePertEachTrial;
+            trials_pert = find([obj.trials(:).ifpert]);
+            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            pert_tz = [obj.trials(trials_idx(1)).pert_t_bgn obj.trials(trials_idx(1)).pert_t_edn]; % timezone
+            clearance = 0.2;
+            tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
+            [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx, tz_interest);
+            freq = 1/mean(diff(resample_t));
+            if (ifLowpass)
+                resample_fF = zeros(size(resample_f));
+                for axi = 1:size(resample_f, 3)     % xyz 
+                    for ti = 1:size(resample_f,1) % trial_i
+                        resample_fF(ti,:,axi) = smooth(resample_f(ti,:,axi), floor(freq/low_pass_freq));
+                    end
+                end
+
+            end
+            
+            % low-pass filter the fce
+            % find stady values of resample_p
+            steadyVal = findSteadyValue(resample_fF(:,:,2), 200, 1);
+            yield_force = steadyVal;
+        end
+        function command_force = getPertFce_cmd(obj)
+            % extract command force directly from the session data
+            for trial_i = 1:length(obj.trials)
+                if (obj.trials(trial_i).ifpert)
+                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
+                end
+            end
+            
+            trials_idx = obj.getPerturbedTrialIdx();
+            command_force = (zeros(size(trials_idx)))';
+            % get the perturbation time
+                % go with the first peturbed trial
+            pert_time_idx = find(obj.trials(trials_idx(1)).pertfce_h ~= 0);
+            for trial_i = 1:length(trials_idx)
+                try
+                    command_force(trial_i) = setdiff(unique(obj.trials(trials_idx(trial_i)).pertfce_h(pert_time_idx)), 0);
+                catch 
+                    disp(['no pertfce on trial' num2str(trials_idx(trial_i)) ', give a 0!']);
+                    command_force(trial_i) = 0;
+                end
+            end
+        end
         %%% other process
         function obj_new = ConcatTrials(obj1, obj2, trial_idx1, trial_idx2)
             trials = [obj1.trials(trial_idx1) obj2.trials(trial_idx2)];
@@ -564,7 +756,12 @@ classdef (HandleCompatible)SessionScan < handle
             % Use function TrialScan.findStepPerterbTime()
             trial_num = length(obj.trials);
             for trial_i = 1:trial_num
-                obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
+                switch obj.trials(trial_i).getPerturbationPattern
+                    case 2
+                        obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
+                    case 3
+                    obj.trials(trial_i) = obj.trials(trial_i).findStepx0PerterbTime();
+                end
             end
         end
         %%% communicate 
@@ -1004,6 +1201,77 @@ classdef (HandleCompatible)SessionScan < handle
             legend('x', 'y', 'z');
             title('relative endpoint positions');
         end 
+        function axh = plotTaskEndpointForceh(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else 
+                figure(axh); hold on;
+            end
+            %position = obj.wamp_h'; 
+            plot(obj.force_t, smooth((obj.force_h(2,:)),1)');  
+            ylabel('endpoint positions');
+            xlabel('time points');
+            legend('x', 'y', 'z');
+            title('relative endpoint positions');
+        end 
+        function axh = plotTaskjointTorqeh(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else 
+                figure(axh); hold on;
+            end
+            %position = obj.wamp_h'; 
+            axh1 = subplot(4,1,1);
+            plot(obj.wam.time, smooth((obj.wam.jt(:,1)),1)');  
+            ylabel('J1'); grid on;
+            axh2 = subplot(4,1,2);
+            plot(obj.wam.time, smooth((obj.wam.jt(:,2)),2)'); 
+            ylabel('J2'); grid on;
+            axh3 = subplot(4,1,3);
+            plot(obj.wam.time, smooth((obj.wam.jt(:,3)),3)');  
+            ylabel('J3'); grid on;
+            axh4 = subplot(4,1,4);
+            plot(obj.wam.time, smooth((obj.wam.jt(:,4)),4)');  
+            ylabel('J4'); grid on;
+            linkaxes([axh1 axh2 axh3 axh4], 'xy');
+            xlabel('time points');
+            %legend('x', 'y', 'z');
+            title('joint 4 torque positions');
+        end 
+        function axh = plotAddTrialMark(obj, axh)
+            % read already exist figure, add trial mark on it
+            if (~exist('axh', 'var'))
+                disp('no figure was readed, ABORT!');
+            end
+            if isa(axh, 'matlab.ui.Figure')
+                axh = figure(axh); hold on; % stack
+            elseif isa(axh, 'matlab.graphics.axis.Axes')
+                subplot(axh); hold on;
+            end
+            for trial_i = 1:length(obj.trials)
+                t = obj.trials(trial_i).time_orn(1);
+                line([t t], [-20 20]);
+                text(t, 5, ['trial' num2str(trial_i)]);
+            end
+        end
+        function axh = plotTaskJointPositionh(obj, axh)
+            if nargin < 2
+                axh = figure();
+            else 
+                figure(axh); hold on;
+            end
+            position = obj.wam.jp'; 
+            %position = obj.wam.jt'; 
+            for sbpi = 1:4
+                subplot(4,1,sbpi);
+                plot(obj.wam_t, (position(sbpi,:))', '.');
+                title(['J' num2str(sbpi)]);
+            end
+            ylabel('endpoint positions');
+            xlabel('time points');
+            %legend('x', 'y', 'z');
+            title('relative endpoint positions');
+        end 
         function axh = taskEPP_FToverlap_ns(obj) % overlapping endpoint position and FT in one axis, non-scale
             figure(); hold on;
             position = obj.Data.Position.Actual'; 
@@ -1056,53 +1324,7 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
-        function positions = getPosPert(obj)
-            % return each trial Position according to the task condition
-            % (if more than 1 task conditions, may cause error).
-            % The position was calculated the average value from epecified
-            % time zone, of the last time during perturbation. (on the last
-            % datapoint in the pulse).
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            % align for the perturbation time
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            positions = [];
-            % get the mean
-            % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-            hold on;
-            trials_idx = find([obj.trials.ifpert]);     % SHOULD SPECIFY A FUNCTION TO DO THIS JOB FOR CONSISTANCE!!!!!!!
-            % get the perturbation time
-                % go with the first peturbed trial
-            pert_time_idx = find(obj.trials(trials_idx(1)).pertfce_h ~= 0);
-            pert_tz = [obj.trials(trials_idx(1)).position_t(pert_time_idx([1,end]))];
-            clearance = 0.2;
-            tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
-            [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx,tz_interest);
-            % find stady values of resample_p
-            steadyVal = findSteadyValue(resample_p(:,:,2));
-            positions = steadyVal;
-        end
+        
         %%% plot overlapped release curves
         function axh = plotTrialfyPosition(obj, axh)
             if nargin < 2
@@ -2352,9 +2574,9 @@ classdef (HandleCompatible)SessionScan < handle
             end
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            
+            %trials_pert = find([obj.trials(:).ifpert]);
+            %trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            trials_pert = obj.getPerturbedTrialIdx();
             % plot
             
             % figure properties
@@ -2364,15 +2586,15 @@ classdef (HandleCompatible)SessionScan < handle
                 % make the time aligned for the perturbation
                 time = obj.trials(trial_i).position_t;
                 time0 = obj.trials(trial_i).pert_t_bgn;
-                if (isempty(obj.trials(trial_i).pert_t_bgn))
-                    time0 = pert_t_last;
-                end
+                %if (isempty(obj.trials(trial_i).pert_t_bgn))
+                %    time0 = pert_t_last;
+                %end
                 resp_p = obj.trials(trial_i).position_h(2,:);
                 resp_v = obj.trials(trial_i).velocity_h(2,:);
                 position_offset = 0.482;
-                position_offset = mean(obj.trials(trial_i).position_h(2,...
-                    find(time>time0-0.1 & time<time0)));
-                resp_p_net= resp_p;% - position_offset; %obj.trials(trial_i).position_offset;
+                %position_offset = mean(obj.trials(trial_i).position_h(2,...
+                %    find(time>time0-0.1 & time<time0)));
+                resp_p_net= resp_p - position_offset; %obj.trials(trial_i).position_offset;
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
                 if ifcolor == 1
@@ -2472,7 +2694,7 @@ classdef (HandleCompatible)SessionScan < handle
             else
                 xlim([-0.2, 0.6]);
                 %ylim([-0.015, 0.015]);
-                ylabel('endpoint velocity (m)');
+                ylabel('endpoint velocity (m/s)');
                 xlabel('time'); 
                 title(['session' num2str(obj.ssnum) ' perturbation']);
             end
@@ -3246,7 +3468,7 @@ classdef (HandleCompatible)SessionScan < handle
         end
         
         % exception figures for specific sessions:
-             function axh = plotRecordedEndPointPosition(obj)
+        function axh = plotRecordedEndPointPosition(obj)
             % for testing if the recorded endpoint position is the actual
             % endpoint position.  
             if obj.ssnum == 1931
@@ -3498,37 +3720,64 @@ function [steadyValue, duration] = findSteadyValue(intMat, durat, ifplot)
     end
     % define a threshold th, smaller than which will be regarded as steady
     % th = k*std(dat_value); k=0.05;
-    k = 0.01;
-    ths = zeros(r,1);
-    for r_i = 1:r
-        ths(r_i) = k*std(intMat(r_i,:), 'omitnan');
-    end
-    % sort and choose the second leatest to avoid when th==0
-    th_tmp = sort(unique(ths), 'ascend');
-    try
-        th = th_tmp(2);
-    catch % smaller than 2
-        th = th_tmp(1);
-    end
-    
-    % find the steady state index from end of the matrix
-    idx = prod([ones(r,1) diff(intMat, 1, 2)] < th, 1); 
-    % find the largest consequtive
-    i = find(diff(idx));
-    n = [i numel(idx)] - [0 i];
-    c = arrayfun(@(X) X-1:-1:0, n , 'un',0);
-    y = cat(2,c{:});
+     k = 1e-10;
+     for try_i = 1:100
+        %while (1)
+        ths = zeros(r,1);                   % thresholds for selection
+        row_idx = ones(size(intMat,1), 1);  % index, that which data have big undulate
+        thresholds = sort(range(intMat,2), 'ascend');
+        threshold  = ((thresholds(end)-thresholds(1))*1/3+thresholds(1)) * k;
+        for r_i = 1:r
+            row_idx(r_i) = range(intMat(r_i,:))>threshold;
+        end
+        for r_i = 1:r
+            if (row_idx(r_i))
+                ths(r_i) = std(intMat(r_i,:), 'omitnan');
+            else
+                ths(r_i) = inf;
+            end
+        end
+        % sort and choose the second leatest to avoid when th==0
+        th_tmp = sort(unique(ths), 'ascend');
+        try
+            th = th_tmp(2);
+        catch % smaller than 2
+            th = th_tmp(1);
+        end
+        % choose index on the ones have significant change. 
+         
+        % find the steady state index from end of the matrix
+        idx = prod([zeros(r,1) diff(intMat, 1, 2)] < th, 1);
+
+        %    k = k+0.01;
+        %end
+        % find the largest consequtive
+        i = find(diff(idx));
+        n = [i numel(idx)] - [0 i];
+        c = arrayfun(@(X) X-1:-1:0, n , 'un',0);
+        y = cat(2,c{:});
+          if(sum(idx)) >= 1200
+              k = k*2;
+          end
+          if(sum(idx)) > 100 && (sum(idx)) <1200
+              break
+          end
+%         k = k*2;
+     end
     [~, idx_stt] = max(y.*idx);
     idx_edn = idx_stt + y(idx_stt);
     % change idx_stt according to durat specify
     if (durat == -1) % unspecified length, use all steady state
         duration = idx_edn - idx_stt + 1;
     else
+        idx_edn = idx_edn - 10; % random offset, make sure right value
         idx_stt = idx_edn - durat + 1;
         duration = durat;
     end
     if idx_edn - idx_stt < 50
-        disp('CONDITION: not enough long steady state');
+        disp('CONDITION: not enough long steady state, use default 50');
+        duration = 50;
+        idx_stt = idx_edn - duration + 1;
     end
     steadyValue = mean(intMat(:, idx_edn-duration+1:idx_edn),2);
     % HOW TO FIND THE LAST CONSECUTIVE 1s? 

@@ -41,11 +41,15 @@ classdef TrialScan
         position_offset % steady position before release, as wam uses impedance control
         position_t
         pertfce_h
+        perttqe_h       % torque
         wamrdt          % wam readtime
         velocity
         velocity_h
         velocity_t
         ifpert
+        pert_dx0
+        wamKp
+        wamBp
         % predicted varialbes:
           % predicted linear variables just as Scott Did in thesis::pg44
           % ==> Now use cleave updated Scott's method?
@@ -67,7 +71,8 @@ classdef TrialScan
         pert_t_edn                      % perturbation time end
         pert_rdt_bgn                    % perturbation ReadTime bgn, RDT is SessionScanWam::rdt 
         pert_rdt_edn                    % perturbation ReadTime edn
-        
+        pert_iter
+        perturbation_length = 1000
     end
     
     methods
@@ -96,7 +101,7 @@ classdef TrialScan
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
-            if isfield('ifpert', sessionScanObj.Data.TaskJudging)
+            if isfield(sessionScanObj.Data.TaskJudging, 'ifpert')
                 obj.ifpert  = ...
                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
             else 
@@ -111,6 +116,7 @@ classdef TrialScan
 %                 obj.ifpert = [];
 %             end
             maskMov     = sessionScanObj.Data.TaskStateMasks.Move;
+            maskHold    = sessionScanObj.Data.TaskStateMasks.Hold;
             maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
             maskTrial(obj.bgn:obj.edn) = 1;   
             obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, maskMov & maskTrial));          % target-rotation
@@ -138,6 +144,16 @@ classdef TrialScan
             if isempty(obj.fTh)
                 obj.fTh = nan;
             end
+            try  % only ss2767 and after
+                obj.pert_dx0 = unique(sessionScanObj.pertCond.pertdx0_mag(maskTrial & maskHold));
+                obj.wamKp    = unique(sessionScanObj.pertCond.wamKp(maskTrial & maskHold));
+                obj.wamBp    = unique(sessionScanObj.pertCond.wamBp(maskTrial & maskHold));
+            catch 
+                obj.pert_dx0 = [];
+                obj.wamKp   = [];
+                obj.wamBp   = [];
+            end
+            
             obj.comboTT = getComboTT(obj,sessionScanObj);
             obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
             obj.position = sessionScanObj.Data.Position.Actual(obj.bgn:obj.edn,:);
@@ -151,7 +167,9 @@ classdef TrialScan
                 obj.position_h  = sessionScanObj.wamp_h(positionh_idx,:)';     % from WAM
                 obj.position_t  = sessionScanObj.wam_t(positionh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
                 obj.pertfce_h   = sessionScanObj.wam.cf(positionh_idx,2)'; % for now only perturb at y direction
+                obj.perttqe_h   = sessionScanObj.wam.jt(positionh_idx,2)'; % f
                 obj.wamrdt      = sessionScanObj.wam.rdt(positionh_idx);
+                obj.pert_iter   = sessionScanObj.wam.it(positionh_idx);
             end
             if (~isempty(sessionScanObj.wamp_h))
                 velocityh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
@@ -163,6 +181,7 @@ classdef TrialScan
             elseif isempty(setdiff(obj.tarR, [2, 6]))
                 obj.xyi = 2;
             end
+            
             xy_char = 'xy';
             obj.xyn = xy_char(obj.xyi);
             % other process
@@ -172,6 +191,7 @@ classdef TrialScan
             % find perturbation time
             %obj = findStocPerterbTime(obj, sessionScanObj);
             obj = findStepPerterbTime(obj, sessionScanObj);
+            %obj = findStepx0PerterbTime(obj, sessionScanObj);
         end
         function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
             % find if being perturbed via looking at wam.cf data 
@@ -183,6 +203,23 @@ classdef TrialScan
             [~, ed_idx] = min(abs(wam_t-edt));
             wam_cf = sessionScanObj.wam.cf(st_idx:ed_idx,:);
             ifpert = ~sum(sum(wam_cf))==0;
+        end
+        function pt = getPerturbationPattern(obj)
+            % get the perturbation pattern
+            % 1. Stochastic force
+            % 2. step force
+            pert_fce = unique(obj.pertfce_h); 
+            pert_fce(pert_fce<0.1) = 0; % basiclly will not exert force level < 0.1; 
+            if (isempty(obj.pert_dx0) || ~isempty(setdiff(pert_fce,0)) )
+                pt = 2;
+                return 
+            end
+            % 3. step x0
+            pt = 0;
+            if (obj.ifpert && isempty(setdiff(pert_fce ,0)))
+                pt = 3;
+                return
+            end
         end
         function obj = findStocPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
@@ -216,13 +253,60 @@ classdef TrialScan
             wam_pert_init_idx = find(wam_pert_signal == 0 & [diff(wam_pert_signal) 0]~=0); 
             wam_pert_edn_idx  = find(wam_pert_signal ~= 0 & [diff(wam_pert_signal) 0]~=0); 
             if obj.ifpert == 0 || isempty(wam_pert_init_idx)
-                obj.pert_rdt_bgn = [];
+%                 obj.pert_rdt_bgn = [];
                 obj.pert_rdt_edn = [];
                 % The comming line, only works at the real experiment,
                 % if were conducting spring test, can comment it out.
                 %obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
                 return
             end
+            fin_pert_init_idx = wam_pert_init_idx(end); % ONLY use the final perturb 
+            % dangerous in the task analysis here, as subject may change
+            % strategy to fulfill the perturbation requirements. 
+            fin_pert_edn_idx  = wam_pert_edn_idx(end);
+            if fin_pert_edn_idx < fin_pert_init_idx
+                display(['trial' obj.tNo 'has unfinished perturbation']);
+                obj.pert_rdt_bgn = [];
+                obj.pert_rdt_edn = [];
+            end
+            idxh = fin_pert_init_idx:fin_pert_edn_idx;
+            pert_t = obj.position_t(idxh);
+            % find time  
+            try
+             obj.pert_t_bgn = pert_t(1);
+             obj.pert_t_edn = pert_t(end);
+            catch
+                return
+            end
+             % find RDT
+             obj.pert_rdt_bgn = obj.wamrdt(fin_pert_init_idx);    % force increasing time (pert start)
+             obj.pert_rdt_edn = obj.wamrdt(fin_pert_edn_idx);  % release time (pert finished)
+             
+             % position offset
+             pos_bef_pert = obj.position_h(2, fin_pert_init_idx-100:fin_pert_init_idx-1); 
+             obj.position_offset = mean(pos_bef_pert);
+        end
+        function obj = findStepx0PerterbTime(obj, sessionScanObj)
+            % find perturbation based on we only perturb on x0
+            % As we did not record the x0 (at code version Sep7th, 2021),
+            % we use the torque (jt) as a marker to recognize the
+            % perturbation
+            % This is only for the STEP PERTURBATION.
+            wam_pert_signal = obj.pert_iter;
+            % find index
+            wam_pert_signald= [0 diff(wam_pert_signal)'];
+            wam_pert_signaldd= [0 diff(wam_pert_signald)];
+            [idx] = find(wam_pert_signaldd == 1); % hope normal activity will not cross 5*std
+            if (length(idx)<1) % did not detected the positive and negative edge
+                %                 obj.pert_rdt_bgn = [];
+                obj.pert_rdt_edn = [];
+                % The comming line, only works at the real experiment,
+                % if were conducting spring test, can comment it out.
+                %obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
+                return
+            end
+            wam_pert_init_idx = idx; 
+            wam_pert_edn_idx  = wam_pert_init_idx + 1000 - 1; 
             fin_pert_init_idx = wam_pert_init_idx(end); % ONLY use the final perturb 
             % dangerous in the task analysis here, as subject may change
             % strategy to fulfill the perturbation requirements. 
