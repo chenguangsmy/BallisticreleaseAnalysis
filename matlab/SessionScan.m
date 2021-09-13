@@ -116,8 +116,12 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.pertCond.wamKp = [];
                 obj.pertCond.wamBp = [];
             end
-
-            
+            try 
+                obj.pertCond.pertdf= Data.TaskJudging.pertdf_mag;
+            catch 
+                obj.pertCond.pertdf= [];
+            end
+                
             % execution functions 
             % trialTimeAverage(obj); % how to use class function?
 
@@ -607,13 +611,14 @@ classdef (HandleCompatible)SessionScan < handle
             % get the mean
             % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
             hold on;
-            trials_idx = obj.getPerturbedTrialIdx();
             % get the perturbation time
                 % go with the first peturbed trial
             obj = obj.updatePertEachTrial;
+            trials_idx = obj.getPerturbedTrialIdx();
             trials_pert = find([obj.trials(:).ifpert]);
             trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            pert_tz = [obj.trials(trials_idx(1)).pert_t_bgn obj.trials(trials_idx(1)).pert_t_edn]; % timezone
+            pert_tz = [obj.trials(trials_idx(1)).pert_t_bgn obj.trials(trials_idx(1)).pert_t_edn]; % timezone 
+                                                                            %... This line always get wrong for no reason, but not when execute seperately
             clearance = 0.2;
             tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
             [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx,tz_interest);
@@ -622,19 +627,23 @@ classdef (HandleCompatible)SessionScan < handle
             for axi = 1:size(resample_p,3) % xyz
                 for ti = 1:size(resample_p,1)
                     if (ifLowpass)
-                        respp(ti,:,axi) = smooth(resample_p(ti,:,axi), floor(freq/low_pass_freq));
+                        respp(ti,:,axi) = smooth(resample_p(ti,:,axi), ceil(freq/low_pass_freq));
                     end
                 end
             end
             if_substeady = 2;
-            if (if_substeady==1)
-                respp( :,:, 1) = respp(:,:,1) - mean(respp(:,1:50,1), 2);
-                respp( :,:, 2) = respp(:,:,2) - mean(respp(:,1:50,2), 2);
-                respp( :,:, 3) = respp(:,:,3) - mean(respp(:,1:50,3), 2);
-            elseif (if_substeady == 2)
+            if (if_substeady==1)    % relatively error
+                respp( :,:, 1) = respp(:,:,1) - mean(respp(:,1:50,1), 2, 'omitnan');
+                respp( :,:, 2) = respp(:,:,2) - mean(respp(:,1:50,2), 2, 'omitnan');
+                respp( :,:, 3) = respp(:,:,3) - mean(respp(:,1:50,3), 2, 'omitnan');
+            elseif (if_substeady == 2)  % absolute error
                 respp( :,:, 1) = respp(:,:,1) - 0.482;
                 respp( :,:, 2) = respp(:,:,2) - 0.482;
                 respp( :,:, 3) = respp(:,:,3) - 0.482;
+            elseif (if_substeady == 3)  % absolute value
+                respp( :,:, 1) = respp(:,:,1);
+                respp( :,:, 2) = respp(:,:,2);
+                respp( :,:, 3) = respp(:,:,3);
             end
             % find stady values of resample_p
             steadyVal = findSteadyValue(respp(:,:,2), 50, 1);
@@ -696,12 +705,21 @@ classdef (HandleCompatible)SessionScan < handle
                 resample_fF = zeros(size(resample_f));
                 for axi = 1:size(resample_f, 3)     % xyz 
                     for ti = 1:size(resample_f,1) % trial_i
-                        resample_fF(ti,:,axi) = smooth(resample_f(ti,:,axi), floor(freq/low_pass_freq));
+                        resample_fF(ti,:,axi) = smooth(resample_f(ti,:,axi), ceil(freq/low_pass_freq));
                     end
                 end
 
             end
-            
+            if_substeady = 1;
+            if (if_substeady==1)    % relatively error
+                resample_fF( :,:, 1) = resample_fF(:,:,1) - mean(resample_fF(:,1:50,1), 2, 'omitnan');
+                resample_fF( :,:, 2) = resample_fF(:,:,2) - mean(resample_fF(:,1:50,2), 2, 'omitnan');
+                resample_fF( :,:, 3) = resample_fF(:,:,3) - mean(resample_fF(:,1:50,3), 2, 'omitnan');
+            elseif (if_substeady == 2)  % absolute error
+                resample_fF( :,:, 1) = resample_fF(:,:,1) - 0.482;
+                resample_fF( :,:, 2) = resample_fF(:,:,2) - 0.482;
+                resample_fF( :,:, 3) = resample_fF(:,:,3) - 0.482;
+            end
             % low-pass filter the fce
             % find stady values of resample_p
             steadyVal = findSteadyValue(resample_fF(:,:,2), 200, 1);
@@ -3720,51 +3738,94 @@ function [steadyValue, duration] = findSteadyValue(intMat, durat, ifplot)
     end
     % define a threshold th, smaller than which will be regarded as steady
     % th = k*std(dat_value); k=0.05;
-     k = 1e-10;
-     for try_i = 1:100
-        %while (1)
-        ths = zeros(r,1);                   % thresholds for selection
-        row_idx = ones(size(intMat,1), 1);  % index, that which data have big undulate
-        thresholds = sort(range(intMat,2), 'ascend');
-        threshold  = ((thresholds(end)-thresholds(1))*1/3+thresholds(1)) * k;
-        for r_i = 1:r
-            row_idx(r_i) = range(intMat(r_i,:))>threshold;
+% % %     k = 1e-10;
+% % %     for try_i = 1:100
+% % %         ths = zeros(r,1);                   % thresholds for selection
+% % %         row_idx = ones(size(intMat,1), 1);  % index, that which data have big undulate
+% % %         thresholds = sort(range(intMat,2), 'ascend');
+% % %         threshold  = ((thresholds(end)-thresholds(1))*1/3+thresholds(1)) * k;
+% % %         for r_i = 1:r
+% % %             row_idx(r_i) = range(intMat(r_i,:))>threshold;
+% % %         end
+% % %         for r_i = 1:r
+% % %             if (row_idx(r_i))
+% % %                 ths(r_i) = std(intMat(r_i,:), 'omitnan');
+% % %             else
+% % %                 ths(r_i) = inf;
+% % %             end
+% % %         end
+% % %         % sort and choose the second leatest to avoid when th==0
+% % %         th_tmp = sort(unique(ths), 'ascend');
+% % %         try
+% % %             th = th_tmp(2);
+% % %         catch % smaller than 2
+% % %             th = th_tmp(1);
+% % %         end
+% % %         % choose index on the ones have significant change.
+% % %         
+% % %         % find the steady state index from end of the matrix
+% % %         idx = prod([zeros(r,1) diff(intMat, 1, 2)] < th, 1);
+% % %         
+% % %         %    k = k+0.01;
+% % %         %end
+% % %         % find the largest consequtive
+% % %         i = find(diff(idx));
+% % %         n = [i numel(idx)] - [0 i];
+% % %         c = arrayfun(@(X) X-1:-1:0, n , 'un',0);
+% % %         y = cat(2,c{:});
+% % %         if(sum(idx)) >= 1200
+% % %             k = k*2;
+% % %         end
+% % %         if(sum(idx)) > 100 && (sum(idx)) <1200
+% % %             break
+% % %         end
+% % %         %         k = k*2;
+% % %     end
+% % %     [~, idx_stt] = max(y.*idx);
+% % %     idx_edn = idx_stt + y(idx_stt);
+% % %     % change idx_stt according to durat specify
+% % %     if (durat == -1) % unspecified length, use all steady state
+% % %         duration = idx_edn - idx_stt + 1;
+% % %     else
+% % %         idx_edn = idx_edn - 10; % random offset, make sure right value
+% % %         idx_stt = idx_edn - durat + 1;
+% % %         duration = durat;
+% % %     end
+    % get data by summation
+    data = sum(abs(intMat'), 2);
+    datad = diff(data');
+    % detect edge 
+    edge_arr = [datad(1) datad];
+    edge_abs = abs(edge_arr);
+    % 1. find boundaries of edge (two maximum change) 
+    [edge_sort, maxidx] = sort(edge_abs, 'descend');
+    cond = true; 
+    i = 2;
+    while(cond)
+        edge1idx = maxidx(1);
+        edge2idx = maxidx(i);
+        if (abs(edge1idx-edge2idx) > c/2) % two edges are faraway
+            cond = false;
+        else 
+            i = i+1; % refind edge2
         end
-        for r_i = 1:r
-            if (row_idx(r_i))
-                ths(r_i) = std(intMat(r_i,:), 'omitnan');
-            else
-                ths(r_i) = inf;
-            end
-        end
-        % sort and choose the second leatest to avoid when th==0
-        th_tmp = sort(unique(ths), 'ascend');
-        try
-            th = th_tmp(2);
-        catch % smaller than 2
-            th = th_tmp(1);
-        end
-        % choose index on the ones have significant change. 
-         
-        % find the steady state index from end of the matrix
-        idx = prod([zeros(r,1) diff(intMat, 1, 2)] < th, 1);
+    end
+    % 2. find data steady
+    [n, x] = hist(edge_arr); 
+    x_boundDist = range(x)/length(x);
+    diff_tolerance = x(n == max(n)) + [-1 1]*x_boundDist;
+    arr_idx1 = [edge_arr > diff_tolerance(1)] &...
+        [edge_arr<diff_tolerance(2)] & ...
+        [1:c] > min([edge1idx edge2idx]) &...
+        [1:c] < max([edge1idx edge2idx]);
+    
+    % find the largest consequtive
+    i = [find(diff(arr_idx1))];
+    n = [i numel(arr_idx1)] - [0 i];
+    cels = arrayfun(@(X) X-1:-1:0, n , 'un',0);
+    y = cat(2,cels{:});
 
-        %    k = k+0.01;
-        %end
-        % find the largest consequtive
-        i = find(diff(idx));
-        n = [i numel(idx)] - [0 i];
-        c = arrayfun(@(X) X-1:-1:0, n , 'un',0);
-        y = cat(2,c{:});
-          if(sum(idx)) >= 1200
-              k = k*2;
-          end
-          if(sum(idx)) > 100 && (sum(idx)) <1200
-              break
-          end
-%         k = k*2;
-     end
-    [~, idx_stt] = max(y.*idx);
+    [~, idx_stt] = max(y.*arr_idx1);
     idx_edn = idx_stt + y(idx_stt);
     % change idx_stt according to durat specify
     if (durat == -1) % unspecified length, use all steady state
@@ -3774,6 +3835,7 @@ function [steadyValue, duration] = findSteadyValue(intMat, durat, ifplot)
         idx_stt = idx_edn - durat + 1;
         duration = durat;
     end
+
     if idx_edn - idx_stt < 50
         disp('CONDITION: not enough long steady state, use default 50');
         duration = 50;

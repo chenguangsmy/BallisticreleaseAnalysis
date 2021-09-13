@@ -47,6 +47,7 @@ classdef TrialScan
         velocity_h
         velocity_t
         ifpert
+        pert_f
         pert_dx0
         wamKp
         wamBp
@@ -153,6 +154,11 @@ classdef TrialScan
                 obj.wamKp   = [];
                 obj.wamBp   = [];
             end
+            try
+                obj.pert_f   = unique(sessionScanObj.pertCond.pertdf(maskTrial & maskHold));
+            catch
+                 obj.pert_f  = [];
+            end
             
             obj.comboTT = getComboTT(obj,sessionScanObj);
             obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
@@ -210,7 +216,7 @@ classdef TrialScan
             % 2. step force
             pert_fce = unique(obj.pertfce_h); 
             pert_fce(pert_fce<0.1) = 0; % basiclly will not exert force level < 0.1; 
-            if (isempty(obj.pert_dx0) || ~isempty(setdiff(pert_fce,0)) )
+            if ((isempty(obj.pert_dx0) || isempty(setdiff(obj.pert_dx0, 0))) && ~isempty(setdiff(pert_fce,0)) )
                 pt = 2;
                 return 
             end
