@@ -33,12 +33,16 @@ classdef (HandleCompatible)SessionScan < handle
         %%% other modules
         ft              % object of force
         wam             % object of wam
+        emg             % object of emg
         force_h         % time for wam seperate data
         force_t         % time for ft seperate data
         wamp_h          % highly sampled from wam
         wamv_h
         wamt_h
         wam_t
+        wam_ts
+        emg_h
+        emg_t
         
         %%% other variables
         endpoint0 = [-0.517 0.483 0.001]
@@ -74,21 +78,29 @@ classdef (HandleCompatible)SessionScan < handle
             fname0 = ([file_dir '/' file_name]);
             flag_progress = 1;      % show something to make me less anxious
             try 
-                load(fname);
+                load(fname, 'Data');
             catch 
-                load(fname0);
+                load(fname0, 'Data');
             end
             % objects
             noFW_data = 0;
             try
                 if (flag_progress)
-                    display('Loading raw FT and WAM...');
+                    disp('Loading raw FT and WAM...');
                 end
                 obj.ft = SessionScanFT(ss_num);
                 obj.wam = SessionScanWam(ss_num);
             catch 
-                display('no ft and wam data here! ');
+                disp('no ft and wam data here! ');
                 noFW_data = 1;
+            end
+            try 
+                if (flag_progress)
+                    disp('Loading (intermed/raw) EMG...');
+                end
+                obj.emg = SessionScanEMG(ss_num);
+            catch
+                disp('no EMG data here! ')
             end
             % other data
 
@@ -130,18 +142,25 @@ classdef (HandleCompatible)SessionScan < handle
             trials_all = setdiff(unique(TrialNo), 0);
             if (~isempty(obj.ft))
                 if (flag_progress)
-                    display('FT High Sample...');
+                    disp('FT High Sample...');
                 end
                 obj = forceHighSample(obj, obj.ft);
             end
             if (~isempty(obj.wam))
                 if (flag_progress)
-                    display('WAM High Sample...');
+                    disp('WAM High Sample...');
                 end
                 obj = wamHighSample(obj, obj.wam);
             end
+            if (~isempty(obj.emg))
+                if (flag_progress)
+                    disp('EMG High Sample...');
+                end
+                obj = emgHighSample(obj, obj.emg);
+            end
+            
             if (flag_progress)
-                    display('Trialfy...');
+                    disp('Trialfy...');
             end
             
             percent_prev = 0;
@@ -367,10 +386,6 @@ classdef (HandleCompatible)SessionScan < handle
             % align robot movement to higher resolution according to a
             % seperate wam.obj file. the seperate wam.obj file should
             % extract from SessionScanWam
-            
-            align_wrdt = obj.Data.Position.RDT;
-            align_Wrdt = wam_obj.rdt;
-            align_time = obj.time;
 
              wam_obj = convert0tonan_RDT(wam_obj);
              align_wrdt = obj.Data.Position.RDT;
@@ -409,6 +424,26 @@ classdef (HandleCompatible)SessionScan < handle
             obj.wamv_h = wam_obj.tv;
             obj.wamt_h = wam_obj.jt;
             obj.wam_t = align_Time;
+            if ~isempty(wam_obj.state)
+                obj.wam_ts = wam_obj.state;
+            end
+            
+        end
+        function obj = emgHighSample(obj, emg_obj)
+            % obj = emgHighSample(obj, emg_obj)
+            % align EMG to task time. EMG data comes from a  seperate 
+            % emg.obj file. the seperate emg.obj file should  extract from 
+            % SessionScanEMG 
+            % the after sampled data will still be the same sampling rate
+            % as the EMG file, but the time has being aligned with the task
+            % time.
+            brtime_receieved = obj.Data.SpikeTimestamp;
+            disp([num2str(sum(isnan(brtime_receieved))) ' timepoints were nan']);
+            brtime_receieved(1) = brtime_receieved(2) - mean(diff(brtime_receieved), 'omitnan');
+            brrawtime_aligned = interp1(brtime_receieved, obj.Data.Time, emg_obj.brtime, 'linear', 'extrap');
+            obj.emg_h = emg_obj.dat;
+            obj.emg_t = brrawtime_aligned;
+            
         end
         function force = forceFTconvert(obj) % convert from select into world axis
             force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
@@ -1018,6 +1053,91 @@ classdef (HandleCompatible)SessionScan < handle
                 mat = mat(:,1:end+n);
             end  
         end
+        
+        function [cellsmat] = export_as_formatted(obj, ifplot)
+            
+            if (~exist('ifplot', 'var'))
+                ifplot = 0;
+            end
+            % export as a t(trials_num)-by-p(perturbation options) cell mat
+            % for each cell, the data format are each trial, which contains:
+            %   x: 3-by-N matrix, robot endpoint
+            %   v: 3-by-N matrix, robot velocity
+            %   f: 3-by-N matrix, force transducer force
+            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
+            %   ts: 1-by-N matrix, task states
+            %   time: 1-by-N matrix, time 
+            %   movement onset: the mask that robot start move
+            %  -[ ] emg: 8-by-N matrix, emg data
+            pert_trials = [obj.trials.ifpert];
+            t_idx = cell(1,3);
+            for p_i = 1:3
+                 t_idx{p_i} = find(pert_trials==p_i-1); % 0,nopert; 1, pulse; 2, stoc
+            end
+            
+
+            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
+                % Assume only stocpert do not in the same session with step ones
+                cellsmat = cell(length(obj.tarLs), max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
+                for tl_i = 1:length(obj.tarLs)
+                    trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                    for t_i = 1:length(trial_list)
+                        t_tmp = obj.trials(trial_list(t_i));
+                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
+                    end
+                end
+            else
+                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
+                for p_i = 1:2
+                    for t_i = 1:length(t_idx{p_i})
+                        t_tmp = obj.trials(t_idx{p_i}(t_i));
+                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;
+                    end
+                end
+            end
+            
+            % plot out the time skew
+            if (ifplot) 
+                plt_offset = 2e-3/10;
+                for p_i = 1:3
+                    subplot(1,3,p_i); hold on;
+                    switch p_i
+                        case 1
+                            title('no pert');
+                        case 2
+                            title('pulse pert');
+                        case 3
+                            title('stoc pert');
+                    end
+                    if (p_i ~= 3)
+                        for t_i = 1:length(t_idx{p_i})
+                            if(isempty(cellsmat{t_i, p_i}))
+                                continue;
+                            end
+                            dt = diff(cellsmat{t_i,p_i}.t);
+                            dt = [dt(1) dt];
+                            plot(t_i*plt_offset + dt);
+                        end
+                    else
+                        if isempty(t_idx{p_i}) 
+                            continue
+                        end
+                        tiofst = 0; % plot offset
+                        for tl_i = 1:size(cellsmat, 1)
+                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
+                                if ~isempty(cellsmat{tl_i,t_i,p_i})
+                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
+                                dt = [dt(1) dt];
+                                tiofst = tiofst+1;
+                                plot(tiofst*plt_offset + dt);
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
         %%% with perturbations
         function pert_ct = countPerturbation(obj)
             % pert_ct = countPerturbation(); % return the trial # being

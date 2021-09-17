@@ -41,8 +41,9 @@ classdef TrialScan
         position_offset % steady position before release, as wam uses impedance control
         position_t
         pertfce_h
-        perttqe_h       % torque
+        wamtqe_h       % torque
         wamrdt          % wam readtime
+        wam_ts
         velocity
         velocity_h
         velocity_t
@@ -172,8 +173,8 @@ classdef TrialScan
                 positionh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
                 obj.position_h  = sessionScanObj.wamp_h(positionh_idx,:)';     % from WAM
                 obj.position_t  = sessionScanObj.wam_t(positionh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
-                obj.pertfce_h   = sessionScanObj.wam.cf(positionh_idx,2)'; % for now only perturb at y direction
-                obj.perttqe_h   = sessionScanObj.wam.jt(positionh_idx,2)'; % f
+                obj.pertfce_h   = sessionScanObj.wam.cf(positionh_idx,:)'; % for now only perturb at y direction
+                obj.wamtqe_h   = sessionScanObj.wam.jt(positionh_idx,:)'; % f
                 obj.wamrdt      = sessionScanObj.wam.rdt(positionh_idx);
                 obj.pert_iter   = sessionScanObj.wam.it(positionh_idx);
             end
@@ -181,6 +182,9 @@ classdef TrialScan
                 velocityh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
                 obj.velocity_h  = sessionScanObj.wamv_h(velocityh_idx,:)';     % from WAM
                 obj.velocity_t  = sessionScanObj.wam_t(velocityh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
+            end
+            if (~isempty(sessionScanObj.wam_ts))
+                obj.wam_ts = sessionScanObj.wam_ts(positionh_idx);
             end
             if isempty(setdiff(obj.tarR, [0,4])) %only y direction
                 obj.xyi = 1;
@@ -195,8 +199,11 @@ classdef TrialScan
                     obj.outcome = 0;
                 end
             % find perturbation time
-            %obj = findStocPerterbTime(obj, sessionScanObj);
-            obj = findStepPerterbTime(obj, sessionScanObj);
+            if (obj.ifpert==1 || obj.ifpert==0)
+                obj = findStepPerterbTime(obj, sessionScanObj);
+            else
+                obj = findStocPerterbTime(obj, sessionScanObj);
+            end
             %obj = findStepx0PerterbTime(obj, sessionScanObj);
         end
         function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
@@ -255,7 +262,7 @@ classdef TrialScan
         function obj = findStepPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
             % This is only for the STEP PERTURBATION.
-            wam_pert_signal = obj.pertfce_h;
+            wam_pert_signal = obj.pertfce_h(2,:);
             wam_pert_init_idx = find(wam_pert_signal == 0 & [diff(wam_pert_signal) 0]~=0); 
             wam_pert_edn_idx  = find(wam_pert_signal ~= 0 & [diff(wam_pert_signal) 0]~=0); 
             if obj.ifpert == 0 || isempty(wam_pert_init_idx)
@@ -993,45 +1000,21 @@ classdef TrialScan
                  ylabel('censored force (N)')
             end
         end
-        function axh = visualizeFrcVelDelay(obj)
-            % axh = visualizeFrcVelDelay(obj)
-            % Visualize force and velocity as a overlap lines, and by this
-            % determine whether the alignment is good. 
-            % In the current situation, force and neural activity only has
-            % alignment according to the RTMA system, which could be
-            % delayed in network. 
+        function obj = aligntime_wamft(obj)
+            % obj = aligntime_wamft(obj)
+            % align the time of wam and force transducer. 
+            % 1. Find the part they are the same
+            disp('Align the time of wam and ft now');
+            wamt = obj.position_t; 
+            ftt  = obj.force_t;
             
-            % pre-process data
-            % same magnitude
-            t_bgn = 0;
-            t_edn = 0.4;
-            freq = 500;     % 500Hz, the same as WAM
-            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
-            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
-            pos_t = obj.position_t(pos_t_idx);
+            % 2. check whether the time are overlepped, if not, rely on wam
+            % time base. 
             
-            fce_t = obj.force_t(fce_t_idx);
-            pos = obj.position_h(obj.xyi,pos_t_idx);
-            fce = obj.force_h(obj.xyi,fce_t_idx);
-            vel = obj.velocity_h(obj.xyi,pos_t_idx);
+            % 3. save the trancated FT and wam_related variables in obj
             
-            % here only for y direction
-            pos_reMag = 1/range(pos) * pos; 
-            vel_reMag = 1/range(vel) * vel;
-            frc_reMag = 1/range(fce) * fce; 
-            pos_reNorm = pos_reMag - mean(pos_reMag);
-            frc_reNorm = frc_reMag - mean(frc_reMag);
-            
-            axh = figure(); hold on;
-            plot(pos_t, pos_reNorm(:)); 
-            plot(fce_t, frc_reMag(:));
-            plot(pos_t, vel_reMag(:));
-            
-            legend('position\_renorm', 'force\_remag', 'velocity\_remag');
-            title('timeAlign comparation in trial');
-            xlabel('time after release');
         end
-        
+
         function comboTT = getComboTT(obj,sessionScanObj)
         	% defined: targets = [obj.tarR, obj.tarL, obj.fTh];
             if length(unique(obj.tarR)) > 1
@@ -1160,7 +1143,91 @@ classdef TrialScan
             obj.force_h = force; 
             %obj.force_h(obj.force_t<0) = F;
         end
+        
+        function [dat] = export_as_formatted(obj)
+            % export as a t(trials_num)-by-p(perturbation options) cell mat
+            % for each cell, the data format are each trial, which contains:
+            %   x: 3-by-N matrix, robot endpoint
+            %   v: 3-by-N matrix, robot velocity
+            %   f: 3-by-N matrix, force transducer force
+            %   Fpert: 1-by-N matrix, perturbation force, 2-by-N in stoc(xy)
+            %   ts: 1-by-N matrix, task states
+            %   time: 1-by-N matrix, time 
+            %   movement onset: the mask that robot start move
+            %  -[ ] emg: 8-by-N matrix, emg data
+        % consider tiey up a single trial
+        timepoints = obj.position_t;
+        ts_time = timepoints(find(diff(obj.wam_ts)));  % time when ts change
+        ts_valid = [1:6];
+        wam_t = timepoints(ismember(obj.wam_ts, ts_valid));
+        time_diff = diff(wam_t);
+        time_diff = [time_diff(1) time_diff];
+        % exclude the time skewed too much
+        tolerance = 0.5;
+        tolerance_range = [1-tolerance, 1+tolerance]*mode(time_diff);
+        vidx = time_diff>tolerance_range(1) & time_diff<tolerance_range(2); % valid idx
+        ctn_flag = diff(find(vidx)); % if has value >1, discontinue
+        if (sum(ctn_flag>1))
+            disp(['IS discontinuety exist in wam time trial' num2str(obj.tNo) ', ABORT!']);
+        end
+
+        % package the data into format
+        
+        dat.t = wam_t(vidx);
+        dat.x = obj.position_h(:,vidx);
+        dat.v = obj.velocity_h(:,vidx);
+        dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
+        dat.Fp= obj.pertfce_h(:,vidx);
+        ts = reshape(obj.wam_ts, 1, length(obj.wam_ts));
+        dat.ts = (ts(:, vidx));
+        dat.tq= obj.wamtqe_h(:,vidx);
+        if (obj.ifpert==0 || obj.ifpert==1)
+            dat.mvst= (dat.ts==4 | dat.ts==5)& dat.tq==0; % moveent start
+        elseif(obj.ifpert==2) % stochastic pert
+            dat.mvst= (dat.ts==4 | dat.ts==5);
+        end
+
+        end
+        
         %%% plot
+        function axh = visualizeFrcVelDelay(obj)
+            % axh = visualizeFrcVelDelay(obj)
+            % Visualize force and velocity as a overlap lines, and by this
+            % determine whether the alignment is good. 
+            % In the current situation, force and neural activity only has
+            % alignment according to the RTMA system, which could be
+            % delayed in network. 
+            
+            % pre-process data
+            % same magnitude
+            t_bgn = 0;
+            t_edn = 0.4;
+            freq = 500;     % 500Hz, the same as WAM
+            pos_t_idx = obj.position_t>=t_bgn & obj.position_t<=t_edn;
+            fce_t_idx = obj.force_t>=t_bgn & obj.force_t<=t_edn;
+            pos_t = obj.position_t(pos_t_idx);
+            
+            fce_t = obj.force_t(fce_t_idx);
+            pos = obj.position_h(obj.xyi,pos_t_idx);
+            fce = obj.force_h(obj.xyi,fce_t_idx);
+            vel = obj.velocity_h(obj.xyi,pos_t_idx);
+            
+            % here only for y direction
+            pos_reMag = 1/range(pos) * pos; 
+            vel_reMag = 1/range(vel) * vel;
+            frc_reMag = 1/range(fce) * fce; 
+            pos_reNorm = pos_reMag - mean(pos_reMag);
+            frc_reNorm = frc_reMag - mean(frc_reMag);
+            
+            axh = figure(); hold on;
+            plot(pos_t, pos_reNorm(:)); 
+            plot(fce_t, frc_reMag(:));
+            plot(pos_t, vel_reMag(:));
+            
+            legend('position\_renorm', 'force\_remag', 'velocity\_remag');
+            title('timeAlign comparation in trial');
+            xlabel('time after release');
+        end
         function axh = plotPredictedForceOnPosition(obj)
             % use regression terms to get the predicted force
             t_bgn = 0;

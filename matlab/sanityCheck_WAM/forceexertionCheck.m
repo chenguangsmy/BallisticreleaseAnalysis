@@ -1,4 +1,4 @@
-sd% force exertion check
+% force exertion check
 % Generating force using WAM and check if WAM is generating the wanted force 
 
 % sessions and its description:
@@ -6,6 +6,8 @@ sd% force exertion check
 %   | ss2722 | -19:2:19N            | count up   |
 %   | ss2729 | -19:2:19N            | count down |
 %   | ss2734 | [-40:-21, 21:40]N    | count down |
+%   | ss2736 | [-40:-21, 21:40]N    | count up   | % ? Not sure the sequence
+%   | ss2737 | [-40:-21, 21:40]N    | count down | % ? Not sure the seq
 
 % small scales:
 %   | ss2723 | -5:0.25:5N           | count up   |
@@ -18,12 +20,15 @@ sd% force exertion check
 % overlap force: (already exerting force and generate another)
 %   | ss2732 | 10+(-20:1:20)N       | count down |
 %   | ss2733 | -10+(-20:1:20)N      | count down |
+%   | ss2739 | -20+(-20:1:20)N      | perturb with offset force |
+%   | ss2740 | 20+(-20:1:20)N       | count down |
+
 
 %% 1. plot large scales 
-ss_list = [2740]; % may inaccurate as the force at 0.
+ss_list = [2722 2729 2734 2740]; % may inaccurate as the force at 0.
 % 2722 2729 2734
 for session_i = 1:length(ss_list)
-     eval(['ss' num2str(ss_list(session_i)) ' = SessionScan(' num2str(ss_list(session_i)) ');']);
+    eval(['ss' num2str(ss_list(session_i)) ' = SessionScan(' num2str(ss_list(session_i)) ');']);
 end
 
 %% plot raw data
@@ -34,38 +39,64 @@ end
 % fig02 = ss2734.plotStepPertResponse_raw_pertfce(fig02, [0.8 0.2 0.8]);
 % fig02 = ss2729.plotStepPertResponse_raw_pertfce(fig02, [0.8 0.2 0.8]);
 close all; clc;
-figure();
-fig01 = subplot(3,1,1);
-fig01 = ss2739.plotStepPertResponse_rawFce(fig01, [0.5 0.0 0.5], 10); % 10Hz filter
-%fig01 = ss2737.plotStepPertResponse_rawFce(fig01, [0.5 0.0 0.5], 10);
-xlim([-3 3]);
-fig02 = subplot(3,1,2);
-fig02 = ss2739.plotStepPertResponse_raw_pertfce(fig02, [0.8 0.2 0.8]);
-%fig02 = ss2737.plotStepPertResponse_raw_pertfce(fig02, [0.8 0.2 0.8]);
-xlim([-3 3]);
-fig03 = subplot(3,1,3);
-fig03 = ss2739.plotStepPertResponse_raw(fig03, [0.5 0.0 0.5]); % 10Hz filter
-%fig03 = ss2737.plotStepPertResponse_raw(fig03, [0.5 0.0 0.5]);
-xlim([-3 3]);
+% ss2739 = SessionScan(2739);
+% figure();
+% fig01 = subplot(3,1,1);
+% fig01 = ss2739.plotStepPertResponse_rawFce(fig01, [0.5 0.0 0.5], 10); % 10Hz filter
+% title('raw censored force');
+% %fig01 = ss2737.plotStepPertResponse_rawFce(fig01, [0.5 0.0 0.5], 10);
+% xlim([-3 3]);
+% fig02 = subplot(3,1,2);
+% fig02 = ss2739.plotStepPertResponse_raw_pertfce(fig02, [0.8 0.2 0.8]);
+% title('perturbation force');
+% %fig02 = ss2737.plotStepPertResponse_raw_pertfce(fig02, [0.8 0.2 0.8]);
+% xlim([-3 3]);
+% fig03 = subplot(3,1,3);
+% fig03 = ss2739.plotStepPertResponse_raw(fig03, [0.5 0.0 0.5]); % 10Hz filter
+% title('raw displacement');
+% %fig03 = ss2737.plotStepPertResponse_raw(fig03, [0.5 0.0 0.5]);
+% xlim([-3 3]);
 % function, extract values from plot...
 % extract values
 %axObjs = fig01.Children;
-dataObjs = fig01.Children;
-time1 = [0.6 0.7];
-time2 = [1.7 1.7];
-force_censor = zeros(size(dataObjs));
-for data_i = 1:length(dataObjs)
-    xdat = dataObjs(data_i).XData;
-    ydat = dataObjs(data_i).YData;
-    [~, x_idx1] = min(abs(xdat-time2(1)));
-    [~, x_idx2] = min(abs(xdat-time2(2))); 
-    force_censor(data_i) = mean(ydat(x_idx1:x_idx2));
-    if force_censor(data_i) < 5 % small forces use different time
-        [~, x_idx1] = min(abs(xdat-time1(1)));
-        [~, x_idx2] = min(abs(xdat-time1(2))); 
-        force_censor(data_i) = mean(ydat(x_idx1:x_idx2));
-    end
+% dataObjs = fig01.Children;
+% time1 = [0.6 0.7];
+% time2 = [1.7 1.7];
+% force_censor = zeros(size(dataObjs));
+% % read fdirect rom the figure, as I donot have the synchrony time point in 
+% % in the task data. 
+% for data_i = 1:length(dataObjs)
+%     xdat = dataObjs(data_i).XData;
+%     ydat = dataObjs(data_i).YData;
+%     [~, x_idx1] = min(abs(xdat-time2(1)));
+%     [~, x_idx2] = min(abs(xdat-time2(2))); 
+%     force_censor(data_i) = mean(ydat(x_idx1:x_idx2));
+%     if force_censor(data_i) < 5 % small forces use different time
+%         [~, x_idx1] = min(abs(xdat-time1(1)));
+%         [~, x_idx2] = min(abs(xdat-time1(2))); 
+%         force_censor(data_i) = mean(ydat(x_idx1:x_idx2));
+%     end
+% end
+%% 
+clear all; close all; clc;
+fce_cmd_all = [];
+fce_csd_all = [];
+pos_csd_all = [];
+ss_list = 2700 + [22 29 34 36 32 33 39 40];
+fce_offset = [0 0 0 0 10 -10 -20 20];
+for session_i = 1:length(ss_list)
+    eval(['ss' num2str(ss_list(session_i)) ' = SessionScan(' num2str(ss_list(session_i)) ');']);
 end
+for ss = 1:length(ss_list)
+    eval(['ss_tmp = ss' num2str(ss_list(ss)) ';']);
+    fce_cmd = ss_tmp.getPertFce_cmd() + fce_offset(ss); 
+    fce_csd = -ss_tmp.getPertFce(50);
+    pos_csd = ss_tmp.getPertPos(500);
+    fce_cmd_all = [fce_cmd_all; fce_cmd];
+    fce_csd_all = [fce_csd_all; fce_csd];
+    pos_csd_all = [pos_csd_all; pos_csd];
+end
+%%
 %axObjs = fig03.Children;
 dataObjs = fig03.Children;
 time1 = [0.6 0.7];
@@ -1009,3 +1040,36 @@ title('position perturbation');
 ylabel('\DeltaF/\Deltax (N/m)');
 xlabel('robot stiffness (N/m)');
 xticks([1 2 3 4]); xticklabels({'100', '300', '2500', '5000'});
+
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TRY ANDY'S POSITION CONTROL idea
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ss2797 = SessionScan(2797);
+ss2797.plotTaskEndpointPositionh()
+ylim([0.48 0.49]); grid on;
+ss2797.plotReleaseResponse_rawP(1, [0 0 0])
+
+ss2798 = SessionScan(2798);
+ss2798.plotTaskEndpointPositionh()
+
+ss2805 = SessionScan(2805);
+ss2805.plotTaskEndpointPositionh()
+
+pos_offset = 0.4837; 
+pos_cmd = repmat([[1 2 3 4 5 5 6 7 8 8]/100, -[1 2 3 4 5 5 6 7 8 8]/100],1,3);
+
+pos_csd = [17917,29748,43609,57130,70586,82824,95290,107292,119672,132180,144350,157872,171057,184580,196749,209258,221916,235287,249148,262332,274502,287010,299856,313717,325964,338395,350902,363411,375919,388975,400595,412767,425614,439133,452320,466180,479026,492210,504382,517902,530073,543595,557793,570976,583146,595994,608164,620334,632842,645688,657858,671042,684565,697412,711609,723779,737978,751838,764008,777868;0.491385787300000,0.499881746200000,0.508379845400000,0.516811285100000,0.525444184500000,0.525495249600000,0.534224977600000,0.542783275500000,0.551351833100000,0.551513264100000,0.475388533100000,0.466968599600000,0.458121958300000,0.449480340700000,0.440608127900000,0.440542278200000,0.431825265000000,0.422901441600000,0.414353923100000,0.414235199400000,0.491338402600000,0.499842620000000,0.508354467200000,0.516712155400000,0.525236490700000,0.525271217500000,0.533608504700000,0.542238185500000,0.551084551800000,0.551127449400000,0.475533776700000,0.466934924300000,0.458074288900000,0.449472918000000,0.440544625200000,0.440366706100000,0.431878923600000,0.422991670100000,0.414700965900000,0.414598089400000,0.491209999900000,0.499636646300000,0.508017698800000,0.516376487100000,0.524739859000000,0.525122675300000,0.533482785700000,0.541942137300000,0.550969774000000,0.551085825800000,0.475403224900000,0.466762101900000,0.457967691600000,0.449388730700000,0.440488499600000,0.440637274600000,0.432060529600000,0.423421816500000,0.415048581400000,0.414760629600000];
+fce_csd = [32.4733556868441,57.7351908845166,84.0997172961570,111.272750514409,136.218387505535,162.072594026864,187.717669455888,211.192384410234,237.559912703582,262.392478817051,285.970258376694,312.593947242434,339.157598474020,366.700863769557,390.995092430109,416.586133988394,440.874358885531,468.385604109519,494.807166273606,521.975196355678,544.206131655793,571.302116576880,596.796097293283,624.040175045284,648.337405587544,673.578227613262,699.634560836244,723.923786360616,748.316076490287,774.413435429940,798.200346081888,823.362118555970,848.267730457660,876.095173888194,901.681212310300,928.868254309855,956.053295054938,983.166290639036,1007.38547225690,1033.93611533441,1057.98418969493,1085.85666135108,1112.25721034322,1137.44199724372,1164.58901415384,1190.09300114260,1214.20311439175,1238.63743086533,1264.27450127646,1288.06341318288,1313.09310286183,1340.00597299874,1367.79839447602,1392.42683263337,1419.01149703690,1446.25857667061,1472.71115827901,1499.65404723301,1526.58192677846,1554.24526734231;-2.92057020940261,-5.23960468004982,-8.06529530155282,-10.6735505878410,-13.3553520504403,-13.2825907626562,-16.1810073166042,-18.4994690307587,-21.6878842178070,-21.6151936407010,2.65855179163393,5.77460874176338,8.31025830375928,11.2090213400301,13.6724187311244,13.5998130068321,16.2067460034394,19.3241676696566,21.8604182724165,22.0775707649189,-3.22181184032370,-5.77110149212869,-7.77362789644899,-10.4736020033248,-13.5595715599148,-13.4824191390195,-16.0286965159367,-18.7288544705756,-21.5832324141914,-21.4288710038583,2.65213126206076,5.19466097303760,7.87234707417045,10.6261885756371,13.5984765750157,13.8173119816573,16.3657743185283,19.2519013566193,21.3528570248808,21.9988697801728,-2.92069041755541,-5.37955525418226,-8.28656315552172,-10.6017651074149,-13.4279789879360,-13.4273638050363,-15.9634305600331,-18.7177528941110,-21.6159714581603,-21.5439172771574,2.58483590969524,5.77446732040714,8.52865530419655,10.8467422517570,13.8168877175886,13.6683811514038,16.2798608446141,19.0342538893701,21.7142593007452,21.8603475617384];
+pos_csd = pos_csd(2,:) - pos_offset;
+fce_csd = -fce_csd(2,:);
+subplot(1,2,1); hold on;
+plot(pos_cmd, pos_csd, '*'); 
+plot(pos_cmd, pos_cmd, 'Color', [0.5 0.5 0.5]);
+xlabel('\Delta x_{command} (m)'); ylabel('\Delta x_{measured} (m)');
+legend('x_{measured}', 'x_{measured}==x_{command}');
+title('command and measured position');
+subplot(1,2,2); hold on;
+plot(pos_csd, fce_csd, '*');
+xlabel('\Delta x_{measured}'); ylabel('\Delta F_{measured}');
+title('Stiffness estimation using position control');
