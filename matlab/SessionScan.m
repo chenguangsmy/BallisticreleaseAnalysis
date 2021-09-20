@@ -11,7 +11,7 @@ classdef (HandleCompatible)SessionScan < handle
         trials_num
         duration
         duration_avg
-        %%% task targets
+        %%% task targetst
         tarRs
         tarLs
         fThs
