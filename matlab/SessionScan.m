@@ -108,8 +108,12 @@ classdef (HandleCompatible)SessionScan < handle
             obj.time = Data.Time;
             TrialNo = Data.TrialNo;
             obj.trials_num = max(TrialNo);
+            try
             obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
             obj.hand_pos_offset = obj.hand_pos_offset(:,1); 
+            catch 
+                disp('no position info!');
+            end
             obj.taskState.Values = Data.TaskStateCodes.Values;
             obj.taskState.Outcome = Data.OutcomeMasks;
             obj.taskState.trialNo = Data.TrialNo;
@@ -212,7 +216,12 @@ classdef (HandleCompatible)SessionScan < handle
 
         end
         function obj = convert0toNan(obj) % dealing with some Nan-int confliction
+            try
             rdt = double(obj.Data.Position.RDT);
+            catch 
+                disp('no robot rdt');
+                rdt = zeros(size(obj.Data.Position));
+            end
             rdt_idx = find([rdt==0]);
             rdt(rdt_idx) = NaN;
             obj.Data.Position.RDT = rdt;
@@ -598,6 +607,7 @@ classdef (HandleCompatible)SessionScan < handle
                 
                 pert_idx = intersect(pert_idx, trials_fin);
                 empty_idx = zeros(size(obj.trials));
+
                 for trial_i = 1:length(obj.trials)
                     empty_idx(trial_i) = isempty(obj.trials(trial_i).pert_t_bgn);
                 end
@@ -807,13 +817,20 @@ classdef (HandleCompatible)SessionScan < handle
             % force threshold never achieved enough long, the perturbed was
             % not achieved. 
             % Use function TrialScan.findStepPerterbTime()
-            trial_num = length(obj.trials);
-            for trial_i = 1:trial_num
-                switch obj.trials(trial_i).getPerturbationPattern
-                    case 2
-                        obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
-                    case 3
-                    obj.trials(trial_i) = obj.trials(trial_i).findStepx0PerterbTime();
+            
+            %trial_num = length(obj.trials);
+            
+            trial_idx = obj.getPerturbedTrialIdx();
+            for trial_i = trial_idx
+                if obj.trials(trial_i).ifpert && (obj.trials(trial_i).outcome==1)
+                    switch obj.trials(trial_i).getPerturbationPattern
+                        case 2
+                            obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
+                        case 3
+                        obj.trials(trial_i) = obj.trials(trial_i).findStepx0PerterbTime();
+                    end
+                else
+                    obj.trials(trial_i).pert_t_bgn = nan; % will this cause error?
                 end
             end
         end
@@ -1080,7 +1097,9 @@ classdef (HandleCompatible)SessionScan < handle
                 % Assume only stocpert do not in the same session with step ones
                 cellsmat = cell(length(obj.tarLs), max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
                 for tl_i = 1:length(obj.tarLs)
-                    trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
+                    trial_list = setdiff(trial_list,1);
                     for t_i = 1:length(trial_list)
                         t_tmp = obj.trials(trial_list(t_i));
                         cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
@@ -1089,8 +1108,12 @@ classdef (HandleCompatible)SessionScan < handle
             else
                 cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
                 for p_i = 1:2
-                    for t_i = 1:length(t_idx{p_i})
-                        t_tmp = obj.trials(t_idx{p_i}(t_i));
+                    %trial_list = setdiff(t_idx{p_i},1);
+                    trial_list = find([obj.trials.outcome] == 1);
+                    trial_list = intersect(trial_list, t_idx{p_i});
+                    trial_list = setdiff(trial_list,1);
+                    for t_i = 1:length(trial_list)
+                        t_tmp = obj.trials(trial_list(t_i));
                         cellsmat{t_i,p_i} = t_tmp.export_as_formatted;
                     end
                 end
@@ -2689,11 +2712,11 @@ classdef (HandleCompatible)SessionScan < handle
             % the same.
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh', 'var')
                 axh = 0;
             end
-            if isempty(color_arr)
-                color_arr = 0;
+            if ~exist('color_arr', 'var')
+                color_arr = [0 0 0];
             end
             if length(color_arr) ~= 3
                 ifcolor = 0;
@@ -2846,11 +2869,11 @@ classdef (HandleCompatible)SessionScan < handle
             % the same.
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh', 'var')
                 axh = 0;
             end
-            if isempty(color_arr)
-                color_arr = 0;
+            if ~exist('color_arr', 'var')
+                color_arr = [0 0 0];
             end
             if length(color_arr) ~= 3
                 ifcolor = 0;
@@ -3263,11 +3286,11 @@ classdef (HandleCompatible)SessionScan < handle
             %   lnh: the line handle, for the futrue legend on
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh','var')
                 axh = 0;
             end
-            if isempty(color_arr)
-                color_arr = 0;
+            if ~exist('color_arr', 'var')
+                color_arr = [0 0 0];
             end
             if length(color_arr) ~= 3
                 ifcolor = 0;
@@ -3320,7 +3343,7 @@ classdef (HandleCompatible)SessionScan < handle
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
                 if ifcolor == 1
-                    plot(time-time0, resp_fp, 'color', color_arr);
+                    plot(time-time0, resp_fp, 'Color', color_arr);
                     %plot(time-time0, resp_p_net, 'color', color_arr);
                     %plot(time-time0, resp_v, 'color', color_arr); %velocity
                     if trial_i == trials_list(1)
@@ -3467,14 +3490,14 @@ classdef (HandleCompatible)SessionScan < handle
             %   lnh: the line handle, for the futrue legend on
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh', 'var')
                 axh = 0;
             end
-            if isempty(color_arr)
+            if ~exist('color_arr','var')
                 color_arr = 0;
             end
             if length(color_arr) ~= 3
-                ifcolor = 0;
+                ifcolor = [0 0 0];
             else
                 ifcolor = 1;
             end
@@ -3536,11 +3559,11 @@ classdef (HandleCompatible)SessionScan < handle
                         lnh = plot(time-time0, resp_f-resp_f0, 'color', color_arr);
                     end
                 else
-                    plot(time-time0, resp_f-resp_f0, 'color', color_arr);
+                    plot(time-time0, resp_f-resp_f0);
                     %plot(time-time0, resp_p_net);
                     %plot(time-time0, resp_v, 'color', color_arr);
                     if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_f-resp_f0, 'color', color_arr);
+                        lnh = plot(time-time0, resp_f-resp_f0);
                     end
                 end
                 pert_t_last = time0;
@@ -3572,8 +3595,7 @@ classdef (HandleCompatible)SessionScan < handle
             % ...
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            trials_pert = obj.getPerturbedTrialIdx();
             % plot
             axh = figure(); hold on;
             % figure properties

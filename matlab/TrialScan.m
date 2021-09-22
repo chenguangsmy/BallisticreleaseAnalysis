@@ -111,6 +111,7 @@ classdef TrialScan
                 obj.ifpert = ...
                     obj.findPerturbationinWAMcf(sessionScanObj);
             end
+            obj.ifpert = obj.ifpert && obj.findPerturbationinWAMcf(sessionScanObj); % keep 0 when failed to pert
 %             try 
 %                 obj.ifpert  = ...
 %                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
