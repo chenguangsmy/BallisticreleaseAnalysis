@@ -13,12 +13,14 @@ classdef mainAnalysis < handle
         function [this] = mainAnalysis()
             
             dbstop if error
+            addpath('func/');
+
             
             load('/Users/jhermus/Downloads/ss2818_2842.mat');
             
             dexSubject = 1;
-            dexDirection = 1;
-            dexDistance = 1;
+            dexDirection = 1:4;
+            dexDistance = 1:3;
             
             % Import all human dependent measures
             depMeasures_human = crossConditionAnalysis(data, dexSubject, dexDirection, dexDistance);
