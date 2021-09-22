@@ -24,7 +24,7 @@ classdef crossTrialAnalysis < handle
             % Estimate stiffnesses
             this.get_k_hat_pulse(data);
             this.get_k_hat_stocastic(data);
-            this.get_k_hat_release(data);
+%             this.get_k_hat_release(data);
             
         end
         
@@ -80,6 +80,7 @@ classdef crossTrialAnalysis < handle
                
             % Exclude empty cells (FIX Later)
             release = 1;
+            targetForce = 15;
             [N_trial] = size(data,1);
             count = 1;
             for trial = 1:N_trial
@@ -89,10 +90,11 @@ classdef crossTrialAnalysis < handle
                 count = count+1;
             end
             
+            this.k_hat_release = NaN*ones(1,15);
             for i = 1:length(dexTrialNonzero)  
                 clear tmpData
                 tmpData = data{dexTrialNonzero(i),release};
-                this.k_hat_release(i) = get_singleTrial_k_hat_release(this,tmpData.x(2,:),tmpData.ts);
+                this.k_hat_release(i) = get_singleTrial_k_hat_release(this,tmpData.x(2,:),tmpData.ts,targetForce);
             end
             
         end
@@ -239,15 +241,27 @@ classdef crossTrialAnalysis < handle
             
         end
         
-        function [k_hat] = get_singleTrial_k_hat_release(this,x,ts)
+        function [k_hat] = get_singleTrial_k_hat_release(this,x,ts,targetForce)
            
             dexStart = min(find(ts== 4));
-            dexEnd = max(find(ts == 5));
-            [h_model, M, B, K, VAFirf] =  this.fitModel(x(dexStart:dexEnd), dexEnd-dexStart);
+            dexEnd = max(find(ts == 5)) - 1; % Subtract 1 for diff
             
+            % Filter
+            cf = 20; % cutoff freqnency
+            [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
+            x = filtfilt(b,a,x); % apply fitler
+            
+            % velocity estimate multiplied by inverse target force is an
+            % estimate of the impulse response function
+            h_hat = (1/targetForce)*this.sfrq*diff(x); 
+%             figure; plot(h_hat);
+            
+            [h_model, M, B, K] =  this.fitModel(h_hat(dexStart:dexEnd), dexEnd-dexStart);
+            
+            k_hat = K;
         end
         
-        function [h_model, M, B, K, VAFirf] =  fitModel(this, h_hat, L)
+        function [h_model, M_opt, B_opt, K_opt, VAFirf] =  fitModel(this, h_hat, L)
             
             %% Part 2-2: 2nd order model approximation
             % Optimization to find the best I,B,K approximates (cost function may change..)
@@ -280,49 +294,12 @@ classdef crossTrialAnalysis < handle
             Y_model = tf(1,[M_opt,B_opt,K_opt]);
             h_model = impulse(Y_model,0:1/this.sfrq:L/this.sfrq);
             
-            figure;
-            plot(h_hat,'o'); hold on;
-            plot(h_model,'.');
-            
-            %         figure;
-            %         for i = iDex
-            %             plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_hat_MA(:,i),'.r'); hold on;
-            %             plot3(this.tvec(1:L),this.tvec(i)*ones(1,L),h_model(:,i),'-b'); hold on;
-            %
-            %         end
-            %         %             plot3(M2,L,X(:,1)','--k','linewidth',2.5);
-            %         xlabel('lag (s)'); % xlim([0 0.2]);
-            %         ylabel('Time (s)');
-            %         zlabel('x (m)');
-            %         set(gca,'fontsize',18); grid on;
-            
-            %         for i = iDex
-            %             for j =
-            %              z_tmp() = cov(h_model(i,:),u_r());
-            %             end
-            %              z_r_hat(i,:) = z_r_hat(i,:) + z_tmp
-            %         end
+%             figure;
+%             plot(h_hat,'o'); hold on;
+%             plot(h_model,'.');
             
             % VAF IRF Calculation
-            VAFirf = zeros(N,1);
-            
-            for i = iDex
-                VAFirf(i,1) = 100*(1-std(h_hat_MA(1:M2-M1,i)-h_model(1:M2-M1,i))^2/std(h_hat_MA(1:M2-M1,i))^2);
-            end
-            
-            %         figure; plot(this.tvec(iDex),VAFirf(iDex),'.-','linewidth',2.5,'markersize',15); grid on; xlim([0.2 this.tvec(end)]); ylim([0 100]);
-            %         ylabel('%VAF_{IRF}'); xlabel('Time (s)'); set(gca,'fontsize',18);
-            
-            %         for r = 1:R
-            %             for i = M2+1:N+M1
-            %                 % Add same code for z
-            %                 for j = M1:M2
-            %                     y_tmp(j+1) = h_model(j+1,i)*u_r(r,i-j);
-            %                 end
-            %                 y(r,i) = sum(y_tmp);
-            %             end
-            %         end
-            
+%             VAFirf = 100*(1-std(h_hat-h_model)^2/std(h_hat)^2);
             
             
         end
