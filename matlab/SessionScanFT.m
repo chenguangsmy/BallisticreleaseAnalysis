@@ -40,9 +40,16 @@ classdef SessionScanFT
                             Data.Fz0'];
             obj.RDT = [Data.RDT];           % read-time sequence
             obj.FT = [Data.FT];             % FT sequence
-            obj.elapse = [Data.elapse];     % read time elapse
+            obj.elapse = [Data.elapse];     % read time elapse, wrongly elapse... Change code! 
             obj = forceFTconvert(obj);
             %plotForce(obj)
+            
+            ifplot = 0;
+            if (ifplot)
+                clf;
+                axh(1) = subplot(2,1,1); plot(obj.RDT, obj.force_net(2,:));
+                axh(2) = subplot(2,1,2); plot(obj.RDT, obj.torque_origin(2,:));
+            end
 
         end
         

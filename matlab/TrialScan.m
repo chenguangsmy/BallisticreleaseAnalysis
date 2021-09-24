@@ -16,6 +16,7 @@ classdef TrialScan
         comboNo % get from intermediate data
         comboTT % combo of task targets
         states
+        states_arr
         tarR    % target-rotation
         tarL    % target-length
         tarP    % target-position 
@@ -103,6 +104,8 @@ classdef TrialScan
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
+            obj.states_arr= sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn);
+            
             if isfield(sessionScanObj.Data.TaskJudging, 'ifpert')
                 obj.ifpert  = ...
                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
@@ -111,7 +114,8 @@ classdef TrialScan
                 obj.ifpert = ...
                     obj.findPerturbationinWAMcf(sessionScanObj);
             end
-            obj.ifpert = obj.ifpert && obj.findPerturbationinWAMcf(sessionScanObj); % keep 0 when failed to pert
+          
+            obj.ifpert = obj.ifpert * obj.findPerturbationinWAMcf(sessionScanObj); % keep 0 when failed to pert
 %             try 
 %                 obj.ifpert  = ...
 %                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
@@ -193,6 +197,15 @@ classdef TrialScan
                 obj.xyi = 2;
             end
             
+            ifplot = 1;
+            if (ifplot)
+                subplot(2,1,1);
+                plot(obj.position_t, obj.position_h);
+                subplot(2,1,2);
+                plot(obj.force_t, obj.force_h);
+            end
+            
+            
             xy_char = 'xy';
             obj.xyn = xy_char(obj.xyi);
             % other process
@@ -206,6 +219,7 @@ classdef TrialScan
                 obj = findStocPerterbTime(obj, sessionScanObj);
             end
             %obj = findStepx0PerterbTime(obj, sessionScanObj);
+            %obj.ifpert = obj.ifpert * obj.findPerturbationinWAMcf(sessionScanObj); % check it again for sanity!
         end
         function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
             % find if being perturbed via looking at wam.cf data 
@@ -216,7 +230,29 @@ classdef TrialScan
             [~, st_idx] = min(abs(wam_t-stt));
             [~, ed_idx] = min(abs(wam_t-edt));
             wam_cf = sessionScanObj.wam.cf(st_idx:ed_idx,:);
-            ifpert = ~sum(sum(wam_cf))==0;
+            ifpert = ~sum(sum(abs(wam_cf)))==0;
+            
+            if (~isempty(obj.wam_ts) && ~isempty(obj.pertfce_h))
+                pertsig = setdiff((unique(obj.wam_ts(obj.pertfce_h(2,:)~=0))), 3);
+                if (isempty(pertsig))
+                    obj.ifpert = 0;
+                    ifpert = 0;
+                end
+                ifplot = 1;
+                if(ifplot)
+                    axhl(1) = subplot(3,1,1);
+                    plot(obj.position_t, obj.position_h(2,:));
+                    axhl(2) = subplot(3,1,2);
+                    plot(obj.position_t, obj.pertfce_h(2,:));
+                    axhl(3) = subplot(3,1,3); hold on;
+                    plot(obj.position_t, obj.wam_ts', 'r');
+                    plot(obj.time, obj.states_arr, 'b');
+                    legend('WAM-TS', 'RTMA-TS')
+                    linkaxes(axhl, 'x');
+                end
+
+            end
+            
         end
         function pt = getPerturbationPattern(obj)
             % get the perturbation pattern
@@ -1175,19 +1211,101 @@ classdef TrialScan
         % package the data into format
         
         dat.t = wam_t(vidx);
-        dat.x = obj.position_h(:,vidx);
-        dat.v = obj.velocity_h(:,vidx);
+        %wamt_org= dat.t;
+        %t_const = min(dat.t):2e-3:max(dat.t);
+        %dat.t = t_const;
+        %dat.x = obj.position_h(:,vidx);
+        dat.x = interp1(obj.position_t', obj.position_h', dat.t)';
+        %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
+        %dat.v = obj.velocity_h(:,vidx);
+        dat.v = interp1(obj.position_t', obj.velocity_h', dat.t)';
         dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
         dat.Fp= obj.pertfce_h(:,vidx);
+        dat.Fp= interp1(obj.position_t', obj.pertfce_h', dat.t)';
+        %dat.FP = interp1(wamt_org, dat.FP, dat.t, 'linear', 'extrap');
         ts = reshape(obj.wam_ts, 1, length(obj.wam_ts));
-        dat.ts = (ts(:, vidx));
+        dat.ts = interp1(obj.position_t',ts,dat.t, 'linear', 'extrap');
+        %dat.ts = round(interp1(wamt_org, dat.ts, dat.t, 'linear', 'extrap'));
         dat.tq= obj.wamtqe_h(:,vidx);
+        dat.tq= interp1(obj.position_t', obj.wamtqe_h', dat.t)';
+        %dat.tq= interp1(wamt_org, dat.tq, dat.t, 'linear', 'extrap');
         if (obj.ifpert==0 || obj.ifpert==1)
-            dat.mvst= (dat.ts==4 | dat.ts==5)& dat.tq==0; % moveent start
+            dat.mvst= (dat.ts==4 | dat.ts==5)& dat.tq(2,:)==0; % moveent start
         elseif(obj.ifpert==2) % stochastic pert
             dat.mvst= (dat.ts==4 | dat.ts==5);
         end
-
+        
+        % check the plot
+        ifplot = 0;
+        if (ifplot)
+            clf;
+            axhl(1) = subplot(3,1,1); hold on;
+            plot(obj.time, obj.states_arr, 'r');
+            plot(dat.t, dat.ts, 'b');
+            legend('RTMA-TS', 'WAM-TS');
+            title('task states');
+            axhl(2) = subplot(3,1,2); hold on;
+            %plot(dat.t, dat.Fp, 'r');
+            plot(dat.t, dat.f, 'r');
+            plot(obj.force_t, obj.force_h(:,:), 'b');
+            title('perturbation force');
+            axhl(3) = subplot(3,1,3); hold on;
+            plot(dat.t, dat.x(2,:), 'r');
+            plot(obj.position_t, obj.position_h(2,:), 'b');
+            title('endpoint position');
+            linkaxes(axhl, 'x');
+            suptitle(['trial ' num2str(obj.tNo)]);
+        end
+        
+        % if pert happen eailier
+        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),3)) && obj.ifpert==1
+            dat.Fp = zeros(size(dat.Fp));
+        end
+        
+        % another way for avoid too eairly pert
+        if abs(nanmean(dat.f(2,dat.Fp(2,:)~=0) ))<5 && obj.ifpert==1
+            dat.Fp = zeros(size(dat.Fp));
+        end
+        
+        ifplot = 1;
+        if (ifplot)
+%             subplot(2,1,1); 
+%             plot(obj.position_t, obj.position_h(2,:));
+%             subplot(2,1,2);
+%             plot(obj.position_t, obj.pertfce_h(2,:));
+%             plot(obj.force_t, obj.force_h(2,:));
+%             
+%             subplot(2,1,1);
+%             plot(dat.t, dat.x);
+%             subplot(2,1,2);
+%             plot(dat.t, dat.f);
+%             
+%             subplot(2,1,1);
+%             plot(obj.position_t, obj.position_h(2,:));
+%             subplot(2,1,2);
+%             plot(dat.t, dat.x(2,:));
+              clf;
+              axh(1) = subplot(3,1,1);
+              title([' trial' num2str(obj.tNo)]);
+              plot(dat.t, dat.Fp);
+              grid on;
+              ylabel(['Fp' ]);
+              axh(2) = subplot(3,1,2);
+              plot(dat.t, dat.x(2,:));
+              ylabel('position - y');
+              grid on;
+              axh(3) = subplot(3,1,3);  hold on;
+              plot(dat.t, dat.f(2,:), 'b');
+              hold on;
+              plot(obj.force_t, obj.force_h(2,:), 'r'); 
+              linkaxes(axh, 'x');
+              grid on;
+              
+%             subplot(2,1,1);
+%             plot(obj.force_t', obj.force_h');
+%             subplot(2,1,2);
+%             plot(dat.t, dat.f);
+        end
         end
         
         %%% plot
