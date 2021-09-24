@@ -24,7 +24,7 @@ classdef crossTrialAnalysis < handle
             % Estimate stiffnesses
             this.get_k_hat_pulse(data);
             this.get_k_hat_stocastic(data);
-%             this.get_k_hat_release(data);
+            this.get_k_hat_release(data);
             
         end
         
@@ -36,12 +36,17 @@ classdef crossTrialAnalysis < handle
             count = 1;
             for trial = 1:N_trial
                 if(~isempty(data{trial,step_Pulse}))
-                    dexTrialNonzero(count) = trial;
+                    if( sum(data{trial,step_Pulse}.Fp(2,:)~=0) ~= 0 )
+                        if(sum(data{trial,step_Pulse}.Fp(2,1:30)) == 0) % find pulse to close to start
+                        dexTrialNonzero(count) = trial;
+                                        count = count+1;
+                        end
+                    end
                 end
-                count = count+1;
             end
             
-            for i = 1:length(dexTrialNonzero)  
+            this.k_hat_pulse = NaN*ones(1,15);
+            for i = 1:length(dexTrialNonzero)
                 clear tmpData
                 tmpData = data{dexTrialNonzero(i),step_Pulse};
                 this.k_hat_pulse(i) = get_singleTrial_k_hat_pulse(this,tmpData.f(2,:),...
@@ -102,31 +107,32 @@ classdef crossTrialAnalysis < handle
         function [k_hat] = get_singleTrial_k_hat_pulse(this,f,Fp,x,ts)
             
             % Take average of last 15 measuremnts before the pulse ends
-            dexPulseStart = min(find(Fp~=0));
-            dexRange1 = [(dexPulseStart-15):dexPulseStart];
             
-            dexPulseEnd = max(find(Fp~=0));
-            dexRange2 = [(dexPulseEnd-15):dexPulseEnd];
-            
-            f1 = mean(f(dexRange1));
-            f2 = mean(f(dexRange2));
-            
-            x1 = mean(x(dexRange1));
-            x2 = mean(x(dexRange2));
-            
-            k_hat = -(f2-f1)/(x2-x1);
-            
-            % Look at raw data
-%             figure;
-%             ax1 = subplot(4,1,1); plot(f); hold on; 
-% %             plot(dexPulseStart,f1,'+',dexPulseEnd,f2,'*'); 
-%             
-%             ax2 = subplot(4,1,2); plot(x); hold on; 
-% %             plot(dexPulseStart,x1,'+',dexPulseEnd,x2,'*'); 
-% 
-%             ax3 = subplot(4,1,3); plot(Fp);
-%             ax4 = subplot(4,1,4); plot(ts);
-%             linkaxes([ax1,ax2,ax3,ax4],'x');
+                dexPulseStart = min(find(Fp~=0));
+                dexRange1 = [(dexPulseStart-15):dexPulseStart];
+                
+                dexPulseEnd = max(find(Fp~=0));
+                dexRange2 = [(dexPulseEnd-15):dexPulseEnd];
+                
+                f1 = mean(f(dexRange1));
+                f2 = mean(f(dexRange2));
+                
+                x1 = mean(x(dexRange1));
+                x2 = mean(x(dexRange2));
+                
+                k_hat = -(f2-f1)/(x2-x1);
+                
+                % Look at raw data
+                %             figure;
+                %             ax1 = subplot(4,1,1); plot(f); hold on;
+                % %             plot(dexPulseStart,f1,'+',dexPulseEnd,f2,'*');
+                %
+                %             ax2 = subplot(4,1,2); plot(x); hold on;
+                % %             plot(dexPulseStart,x1,'+',dexPulseEnd,x2,'*');
+                %
+                %             ax3 = subplot(4,1,3); plot(Fp);
+                %             ax4 = subplot(4,1,4); plot(ts);
+                %             linkaxes([ax1,ax2,ax3,ax4],'x');
             
         end
     
@@ -136,8 +142,8 @@ classdef crossTrialAnalysis < handle
 %             figure; plot(Y1);
 %             figure; plot(ts);
             
-            dexStart = min(find(ts == 3)) + 500;
-            dexEnd = max(find(ts == 3));
+            dexStart = min(find(ts==3))+500;
+            dexEnd = min(find(ts==4));
             X1 = X1(dexStart:dexEnd);
             Y1 = Y1(dexStart:dexEnd);
             

@@ -31,62 +31,77 @@ classdef crossConditionAnalysis < handle
             this.plot_positionForce_stocastic(data);
             this.plot_postion_release(data);
             
+            distVal = [2.5 5 10];
+            direcVal = {'front','back','left','right'};
             
             %% Look at Step Estimates
             k_mean = nanmean(this.k_hat_pulse(:,:,:,5:end),4);
             k_std = nanstd(this.k_hat_pulse(:,:,:,5:end),0,4);
             
-            figure;
+            figure; 
+            subplot(1,3,1);
             for i = this.dexDirection
-                errorbar(this.dexDistance,squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
+                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
             end
+            title('Pulse'); 
+            ylabel('Stiffness (N/m)');ylim([0 1000]);
+            xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
+            legend(direcVal);
+            set(gca,'fontsize',16);
             
-            for i = this.dexDirection
-                figure;
-                for j = this.dexDistance
-                    plot(squeeze(this.k_hat_pulse(1,i,j,:))); hold on;
-                end
-            end
+%             for i = this.dexDirection
+%                 figure;
+%                 for j = this.dexDistance
+%                     plot(squeeze(this.k_hat_pulse(1,i,j,:))); hold on;
+%                 end
+%             end
             
             %% Look at stocastic estimates
             k_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
             k_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
             
-            figure;
+%             figure;
+            subplot(1,3,2);
             for i = this.dexDirection
-                errorbar(this.dexDistance,squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
+                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
             end
+            title('Stocastic');
+            ylabel('Stiffness (N/m)');ylim([0 1000]);
+            xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
+            legend(direcVal);
+            set(gca,'fontsize',16);
             
-            for i = this.dexDirection
-                figure;
-                for j = this.dexDistance
-                    plot(squeeze(this.k_hat_stocastic(1,i,j,:))); ylim([0 1000]); hold on;
-                end
-            end
+%             for i = this.dexDirection
+%                 figure;
+%                 for j = this.dexDistance
+%                     plot(squeeze(this.k_hat_stocastic(1,i,j,:))); ylim([0 1000]); hold on;
+%                 end
+%             end
             
             %% Look at release estimates
             k_mean = nanmean(this.k_hat_release(:,:,:,:),4);
             k_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
             
-            figure;
+%             figure; 
+            subplot(1,3,3);
             for i = this.dexDirection
-                errorbar(this.dexDistance,squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
+                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
             end
+            title('Release');
+            ylabel('Stiffness (N/m)'); ylim([0 1000]);
+            xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
+            legend(direcVal);
+            set(gca,'fontsize',16);
             
-            for i = this.dexDirection
-                figure;
-                for j = this.dexDistance
-                    plot(squeeze(this.k_hat_release(1,i,j,:))); ylim([0 1000]); hold on;
-                end
-            end
+%             for i = this.dexDirection
+%                 figure;
+%                 for j = this.dexDistance
+%                     plot(squeeze(this.k_hat_release(1,i,j,:))); ylim([0 1000]); hold on;
+%                 end
+%             end
             
-
             % Make ANOVA Plots
-
-%             
-            
             % Run ANOVA between subjects
-%             this.
 
             disp('test');
             
@@ -107,10 +122,20 @@ classdef crossConditionAnalysis < handle
                                 dataCross{trial,pret} = data{subj,dir,dist,trial,pret};
                             end
                         end
+                        
                         Tmp_depMeasures = crossTrialAnalysis(dataCross,this.sfrq);
-                        this.k_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.k_hat_pulse;
-                        this.k_hat_stocastic(subj,dir,dist,:) = Tmp_depMeasures.k_hat_stocastic;
-%                         this.k_hat_release(subj,dir,dist,:) = Tmp_depMeasures.k_hat_release;
+                        
+                        if(length(Tmp_depMeasures.k_hat_pulse)~=0)
+                            this.k_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.k_hat_pulse;
+                        end
+                        
+                        if(length(Tmp_depMeasures.k_hat_stocastic)~=0)
+                            this.k_hat_stocastic(subj,dir,dist,:) = Tmp_depMeasures.k_hat_stocastic;
+                        end
+                        
+                        if(length(Tmp_depMeasures.k_hat_release)~=0)
+                            this.k_hat_release(subj,dir,dist,:) = Tmp_depMeasures.k_hat_release;
+                        end
                         
                     end
                 end
@@ -119,6 +144,8 @@ classdef crossConditionAnalysis < handle
         end
         
         function [] = plot_postionForce_pulse(this,data)
+            
+            step_Pulse = 2;
             
             figure;
             sgtitle('Pulse Preturbation');
@@ -130,9 +157,11 @@ classdef crossConditionAnalysis < handle
                     subplot(length(this.dexDirection),length(this.dexDistance),count);
                     for trial = 2:15
                         clear tmp_data
-                        tmp_data = data{subj,dir,dist,trial,2};
-                        dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
-                        plot(tmp_data.x(2,dexPulse)); hold on;
+                        if(~isempty(data{subj,dir,dist,trial,step_Pulse}))
+                            tmp_data = data{subj,dir,dist,trial,step_Pulse};
+                            dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
+                            plot(tmp_data.x(2,dexPulse)); hold on;
+                        end
                     end
                     count = count+1;
                     xlabel('Time'); ylabel('Postion (m)'); set(gca,'fontsize',16);     
@@ -149,9 +178,11 @@ classdef crossConditionAnalysis < handle
                     subplot(length(this.dexDirection),length(this.dexDistance),count);
                     for trial = 2:15
                         clear tmp_data
-                        tmp_data = data{subj,dir,dist,trial,2};
+                        if(~isempty(data{subj,dir,dist,trial,step_Pulse}))
+                        tmp_data = data{subj,dir,dist,trial,step_Pulse};
                         dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
                         plot(tmp_data.f(2,dexPulse)); hold on;
+                        end
                     end
                     count = count+1;
                     xlabel('Time'); ylabel('Force (N)'); set(gca,'fontsize',16);
@@ -176,7 +207,8 @@ classdef crossConditionAnalysis < handle
                         clear tmp_data
                         tmp_data = data{subj,dir,dist,trial,3};
                         if(~isempty(tmp_data))
-                            dexStoc = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
+                              dexStoc = [(min(find(tmp_data.ts==3)))+500 : (min(find(tmp_data.ts==4)))];
+%                             dexStoc = [(min(find(tmp_data.Fp(2,:)~=0))) : (max(find(tmp_data.Fp(2,:)~=0)))];
                             plot(tmp_data.x(2,dexStoc)); hold on;
                         end
                     end
@@ -198,7 +230,8 @@ classdef crossConditionAnalysis < handle
                         clear tmp_data
                         tmp_data = data{subj,dir,dist,trial,3};
                         if(~isempty(tmp_data))
-                        dexStod = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
+                          dexStoc = [(min(find(tmp_data.ts==3)))+500 : (min(find(tmp_data.ts==4)))];
+%                         dexStod = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
                         plot(tmp_data.f(2,dexStoc)); hold on;
                         end
                     end
