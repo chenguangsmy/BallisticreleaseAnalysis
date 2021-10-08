@@ -224,7 +224,8 @@ classdef TrialScan
         function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
             % find if being perturbed via looking at wam.cf data 
             % applicable for some sessions without ifpert variable
-            wam_t = sessionScanObj.wam.time; % may inaccurate as the wam time may not consistant with RTMA time
+            %wam_t = sessionScanObj.wam.time; % may inaccurate as the wam time may not consistant with RTMA time
+            wam_t = sessionScanObj.wam_t;
             stt = obj.bgn_t;
             edt = obj.edn_t;
             [~, st_idx] = min(abs(wam_t-stt));
@@ -1219,7 +1220,14 @@ classdef TrialScan
         %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
         %dat.v = obj.velocity_h(:,vidx);
         dat.v = interp1(obj.position_t', obj.velocity_h', dat.t)';
-        dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
+        try
+            dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
+        catch
+            [C,IA,IC] = unique(obj.force_t);
+            dat.f = (interp1(obj.force_t(IA)', obj.force_h(:,IA)', dat.t, 'linear', 'extrap'))'; %... need intropolate
+            disp('force_t alignemnt error! Need to check!');
+        end
+        
         dat.Fp= obj.pertfce_h(:,vidx);
         dat.Fp= interp1(obj.position_t', obj.pertfce_h', dat.t)';
         %dat.FP = interp1(wamt_org, dat.FP, dat.t, 'linear', 'extrap');
@@ -1263,9 +1271,9 @@ classdef TrialScan
         end
         
         % another way for avoid too eairly pert
-        if abs(nanmean(dat.f(2,dat.Fp(2,:)~=0) ))<5 && obj.ifpert==1
-            dat.Fp = zeros(size(dat.Fp));
-        end
+        %if abs(nanmean(dat.f(2,dat.Fp(2,:)~=0) ))<5 && obj.ifpert==1
+        %    dat.Fp = zeros(size(dat.Fp));
+        %end
         
         ifplot = 1;
         if (ifplot)

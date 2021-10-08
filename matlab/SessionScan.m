@@ -82,6 +82,33 @@ classdef (HandleCompatible)SessionScan < handle
             wam_intm = [wam_sendt; wam_recvt; wam_rdt];
             ft_sendt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.send_time;
             ft_recvt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.recv_time;
+            % load hardware synchrony signals
+            try 
+                % from message
+                MID_NETBOX = 67;
+                msgidx = data1.Data.QL.Headers.TIME_SYNC.src_mod_id == MID_NETBOX;
+                ft_synctime1 = data1.Data.QL.Data.TIME_SYNC.tleading(msgidx); % also, choose MID to do this
+                ft_synctime2 = data1.Data.QL.Data.TIME_SYNC.tlasting(msgidx);
+                ft_synctime = mean([ft_synctime1 ft_synctime2]);
+                ifplot = 1;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1); 
+                    plot(ft_synctime1, ft_synctime2, '*');
+                    title('tBeforeSend vs tAfterSend');
+                    subplot(2,1,2); 
+                    plot(1:length(ft_synctime1), ft_synctime2-ft_synctime1);
+                    title('duration in two times');
+                end
+            catch 
+                disp('no hardware synchrony signals here');
+            end
+            
+            try 
+                % from hardware
+                
+            end
+            
             ft_rdt   = double(data1.Data.QL.Data.FORCE_SENSOR_DATA.rdt_sequence);
             ft_intm  = [ft_sendt; ft_recvt; ft_rdt];
             %clear file_name  file_dir data1
@@ -1190,7 +1217,7 @@ classdef (HandleCompatible)SessionScan < handle
 
             if ~isempty(t_idx{3}) % stoc-perturbed trials. 
                 % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
+                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
                 for tl_i = 1:length(obj.tarLs)
                     %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
                     trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
@@ -1209,7 +1236,7 @@ classdef (HandleCompatible)SessionScan < handle
                     trial_list = setdiff(trial_list,1);
                     for t_i = 1:length(trial_list)
                         t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;
+                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
                         ifplot = true;
                         if (ifplot) 
                         subplot(2,1,1);
