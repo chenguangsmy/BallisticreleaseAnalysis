@@ -72,6 +72,21 @@ classdef (HandleCompatible)SessionScan < handle
             %VARSCAN Construct an instance of this class
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
+            % load the intermediate file for the time 
+            file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
+            file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
+            data1 = load([file_dir  file_name], 'Data');
+            wam_sendt = data1.Data.QL.Headers.BURT_STATUS.send_time;
+            wam_recvt = data1.Data.QL.Headers.BURT_STATUS.recv_time;
+            wam_rdt   = double(data1.Data.QL.Data.BURT_STATUS.RDT);
+            wam_intm = [wam_sendt; wam_recvt; wam_rdt];
+            ft_sendt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.send_time;
+            ft_recvt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.recv_time;
+            ft_rdt   = double(data1.Data.QL.Data.FORCE_SENSOR_DATA.rdt_sequence);
+            ft_intm  = [ft_sendt; ft_recvt; ft_rdt];
+            %clear file_name  file_dir data1
+            
+            
             file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
             file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
             %file_dir = ['data/'];
@@ -108,8 +123,12 @@ classdef (HandleCompatible)SessionScan < handle
             obj.time = Data.Time;
             TrialNo = Data.TrialNo;
             obj.trials_num = max(TrialNo);
+            try
             obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
             obj.hand_pos_offset = obj.hand_pos_offset(:,1); 
+            catch 
+                disp('no position info!');
+            end
             obj.taskState.Values = Data.TaskStateCodes.Values;
             obj.taskState.Outcome = Data.OutcomeMasks;
             obj.taskState.trialNo = Data.TrialNo;
@@ -144,13 +163,13 @@ classdef (HandleCompatible)SessionScan < handle
                 if (flag_progress)
                     disp('FT High Sample...');
                 end
-                obj = forceHighSample(obj, obj.ft);
+                obj = forceHighSample(obj, obj.ft, ft_intm);
             end
             if (~isempty(obj.wam))
                 if (flag_progress)
                     disp('WAM High Sample...');
                 end
-                obj = wamHighSample(obj, obj.wam);
+                obj = wamHighSample(obj, obj.wam, wam_intm);
             end
             if (~isempty(obj.emg))
                 if (flag_progress)
@@ -212,7 +231,12 @@ classdef (HandleCompatible)SessionScan < handle
 
         end
         function obj = convert0toNan(obj) % dealing with some Nan-int confliction
+            try
             rdt = double(obj.Data.Position.RDT);
+            catch 
+                disp('no robot rdt');
+                rdt = zeros(size(obj.Data.Position));
+            end
             rdt_idx = find([rdt==0]);
             rdt(rdt_idx) = NaN;
             obj.Data.Position.RDT = rdt;
@@ -341,13 +365,13 @@ classdef (HandleCompatible)SessionScan < handle
             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
             T = table(time_table(:,1), time_table(:,2), time_table(:,3), time_table(:,4), time_table(:,5), 'VariableNames', VarNames)
         end
-        function obj = forceHighSample(obj, force_obj)
+        function obj = forceHighSample(obj, force_obj, ft_intm)
             % align force to higher resolution according to a seperate
             % ft_obj file. the seperate ft_obj file should extract from
             % object of SessionScanFT
             % check variable 
             align_frdt = obj.Data.Force.RDTSeq;
-            align_Frdt = force_obj.RDT;
+            align_Frdt = reshape(force_obj.RDT, 1, length(force_obj.RDT));
             align_time = obj.time;
             %plot(align_frdt, align_time, '*', align_Frdt, align_Time, 'o');
             % aim: find all non-NaN value of frdts, fill the corresponding
@@ -358,40 +382,74 @@ classdef (HandleCompatible)SessionScan < handle
                  error(msg);
             end
             %align_time_= align_time(~isnan(align_frdt));
-            [~,idxFrdt] = intersect(align_Frdt,align_frdt,'stable'); %??? check this line
-            [~,idxfrdt]          = intersect(align_frdt,align_Frdt,'stable'); %??? check this line
-            align_Time = nan(1, length(align_Frdt));           % ??? can this work
-            align_Time(idxFrdt) = align_time(idxfrdt);
+%             [~,idxFrdt] = intersect(align_Frdt,align_frdt,'stable'); %??? check this line
+%             [~,idxfrdt]          = intersect(align_frdt,align_Frdt,'stable'); %??? check this line
+%             align_Time = nan(1, length(align_Frdt));           % ??? can this work
+%             align_Time(idxFrdt) = align_time(idxfrdt);
+             
+             align_frdt_idx = [min(find(~isnan(align_frdt))) max(find(~isnan(align_frdt)))];
+             align_Time = interp1(align_frdt(align_frdt_idx), obj.time(align_frdt_idx), force_obj.RDT, 'linear', 'extrap');
             % loop each interval
-            for i = 1:length(idxFrdt)-1
-                idx_l = idxFrdt(i); 
-                idx_r = idxFrdt(i+1);
-                aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
-                %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
-                %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
-                align_Time(idx_l:idx_r) = aligned_tmp';
-            end
-            if(0) % validation figure
-                figure();
-                plot(align_frdt, align_time, 'o', align_Frdt, align_Time, '*');
-                legend('RTMA time', 'forceT time'); 
+%             for i = 1:length(idxFrdt)-1
+%                 idx_l = idxFrdt(i); 
+%                 idx_r = idxFrdt(i+1);
+%                 aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
+%                 %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
+%                 %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
+%                 align_Time(idx_l:idx_r) = aligned_tmp';
+%             end
+            ifplot = 0;
+            if(ifplot) % validation figure
+                %figure();
+                clf;
+                plot(align_frdt, align_time, 'o', align_Frdt, align_Time, '.');
+                legend('reconstructed (fake) time', 'introplated time'); 
                 xlabel('RDT seq num'); ylabel('time'); 
                 title('validation interp');
+                
+                clf;
+                title('lo- hi- sampled data');
+                plot(obj.time, obj.force(2,:), '*'); hold on;
+                plot(align_Time, force_obj.force(2,:), '.');
+                legend('lo-sample, RTMA', 'hi-sample, reconstructed time');
+                
             end
              %obj.force_h = force_obj.force_net;    % not rotated
              obj.force_h = force_obj.force;         % rotated
              obj.force_t = align_Time;
+             obj.force_t = reshape(obj.force_t, 1, length(obj.force_t));
         end
-        function obj = wamHighSample(obj, wam_obj)
+        function obj = wamHighSample(obj, wam_obj, wam_intm)
             % align robot movement to higher resolution according to a
             % seperate wam.obj file. the seperate wam.obj file should
             % extract from SessionScanWam
 
              wam_obj = convert0tonan_RDT(wam_obj);
              align_wrdt = obj.Data.Position.RDT;
+             
+             ifplot = 0;
+             if (ifplot)
+                 clf; % 1. see the formatted rdt and wam rdt
+                 plot(align_wrdt, '*'); hold on;
+                 plot(wam_intm(3,:), '.');
+                 
+                 clf;
+                 align_wrdt_idx = [min(find(~isnan(align_wrdt))) max(find(~isnan(align_wrdt)))] ;
+                 align_wrdt_idxi = [find(wam_intm(3,:)==align_wrdt(align_wrdt_idx(1))) find(wam_intm(3,:)==align_wrdt(align_wrdt_idx(end)))];
+                 plot(align_wrdt, obj.time, '*'); hold on;
+                 plot(wam_intm(3,:), wam_intm(1,:) - wam_intm(1,align_wrdt_idxi(1)) + obj.time(align_wrdt_idx(1)), '.'); % constrained by the 1st
+                 % constrained by the 1st and the end
+                 time_k = (obj.time(align_wrdt_idx(end)) - obj.time(align_wrdt_idx(1)))/(wam_intm(1,align_wrdt_idxi(end)) - wam_intm(1,align_wrdt_idxi(1)));
+                 % assume two machine (robot, and process machine, have a constant time factor)
+                 plot(wam_intm(3,:), (wam_intm(1,:) - wam_intm(1,align_wrdt_idxi(1)) + obj.time(align_wrdt_idx(1)))*time_k, '.'); % constrained by the 1st
+                 ylabel('constructed time');
+                 xlabel('rdt');
+                 legend('constructed (fake) time', '1 type constrain', '2 ends constrain' );
+             end
   
-             align_Wrdt = wam_obj.rdt;
+             align_Wrdt = reshape(wam_obj.rdt, 1, length(wam_obj.rdt));
              align_time = obj.time;
+             
             % aim: find the max and min non-NaN value of wrdt, and time, 
             %       Apply interval to all align_Wrdt
 
@@ -399,31 +457,77 @@ classdef (HandleCompatible)SessionScan < handle
                  msg = 'Data error: not enough sample, aborted!';
                  error(msg);
             end
-            [~,idxWrdt] = intersect(align_Wrdt,align_wrdt,'stable'); %??? check this line
-            [~,idxwrdt]          = intersect(align_wrdt,align_Wrdt,'stable'); %??? check this line
-            align_Time = nan(1, length(align_Wrdt));           % ??? can this work
-            align_Time(idxWrdt) = align_time(idxwrdt);
-            % loop each interval
-            for i = 1:length(idxWrdt)-1
-                idx_l = idxWrdt(i); 
-                idx_r = idxWrdt(i+1);
-                aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
-                %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
-                %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
-                align_Time(idx_l:idx_r) = aligned_tmp';
-            end
-            if(0) % validation figure
-                figure();
-                plot(align_wrdt, align_time, 'o', align_Wrdt, align_Time, '*');
-                legend('RTMA time', 'WAM time'); 
-                xlabel('RDT seq num'); ylabel('time'); 
-                title('validation interp');
-            end
+            % 1. find the rdt
+%             [~,idxWrdt] = intersect(align_Wrdt,align_wrdt,'stable'); %??? check this line
+%             [~,idxwrdt]          = intersect(align_wrdt,align_Wrdt,'stable'); %??? check this line
+            align_wrdt_idx = [min(find(~isnan(align_wrdt))) max(find(~isnan(align_wrdt)))] ;
+                 
+%             align_Time = nan(1, length(align_Wrdt));           % ??? can this work
+%             align_Time(idxWrdt) = align_time(idxwrdt);
+            align_Time = interp1(align_wrdt(align_wrdt_idx), obj.time(align_wrdt_idx), wam_obj.rdt, 'linear', 'extrap');
+%             % 2. loop each interval, and get the data
+%             for i = 1:length(idxWrdt)-1
+%                 idx_l = idxWrdt(i); 
+%                 idx_r = idxWrdt(i+1);
+%                 aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
+%                 %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
+%                 %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
+%                 align_Time(idx_l:idx_r) = aligned_tmp';
+%             end
+%             
+             % check code...
+             ifplot = 1;
+             if (ifplot)
+%                  clf; 
+%                  plot(1./diff(obj.time)); % just random assigned a time!
+                 
+%                  clf;
+%                  plot(1./diff(align_Time));
+                
+                 clf; % here shows how I screw up the time!
+                 
+                 axh(1) = subplot(1,2,1); 
+                 plot(1./diff(obj.wam.time), 'b*'); title('wam freq');
+                 axh(2) = subplot(1,2,2); 
+                 plot(1./diff(align_Time), 'r.'); title('reconstructed RTMA freq');
+                 linkaxes(axh, 'y');
+
+                 
+                 %axh(1) = subplot(2,1,1); 
+                 plot(obj.time, obj.Data.Position.RDT, 'b*'); hold on;
+                 %axh(2) = subplot(2,1,2); 
+                 plot(align_Time, obj.wam.rdt, 'r.');
+                 %linkaxes(axh, 'x');
+                 
+                 clf;
+                 axh(1) = subplot(2,1,1); 
+                 plot(obj.wam.time, obj.wam.tp(:,2), '.'); % if the wam is continuous
+                 title('WAM timed torque');
+                 axh(2) = subplot(2,1,2); 
+                 plot(align_Time, obj.wam.tp(:,2), 'r.');
+                 title('aligned time torque')
+                 linkaxes(axh, 'x'); 
+                 
+                 clf; 
+                 title('lo-hi sampled')
+                 plot(obj.time, obj.Data.Position.Actual(:,2)', '*'); hold on;
+                 plot(align_Time, obj.wam.tp(:,2), 'r.');
+                 legend('lo sample', 'wam hi sample, reconstructed time');
+             end
+             
+             if (ifplot) % validation figure
+                 figure();
+                 plot(align_wrdt, align_time, 'o', align_Wrdt, align_Time, '*');
+                 legend('RTMA time', 'WAM time');
+                 xlabel('RDT seq num'); ylabel('time');
+                 title('validation interp');
+             end
             %size(align_Time)
             obj.wamp_h = wam_obj.tp;
             obj.wamv_h = wam_obj.tv;
             obj.wamt_h = wam_obj.jt;
             obj.wam_t = align_Time;
+            obj.wam_t = reshape(obj.wam_t, 1, length(obj.wam_t));
             if ~isempty(wam_obj.state)
                 obj.wam_ts = wam_obj.state;
             end
@@ -598,6 +702,7 @@ classdef (HandleCompatible)SessionScan < handle
                 
                 pert_idx = intersect(pert_idx, trials_fin);
                 empty_idx = zeros(size(obj.trials));
+
                 for trial_i = 1:length(obj.trials)
                     empty_idx(trial_i) = isempty(obj.trials(trial_i).pert_t_bgn);
                 end
@@ -807,13 +912,20 @@ classdef (HandleCompatible)SessionScan < handle
             % force threshold never achieved enough long, the perturbed was
             % not achieved. 
             % Use function TrialScan.findStepPerterbTime()
-            trial_num = length(obj.trials);
-            for trial_i = 1:trial_num
-                switch obj.trials(trial_i).getPerturbationPattern
-                    case 2
-                        obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
-                    case 3
-                    obj.trials(trial_i) = obj.trials(trial_i).findStepx0PerterbTime();
+            
+            %trial_num = length(obj.trials);
+            
+            trial_idx = obj.getPerturbedTrialIdx();
+            for trial_i = trial_idx
+                if obj.trials(trial_i).ifpert && (obj.trials(trial_i).outcome==1)
+                    switch obj.trials(trial_i).getPerturbationPattern
+                        case 2
+                            obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
+                        case 3
+                        obj.trials(trial_i) = obj.trials(trial_i).findStepx0PerterbTime();
+                    end
+                else
+                    obj.trials(trial_i).pert_t_bgn = nan; % will this cause error?
                 end
             end
         end
@@ -1080,7 +1192,9 @@ classdef (HandleCompatible)SessionScan < handle
                 % Assume only stocpert do not in the same session with step ones
                 cellsmat = cell(length(obj.tarLs), max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
                 for tl_i = 1:length(obj.tarLs)
-                    trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
+                    trial_list = setdiff(trial_list,1);
                     for t_i = 1:length(trial_list)
                         t_tmp = obj.trials(trial_list(t_i));
                         cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
@@ -1089,14 +1203,27 @@ classdef (HandleCompatible)SessionScan < handle
             else
                 cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
                 for p_i = 1:2
-                    for t_i = 1:length(t_idx{p_i})
-                        t_tmp = obj.trials(t_idx{p_i}(t_i));
+                    %trial_list = setdiff(t_idx{p_i},1);
+                    trial_list = find([obj.trials.outcome] == 1);
+                    trial_list = intersect(trial_list, t_idx{p_i});
+                    trial_list = setdiff(trial_list,1);
+                    for t_i = 1:length(trial_list)
+                        t_tmp = obj.trials(trial_list(t_i));
                         cellsmat{t_i,p_i} = t_tmp.export_as_formatted;
+                        ifplot = true;
+                        if (ifplot) 
+                        subplot(2,1,1);
+                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
+                        subplot(2,1,2);
+                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
+                        end 
                     end
                 end
             end
             
             % plot out the time skew
+            ifplot = 0; %-test
+            
             if (ifplot) 
                 plt_offset = 2e-3/10;
                 for p_i = 1:3
@@ -2689,11 +2816,11 @@ classdef (HandleCompatible)SessionScan < handle
             % the same.
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh', 'var')
                 axh = 0;
             end
-            if isempty(color_arr)
-                color_arr = 0;
+            if ~exist('color_arr', 'var')
+                color_arr = [0 0 0];
             end
             if length(color_arr) ~= 3
                 ifcolor = 0;
@@ -2846,11 +2973,11 @@ classdef (HandleCompatible)SessionScan < handle
             % the same.
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh', 'var')
                 axh = 0;
             end
-            if isempty(color_arr)
-                color_arr = 0;
+            if ~exist('color_arr', 'var')
+                color_arr = [0 0 0];
             end
             if length(color_arr) ~= 3
                 ifcolor = 0;
@@ -3263,11 +3390,11 @@ classdef (HandleCompatible)SessionScan < handle
             %   lnh: the line handle, for the futrue legend on
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh','var')
                 axh = 0;
             end
-            if isempty(color_arr)
-                color_arr = 0;
+            if ~exist('color_arr', 'var')
+                color_arr = [0 0 0];
             end
             if length(color_arr) ~= 3
                 ifcolor = 0;
@@ -3320,7 +3447,7 @@ classdef (HandleCompatible)SessionScan < handle
                 %plot each trial's perturbation response
                 %plot(time-time0, resp_p);
                 if ifcolor == 1
-                    plot(time-time0, resp_fp, 'color', color_arr);
+                    plot(time-time0, resp_fp, 'Color', color_arr);
                     %plot(time-time0, resp_p_net, 'color', color_arr);
                     %plot(time-time0, resp_v, 'color', color_arr); %velocity
                     if trial_i == trials_list(1)
@@ -3467,14 +3594,14 @@ classdef (HandleCompatible)SessionScan < handle
             %   lnh: the line handle, for the futrue legend on
              
             % check input 
-            if isempty(axh)
+            if ~exist('axh', 'var')
                 axh = 0;
             end
-            if isempty(color_arr)
+            if ~exist('color_arr','var')
                 color_arr = 0;
             end
             if length(color_arr) ~= 3
-                ifcolor = 0;
+                ifcolor = [0 0 0];
             else
                 ifcolor = 1;
             end
@@ -3536,11 +3663,11 @@ classdef (HandleCompatible)SessionScan < handle
                         lnh = plot(time-time0, resp_f-resp_f0, 'color', color_arr);
                     end
                 else
-                    plot(time-time0, resp_f-resp_f0, 'color', color_arr);
+                    plot(time-time0, resp_f-resp_f0);
                     %plot(time-time0, resp_p_net);
                     %plot(time-time0, resp_v, 'color', color_arr);
                     if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_f-resp_f0, 'color', color_arr);
+                        lnh = plot(time-time0, resp_f-resp_f0);
                     end
                 end
                 pert_t_last = time0;
@@ -3572,8 +3699,7 @@ classdef (HandleCompatible)SessionScan < handle
             % ...
             % list all trials that being perturbed
             obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
+            trials_pert = obj.getPerturbedTrialIdx();
             % plot
             axh = figure(); hold on;
             % figure properties
