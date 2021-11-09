@@ -44,6 +44,8 @@ classdef SessionScanFT
             obj = forceFTconvert(obj);
             %plotForce(obj)
             
+            obj = intropTime(obj);
+            
             ifplot = 0;
             if (ifplot)
                 clf;
@@ -51,6 +53,23 @@ classdef SessionScanFT
                 axh(2) = subplot(2,1,2); plot(obj.RDT, obj.torque_origin(2,:));
             end
 
+        end
+        
+        function obj = intropTime(obj)
+            time = obj.elapse; 
+            rdt  = obj.RDT;
+            
+            time1= interp1(rdt(10:10:end),time(10:10:end), rdt, 'linear', 'extrap');
+            
+            ifplot = 1;
+            if (ifplot)
+                clf; hold on;
+                plot(rdt, time, 'b*');
+                plot(rdt, time1, 'r.');
+                legend('pfem time', 'reconstructed time' );
+            end
+            
+            obj.elapse = time1;
         end
         
         function plotForceOrigin(obj)

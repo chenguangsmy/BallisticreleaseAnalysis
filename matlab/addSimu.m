@@ -724,3 +724,48 @@ for ploti = 1:3
     ylabel('\DeltaF / \Delta x (N/m)');
 
 end
+
+
+%% simulate with the gaussian perturbation 
+
+% gaussian wave 
+freq = 500;
+dur = 8;
+pert_t = 1;
+mu = 0.5;
+sigma = 0.16;
+mag_int = 2.5;
+t = 0:(1/freq):1;
+pert = (mag_int/(sigma*sqrt(2*pi)))*exp(-(t-mu).^2/(2*sigma^2));
+plot(pert);
+
+% generate time sequence
+t_all = 0:(1/freq):dur;
+datavals = zeros(size(t_all));
+pert_stt_idx = find(t_all == pert_t);
+pert_edn_idx = pert_stt_idx + length(pert) - 1;
+datavals(pert_stt_idx:pert_edn_idx) = pert;
+stim_ts = timeseries(datavals(1:end-1),t_all(1:end-1));
+
+% generate perturbed data
+force_list = [16];
+spring_list = [ 320 ]; % N/m
+damping_list = [5]; % Ns/m
+mass_list = 1.6; % cause the mass of the robot end+FT is 1.6kg
+k0 = 300;
+colors = colormap('lines');
+stiffness0 = 300; % robot stiffness
+x0r = force_list(1) / stiffness0;
+
+    m1 = 1/2 * mass_list(1); % fixed portion of maxx 
+    m2 = 1/2 * mass_list(1);
+    
+    fce = force_list(1);
+    dist = fce/spring_list(1);
+    x0 = dist;
+    stiffness = spring_list(1);
+    damping = 10;
+    xr0 = fce/stiffness0;
+    simout{1}(1)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_GaussianPerte.slx',...
+            'FixedStep','0.002');  
+
