@@ -33,6 +33,8 @@ classdef TrialScan
         xyi             % xy index
         xyn             % xy name
          % specific ballistic-realease
+        opt
+        opth
         fTh             % force-threshold
         force           % 
         force_h         % from NetFT, 3-by-n
@@ -68,7 +70,6 @@ classdef TrialScan
         pred_A
         pred_J
         pred_S %snap
-        
         % perturbation related variables
         pert_t_bgn                      % perturbation time start
         pert_t_edn                      % perturbation time end
@@ -94,13 +95,15 @@ classdef TrialScan
             ST_HLD = 5;
             ST_END = 6;
             ST_RST = 7;
-
+            
             obj.tNo = trialNo;
             idx = find(sessionScanObj.Data.TrialNo == trialNo);
             obj.bgn = idx(1);
             obj.edn = idx(end);                             % end_idx, avlid confliction
-            obj.bgn_t = sessionScanObj.Data.Time(obj.bgn);  % time for high_sample
-            obj.edn_t = sessionScanObj.Data.Time(obj.edn);
+%             obj.bgn_t = sessionScanObj.Data.Time(obj.bgn);  % time for high_sample
+%             obj.edn_t = sessionScanObj.Data.Time(obj.edn);
+            obj.bgn_t = sessionScanObj.time(obj.bgn);  % time for high_sample
+            obj.edn_t = sessionScanObj.time(obj.edn);
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
             obj.comboNo = sessionScanObj.Data.ComboNo(obj.edn);
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
@@ -199,12 +202,28 @@ classdef TrialScan
             
             ifplot = 1;
             if (ifplot)
-                subplot(2,1,1);
+                axh(1) = subplot(2,1,1);
                 plot(obj.position_t, obj.position_h);
-                subplot(2,1,2);
+                axh(2) = subplot(2,1,2);
                 plot(obj.force_t, obj.force_h);
+                linkaxes(axh, 'x');
             end
             
+            if (~isempty(sessionScanObj.opt))
+                opt_idx   = sessionScanObj.opt.data.t >= obj.bgn_t & sessionScanObj.opt.data.t <= obj.edn_t;
+                opt_idxh  = sessionScanObj.opt.datah.t >= obj.bgn_t & sessionScanObj.opt.datah.t <= obj.edn_t;
+                obj.opt.data.t = sessionScanObj.opt.data.t(opt_idx) - sessionScanObj.time(obj.bgn);
+                obj.opt.data.rdt = sessionScanObj.opt.data.rdt(opt_idx);
+                obj.opt.data.x = sessionScanObj.opt.data.x(opt_idx);
+                obj.opt.data.y = sessionScanObj.opt.data.y(opt_idx);
+                obj.opt.data.z = sessionScanObj.opt.data.z(opt_idx);
+                
+                obj.opt.datah.t = sessionScanObj.opt.datah.t(opt_idxh) - sessionScanObj.time(obj.bgn);
+                obj.opt.datah.rdt = sessionScanObj.opt.datah.rdt(opt_idxh);
+                obj.opt.datah.x = sessionScanObj.opt.datah.x(opt_idxh);
+                obj.opt.datah.y = sessionScanObj.opt.datah.y(opt_idxh);
+                obj.opt.datah.z = sessionScanObj.opt.datah.z(opt_idxh);
+            end
             
             xy_char = 'xy';
             obj.xyn = xy_char(obj.xyi);
@@ -224,7 +243,8 @@ classdef TrialScan
         function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
             % find if being perturbed via looking at wam.cf data 
             % applicable for some sessions without ifpert variable
-            wam_t = sessionScanObj.wam.time; % may inaccurate as the wam time may not consistant with RTMA time
+            %wam_t = sessionScanObj.wam.time; % may inaccurate as the wam time may not consistant with RTMA time
+            wam_t = sessionScanObj.wam_t;
             stt = obj.bgn_t;
             edt = obj.edn_t;
             [~, st_idx] = min(abs(wam_t-stt));
@@ -397,6 +417,10 @@ classdef TrialScan
                 end
                 if(~isempty(obj.force_t))
                     obj.force_t = obj.force_t - time_offset;
+                end
+                if(~isempty(obj.opt))
+                    obj.opt.data.t = obj.opt.data.t - time_offset;
+                    obj.opt.datah.t = obj.opt.datah.t - time_offset;
                 end
             end
         end
@@ -1197,6 +1221,7 @@ classdef TrialScan
         ts_time = timepoints(find(diff(obj.wam_ts)));  % time when ts change
         ts_valid = [1:6];
         wam_t = timepoints(ismember(obj.wam_ts, ts_valid));
+        wam_t = reshape(wam_t, 1, length(wam_t));
         time_diff = diff(wam_t);
         time_diff = [time_diff(1) time_diff];
         % exclude the time skewed too much
@@ -1219,7 +1244,14 @@ classdef TrialScan
         %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
         %dat.v = obj.velocity_h(:,vidx);
         dat.v = interp1(obj.position_t', obj.velocity_h', dat.t)';
-        dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
+        try
+            dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
+        catch
+            [C,IA,IC] = unique(obj.force_t);
+            dat.f = (interp1(obj.force_t(IA)', obj.force_h(:,IA)', dat.t, 'linear', 'extrap'))'; %... need intropolate
+            disp(['force_t have' num2str(sum(diff(obj.force_t)==0)) ' overlapping values, ! Need to check!']);
+        end
+        
         dat.Fp= obj.pertfce_h(:,vidx);
         dat.Fp= interp1(obj.position_t', obj.pertfce_h', dat.t)';
         %dat.FP = interp1(wamt_org, dat.FP, dat.t, 'linear', 'extrap');
@@ -1233,6 +1265,13 @@ classdef TrialScan
             dat.mvst= (dat.ts==4 | dat.ts==5)& dat.tq(2,:)==0; % moveent start
         elseif(obj.ifpert==2) % stochastic pert
             dat.mvst= (dat.ts==4 | dat.ts==5);
+        end
+        % the optotrak data
+        if ~isempty(obj.opt)
+            ox = interp1(obj.opt.datah.t, obj.opt.datah.x, dat.t, 'linear', 'extrap');
+            oy = interp1(obj.opt.datah.t, obj.opt.datah.y, dat.t, 'linear', 'extrap');
+            oz = interp1(obj.opt.datah.t, obj.opt.datah.z, dat.t, 'linear', 'extrap');
+            dat.ox = [ox; oy; oz];
         end
         
         % check the plot
@@ -1258,14 +1297,15 @@ classdef TrialScan
         end
         
         % if pert happen eailier
-        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),3)) && obj.ifpert==1
+        %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),3)) && obj.ifpert==1
+        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),4)) && obj.ifpert==1 % perturb at ts4
             dat.Fp = zeros(size(dat.Fp));
         end
         
         % another way for avoid too eairly pert
-        if abs(nanmean(dat.f(2,dat.Fp(2,:)~=0) ))<5 && obj.ifpert==1
-            dat.Fp = zeros(size(dat.Fp));
-        end
+        %if abs(nanmean(dat.f(2,dat.Fp(2,:)~=0) ))<5 && obj.ifpert==1
+        %    dat.Fp = zeros(size(dat.Fp));
+        %end
         
         ifplot = 1;
         if (ifplot)
@@ -1295,7 +1335,7 @@ classdef TrialScan
               ylabel('position - y');
               grid on;
               axh(3) = subplot(3,1,3);  hold on;
-              plot(dat.t, dat.f(2,:), 'b');
+              plot(dat.t, dat.f(2,:), 'b.');
               hold on;
               plot(obj.force_t, obj.force_h(2,:), 'r'); 
               linkaxes(axh, 'x');
@@ -1633,7 +1673,7 @@ classdef TrialScan
             title('');
             xlabel('x (m)');
             ylabel('y (m)');
-            
+        
         end
     end
 end

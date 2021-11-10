@@ -34,6 +34,7 @@ classdef (HandleCompatible)SessionScan < handle
         ft              % object of force
         wam             % object of wam
         emg             % object of emg
+        opt             % object of opt (OPTOTRAK)
         force_h         % time for wam seperate data
         force_t         % time for ft seperate data
         wamp_h          % highly sampled from wam
@@ -73,7 +74,7 @@ classdef (HandleCompatible)SessionScan < handle
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
             % load the intermediate file for the time 
-            file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
+            file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % an examplary trial
             file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
             data1 = load([file_dir  file_name], 'Data');
             wam_sendt = data1.Data.QL.Headers.BURT_STATUS.send_time;
@@ -82,20 +83,55 @@ classdef (HandleCompatible)SessionScan < handle
             wam_intm = [wam_sendt; wam_recvt; wam_rdt];
             ft_sendt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.send_time;
             ft_recvt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.recv_time;
+            % load hardware synchrony signals
+            try 
+                % from message
+                MID_NETBOX = 67;
+                msgidx = data1.Data.QL.Headers.TIME_SYNC.src_mod_id == MID_NETBOX;
+                ft_synctime1 = data1.Data.QL.Data.TIME_SYNC.tleading(msgidx); % also, choose MID to do this
+                ft_synctime2 = data1.Data.QL.Data.TIME_SYNC.tlasting(msgidx);
+                ft_synctime = mean([ft_synctime1 ft_synctime2]);
+                ifplot = 1;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1); 
+                    plot(ft_synctime1, ft_synctime2, '*');
+                    title('tBeforeSend vs tAfterSend');
+                    subplot(2,1,2); 
+                    plot(1:length(ft_synctime1), ft_synctime2-ft_synctime1);
+                    title('duration in two times');
+                end
+            catch 
+                disp('Hardware synchrony Message error, please check');
+            end
+            
+            try 
+                % from hardware
+                
+            end
+            
             ft_rdt   = double(data1.Data.QL.Data.FORCE_SENSOR_DATA.rdt_sequence);
             ft_intm  = [ft_sendt; ft_recvt; ft_rdt];
             %clear file_name  file_dir data1
             
             
-            file_name = ['KingKong.0' num2str(ss_num) '.mat']; % an examplary trial
+            file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % an examplary trial
             file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
+            file_dir_int = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
             %file_dir = ['data/'];
             fname0 = ([file_dir '/' file_name]);
+            fname1 = ([file_dir_int '/' file_name]);
             flag_progress = 1;      % show something to make me less anxious
             try 
                 load(fname, 'Data');
             catch 
                 load(fname0, 'Data');
+            end
+            try 
+                Data1 = load(fname1, 'Data');
+                Data1 = Data1.Data; % load the Intermediate data, not sure useful or not.
+            catch
+                disp('no intermediate data');
             end
             % objects
             noFW_data = 0;
@@ -103,8 +139,8 @@ classdef (HandleCompatible)SessionScan < handle
                 if (flag_progress)
                     disp('Loading raw FT and WAM...');
                 end
-                obj.ft = SessionScanFT(ss_num);
-                obj.wam = SessionScanWam(ss_num);
+                obj.ft = SessionScanFT(obj.ssnum);
+                obj.wam = SessionScanWam(obj.ssnum);
             catch 
                 disp('no ft and wam data here! ');
                 noFW_data = 1;
@@ -113,14 +149,37 @@ classdef (HandleCompatible)SessionScan < handle
                 if (flag_progress)
                     disp('Loading (intermed/raw) EMG...');
                 end
-                obj.emg = SessionScanEMG(ss_num);
+                obj.emg = SessionScanEMG(obj.ssnum);
             catch
                 disp('no EMG data here! ')
             end
+            
+            try 
+                if (flag_progress)
+                    disp('Loading (intermed/raw) OPTOTRAK...');
+                end
+                obj.opt = SessionScanOPT(obj.ssnum);
+            catch 
+                disp('no OPT data here! '); 
+            end
+                
             % other data
 
             obj.Data = Data;
-            obj.time = Data.Time;
+            % obj.time = Data.Time; % how to make this time same with the bk time?
+            timetmp = Data.SpikeTimestamp;
+            timetmp1 = interp1(find(~isnan(timetmp)),timetmp(~isnan(timetmp)), 1:length(timetmp), 'linear', 'extrap');
+            ifplot = 0;
+            if(ifplot)
+                clf;
+                hold on;
+                plot(1:length(timetmp), timetmp, '*');
+                plot(1:length(timetmp), timetmp1, '.');
+                legend('original', 'processed');
+                title('original and extrapolated spike times');
+            end
+            obj.time = timetmp1; % have problems, don't do that
+            
             TrialNo = Data.TrialNo;
             obj.trials_num = max(TrialNo);
             try
@@ -159,6 +218,7 @@ classdef (HandleCompatible)SessionScan < handle
             % processing 
             obj = convert0toNan(obj);
             trials_all = setdiff(unique(TrialNo), 0);
+            [obj, syncflag] = updateTimeBlackRock(obj);
             if (~isempty(obj.ft))
                 if (flag_progress)
                     disp('FT High Sample...');
@@ -416,8 +476,11 @@ classdef (HandleCompatible)SessionScan < handle
             end
              %obj.force_h = force_obj.force_net;    % not rotated
              obj.force_h = force_obj.force;         % rotated
-             obj.force_t = align_Time;
-             obj.force_t = reshape(obj.force_t, 1, length(obj.force_t));
+             if isempty(obj.force_t)
+                disp('Force did not aligned with blackrock signal, align using messages');
+                obj.force_t = align_Time; % not work after ss 3046
+                obj.force_t = reshape(obj.force_t, 1, length(obj.force_t));
+             end
         end
         function obj = wamHighSample(obj, wam_obj, wam_intm)
             % align robot movement to higher resolution according to a
@@ -526,8 +589,12 @@ classdef (HandleCompatible)SessionScan < handle
             obj.wamp_h = wam_obj.tp;
             obj.wamv_h = wam_obj.tv;
             obj.wamt_h = wam_obj.jt;
-            obj.wam_t = align_Time;
-            obj.wam_t = reshape(obj.wam_t, 1, length(obj.wam_t));
+            % not work after ss3046;
+            if (isempty(obj.wam_t))
+                disp('wam_data did not aligned with blackrock signal, align using messages');
+                obj.wam_t = align_Time;
+                obj.wam_t = reshape(obj.wam_t, 1, length(obj.wam_t));
+            end
             if ~isempty(wam_obj.state)
                 obj.wam_ts = wam_obj.state;
             end
@@ -1190,7 +1257,7 @@ classdef (HandleCompatible)SessionScan < handle
 
             if ~isempty(t_idx{3}) % stoc-perturbed trials. 
                 % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
+                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
                 for tl_i = 1:length(obj.tarLs)
                     %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
                     trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
@@ -1204,12 +1271,27 @@ classdef (HandleCompatible)SessionScan < handle
                 cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
                 for p_i = 1:2
                     %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1);
+                    trial_list = find([obj.trials.outcome] == 1); % no failed trials 
+                    %trial_list = find([obj.trials.outcome] ~= -1);
                     trial_list = intersect(trial_list, t_idx{p_i});
-                    trial_list = setdiff(trial_list,1);
+                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
+                    switch obj.ssnum
+                        case 3402
+                            trial_list = setdiff(trial_list,18);
+                        case 3385
+                            trial_list = setdiff(trial_list,28);
+                        case 3387
+                            trial_list = setdiff(trial_list,9);
+                        case 3361
+                            trial_list = setdiff(trial_list,9);
+                    end
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %trial_list = setdiff(trial_list,[1 2 51:60]);
+                    trial_list = setdiff(trial_list,[1]);
                     for t_i = 1:length(trial_list)
                         t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;
+                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                        xlim([-5 -4])
                         ifplot = true;
                         if (ifplot) 
                         subplot(2,1,1);
@@ -1220,6 +1302,109 @@ classdef (HandleCompatible)SessionScan < handle
                     end
                 end
             end
+            
+            % plot out the time skew
+            ifplot = 0; %-test
+            
+            if (ifplot) 
+                plt_offset = 2e-3/10;
+                for p_i = 1:3
+                    subplot(1,3,p_i); hold on;
+                    switch p_i
+                        case 1
+                            title('no pert');
+                        case 2
+                            title('pulse pert');
+                        case 3
+                            title('stoc pert');
+                    end
+                    if (p_i ~= 3)
+                        for t_i = 1:length(t_idx{p_i})
+                            if(isempty(cellsmat{t_i, p_i}))
+                                continue;
+                            end
+                            dt = diff(cellsmat{t_i,p_i}.t);
+                            dt = [dt(1) dt];
+                            plot(t_i*plt_offset + dt);
+                        end
+                    else
+                        if isempty(t_idx{p_i}) 
+                            continue
+                        end
+                        tiofst = 0; % plot offset
+                        for tl_i = 1:size(cellsmat, 1)
+                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
+                                if ~isempty(cellsmat{tl_i,t_i,p_i})
+                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
+                                dt = [dt(1) dt];
+                                tiofst = tiofst+1;
+                                plot(tiofst*plt_offset + dt);
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        function [cellsmat] = export_as_formatted_hybridss(obj, ifplot)
+            
+            if (~exist('ifplot', 'var'))
+                ifplot = 0;
+            end
+            % export as a t(trials_num)-by-p(perturbation options) cell mat
+            % for each cell, the data format are each trial, which contains:
+            %   x: 3-by-N matrix, robot endpoint
+            %   v: 3-by-N matrix, robot velocity
+            %   f: 3-by-N matrix, force transducer force
+            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
+            %   ts: 1-by-N matrix, task states
+            %   time: 1-by-N matrix, time 
+            %   movement onset: the mask that robot start move
+            %  -[ ] emg: 8-by-N matrix, emg data
+            pert_trials = [obj.trials.ifpert];
+            t_idx = cell(1,3);
+            for p_i = 1:3
+                 t_idx{p_i} = find(pert_trials==p_i-1); % 0,nopert; 1, pulse; 2, stoc
+            end
+            
+            t_idx{3} = t_idx{3}(2:end); % works for the hybrid pert, to avoid error
+            
+            cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
+            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
+                % stoc trials are in the same sessions for step trials (for
+                % spring testing)
+                for tl_i = 1:length(obj.tarLs)
+                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
+                    trial_list = setdiff(trial_list,1);
+                    for t_i = 1:length(t_idx{3})
+                        t_tmp = obj.trials(trial_list==t_idx{3}(t_i));
+                        %cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
+                        cellsmat{t_i,3} = t_tmp.export_as_formatted;
+                    end
+                end
+            end
+            for p_i = 1:2
+                %trial_list = setdiff(t_idx{p_i},1);
+                trial_list = find([obj.trials.outcome] == 1); % no failed trials 
+                %trial_list = find([obj.trials.outcome] ~= -1);
+                trial_list = intersect(trial_list, t_idx{p_i});
+                %trial_list = setdiff(trial_list,[1 2 51:60]);
+                trial_list = setdiff(trial_list,[1]);
+                for t_i = 1:length(trial_list)
+                    t_tmp = obj.trials(trial_list(t_i));
+                    cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                    xlim([-5 -4])
+                    ifplot = true;
+                    if (ifplot) 
+                    subplot(2,1,1);
+                    plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
+                    subplot(2,1,2);
+                    plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
+                    end 
+                end
+            end
+
             
             % plot out the time skew
             ifplot = 0; %-test
@@ -1473,6 +1658,7 @@ classdef (HandleCompatible)SessionScan < handle
                 figure(axh); hold on;
             end
             %position = obj.wamp_h'; 
+
             plot(obj.force_t, smooth((obj.force_h(2,:)),1)');  
             ylabel('endpoint positions');
             xlabel('time points');
@@ -3427,7 +3613,7 @@ classdef (HandleCompatible)SessionScan < handle
                 if (isempty(time0))
                     time0 = pert_t_last;
                 end
-                resp_fp = obj.trials(trial_i).pertfce_h(:); % resting position
+                resp_fp = obj.trials(trial_i).pertfce_h(2,:); % resting position
                 if min(time-time0) < -0.1
                     time_idx = (time-time0) > -0.1 & (time-time0) < 0;
                 else
@@ -3953,6 +4139,252 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('Stiffness');
             title('Measurement error');
             end
+        end
+        
+        %% update time from the blackrock hardware recording 
+        function [obj flag] = updateTimeBlackRock(obj)
+            %clear; close all; clc;
+            ss_num = obj.ssnum;
+            fname_sync = sprintf('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/KingKongTSync.%05d.mat', ss_num);
+            fname_intm = sprintf('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/KingKong.%05d.mat', ss_num);
+            if ~exist(fname_sync, 'file') 
+                disp('ERROR: no TSync file saved, please check!');
+                flag = -1; 
+                return
+            end
+                
+            if ~exist(fname_intm, 'file')
+                disp('ERROR: no intermediate file saved, please check!');
+                flag = -2;
+                return
+            end
+            
+            d = load(fname_sync);
+            dataTs = d.data;
+            d = load(fname_intm);
+            dataMsT = d.Data.QL.Data.TIME_SYNC;
+            dataMsTh= d.Data.QL.Headers.TIME_SYNC;
+            dataTConfig = d.Data.QL.Data.TRIAL_CONFIG;
+            dataTConfigh= d.Data.QL.Headers.TRIAL_CONFIG;
+            dataMsB = d.Data.QL.Data.BURT_STATUS;
+            clear d
+            
+            % defines num
+            MID_FT  = 67;   % NETBOX
+            MID_WAM = 62;   % ROBOT
+            mid_type = [MID_FT, MID_WAM];
+            
+            
+            %%%%% 1. read times from blackrock and check it value (in ifplot)
+            %%%%%%%%%%%%%%%%%%%% only for ss3030
+            %eventsL = dataTs.eventsT;
+            %eventsT  = dataTs.eventsL;
+            %%%%%%%%%%%%%%%%%%%%
+            eventsL = dataTs.eventsL;   % events_label, 
+            eventsT = dataTs.eventsT;   % events_time;
+            if (isfield(dataTs, 'eventsTrials')) % trial list
+                eventTrials= dataTs.eventsTrials;
+            end
+            
+%             timeoffset = eventsT(1); %not do this...
+%             if obj.time(end) > timeoffset % not-accurate 
+%                 obj.time = obj.time - timeoffset; % should only execute once
+%             end
+            
+            % pulse from the blackrock
+            events_type = unique(eventsL);
+            for etype = events_type
+                bk_time{etype} = eventsT(eventsL == etype);
+                bk_trials{etype} = eventTrials(eventsL == etype); % after ss3090
+            end
+            
+            % etype1-FT, etype2-ROBOT
+            ifplot = 0;
+            if (ifplot)
+                clf;
+                axh(1) = subplot(2,1,1); hold on;
+                plot(bk_time{1}, 'r*'); plot(bk_time{2}, 'b*');
+                legend('FT', 'WAM')
+                axh(2) = subplot(2,1,2);
+                stem(bk_time{1} - bk_time{2});
+                linkaxes(axh, 'x');
+                title(axh(1),'sync signal times to BlackRock');
+                title(axh(2), 'syn signal difference to Blackrock');
+                
+                clf;
+                axh(1) = subplot(2,1,1); hold on;
+                plot(diff(bk_time{1}), 'r*');
+                axh(2) = subplot(2,1,2);
+                plot(diff(bk_time{2}), 'b*');
+                linkaxes(axh, 'x');
+                title(axh(1),'time diff between ft on BlackRock');
+                title(axh(2), 'time pulse between wam on Blackrock');
+            end
+            
+            %%%%% 2. read times message and check it value (in ifplot)
+            % message time for each computer
+            time_leading = dataMsT.tleading;
+            time_lasting = dataMsT.tlasting;
+            if (isfield(dataMsT, 'trial_no'))
+                times_trialno= dataMsT.trial_no; % after ss3110
+            else 
+                % need to use the other information to decide trials 
+                msg_recvt = dataMsTh.recv_time;
+                trial_no = dataTConfig.trial_no;
+                trial_no_t = dataTConfigh.recv_time;
+                trial_no_t_extrap = interp1(1:length(trial_no_t), trial_no_t, 1:(length(trial_no_t)+1), 'linear', 'extrap');
+                % figure(); hold on;
+                % plot(msg_recvt, 'r*');
+                % plot(trial_no_t, 'b*');
+                
+                [n, tidx ] = histc(msg_recvt, trial_no_t_extrap);
+                times_trialno = trial_no(tidx);
+            end
+            msg_mid = dataMsTh.src_mod_id;
+            %mid_type = unique(msg_mid);
+            mid_type = [MID_FT, MID_WAM];
+            for mtype_idx = 1:length(mid_type)
+                tleading{mtype_idx} = time_leading(msg_mid == mid_type(mtype_idx));
+                tlasting{mtype_idx} = time_lasting(msg_mid == mid_type(mtype_idx));
+                t_means{mtype_idx}  = (tleading{mtype_idx}+tlasting{mtype_idx})/2;
+                t_error{mtype_idx}  =-(tleading{mtype_idx}-tlasting{mtype_idx});
+                if (exist('times_trialno', 'var'))
+                    t_msg_trialidx{mtype_idx} = times_trialno(msg_mid == mid_type(mtype_idx)); % after ss3110
+                end
+            end
+            
+            ifplot = 0;
+            if (ifplot)
+                clf; % pfem time precision
+                axh(1) = subplot(2,1,1); hold on;
+                plot(tleading{1}, 'r*'); plot(tlasting{1}, 'b*');
+                legend('tleading', 'tlasting')
+                axh(2) = subplot(2,1,2);
+                stem(1e6*(tleading{1} - tlasting{1}));
+                ylim([-1 1]*1e1);
+                linkaxes(axh, 'x');
+                title(axh(1), 'tleading and tlasting (s)');
+                title(axh(2), 'time elapse in pfem (us)');
+                
+                clf; % ernie time precision
+                axh(1) = subplot(2,1,1); hold on;
+                tleading{2} - tleading{2}(1)
+                plot(tleading{2}, 'r*'); plot(tlasting{2}, 'b*');
+                legend('tleading', 'tlasting')
+                axh(2) = subplot(2,1,2);
+                stem(1e6*(tleading{2} - tlasting{2}));
+                ylim([-1 1]*1e1);
+                linkaxes(axh, 'x');
+                title(axh(1), 'tleading and tlasting (s)');
+                title(axh(2), 'time elapse in ernie (us)');
+                
+                clf;
+                axh(1) = subplot(2,1,1);
+                plot(diff(tlasting{1}), '*');
+                ylabel('sec');
+                title('intertrial t\_lasting duration, FT');
+                axh(2) = subplot(2,1,2);
+                plot(diff(tlasting{2}), '*');
+                title('intertrial t\_lasting duration, WAM');
+                ylabel('sec');
+                linkaxes(axh, 'x');
+                
+            end
+            
+            % select the time will be align with the blackrock time, here
+            % use the average between 't_leading' and 't_lasting'
+            t_interest = t_means;
+            
+            % if length(t_interest{1}) == 1 + length(bk_time[1})
+            % - Think this condition as the last one did not record in BK.
+            % truncate the t_interest
+            if (exist('t_msg_trialidx', 'var') && exist('bk_trials', 'var')) % after ss3110
+                % 1. find the intersect of trials
+                [trial_its, idx_msg1, idx_bk1] = intersect(t_msg_trialidx{1}, bk_trials{1}); % FT 
+                [trial_its, idx_msg2, idx_bk2] = intersect(t_msg_trialidx{2}, bk_trials{2}); % FT 
+                % assuem every FT sync signal has a WAM sync signal
+                
+                % 2. change to-aligned data into certain trials
+                t_interest{1} = t_interest{1}(idx_msg1);
+                t_interest{2} = t_interest{2}(idx_msg2);
+                bk_time{1} = bk_time{1}(idx_bk1);
+                bk_time{2} = bk_time{2}(idx_bk2);
+                
+                
+            else % old way to deal with the two message do not have the same length problem
+            if (length(t_interest{1}) == 1 + length(bk_time{1}))
+                disp('Message and pulse size inconsistance, may cause error');
+                
+                t_interest{1} = t_interest{1}(1:end-1);
+                t_interest{2} = t_interest{2}(1:end-1);
+            end
+            end
+            
+            ifplot = 1;
+            if (ifplot)
+                clf;
+                hold on;
+                plot(bk_time{1}, t_interest{1}, 'r*'); 
+                plot(bk_time{2}, t_interest{2}, 'b*');
+                legend('FT', 'WAM');
+                xlabel('BK time');
+                ylabel('each computer time');
+            end
+            % intropolate each data time to the bk_time;
+            
+            %%% 1. the FT time
+            try
+            obj.force_t = interp1(t_interest{1}, bk_time{1}, obj.ft.elapse, 'linear', 'extrap');
+            catch 
+                if (ismember(obj.ssnum, [3197 3198]))
+                    obj.force_t = interp1(t_interest{2}, bk_time{2}, obj.ft.elapse, 'linear', 'extrap'); 
+                    % this trial do not have the FT pulse, use WAM pulse to
+                    % debug...
+                end
+            end
+            ifplot = 1;
+            if (ifplot)
+                clf; 
+                hold on;
+                plot(t_interest{1}, bk_time{1}, 'b*');
+                plot(obj.ft.elapse, obj.force_t, 'r.');
+            end
+            
+            %%% 2. the wam time
+            % 1. plot the wam time with the ernie computer time
+            wam_time = dataMsB.wamt;
+            ernie_time=dataMsB.erniet;
+            
+            if (length(wam_time) > length(unique(wam_time)))
+                [C, IA, ~] = unique(wam_time);
+                wam_time = wam_time(IA);
+                ernie_time = ernie_time(IA);
+            end
+            clf; 
+            ernie_timeh = interp1(wam_time, ernie_time, obj.wam.time, 'linear', 'extrap');
+            obj.wam_t  = interp1(t_interest{2}, bk_time{2}, ernie_timeh, 'linear', 'extrap');
+            ifplot = 1;
+            if(ifplot)
+                clf; 
+                axh(1) = subplot(2,2,1);
+                hold on;
+                plot(ernie_time, wam_time, 'b*');
+                plot(ernie_timeh, obj.wam.time, 'r.');
+                xlabel('ernie time'); ylabel('wam time');
+                axh(2) = subplot(2,2,3);
+                hold on;
+                plot(t_interest{2}, bk_time{2}, 'b*');
+                plot(ernie_timeh, obj.wam_t, 'r.');
+                xlabel('ernie time'); ylabel('BK time');
+                axh(3) = subplot(2,2,4); 
+                plot(obj.wam.time, obj.wam_t, 'r.'); 
+                xlabel('wam time'); ylabel('BK time');
+                linkaxes([axh(1), axh(2)], 'x');
+                linkaxes([axh(2), axh(3)], 'y');
+                
+            end
+            flag = 1;
+            return;
         end
     end
 
