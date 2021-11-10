@@ -102,21 +102,37 @@ classdef mainAnalysis < handle
             
             %% Visiting Pittsburgh Test 11/3/2021
             % Test from James Wednesday
-%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3307_3314.mat');
-%             data_human = data;
-%             clear data
-%             dexSubject = 1; % [James]
-%             dexForce = 1:3; % [15N, 20N, 25N]
-%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-
+            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3307_3314.mat');
+            data_human = data;
+            clear data
+            dexSubject = 1; % [James]
+            dexForce = 1:3; % [15N, 20N, 25N]
+            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+            
+            depMeasures_human1 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+            
+            % Test from Chenguang both directions
+            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3353_3417.mat');
+            data_human = reshape(data(1,1,:,:,:,:),1,3,3,15,3);
+            clear data
+            dexSubject = 1; % [Chenguang]
+            dexForce = 1:3; % [15N, 20N, 25N]
+            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+            depMeasures_human2 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+            
             % Spring Test
             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3334_3344.mat');
             data_spring = data;
             clear data
             dexSpring = 1; % [336 N/m]
-            dexForce_spring = 3; % [15N, 20N, 25N]
+            dexForce_spring = 1:3; % [15N, 20N, 25N]
             dexDistance_spring = 1:3; % [will vary based on spring constant]
 %             Spring [4.7, 6.25, 7.81]
+            depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring,'spring');
+            
+            depMeasures_human1.k_nonNan
+            depMeasures_human2.k_nonNan
+            depMeasures_spring.k_nonNan
           
 %             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3345.mat');
 %             data_robotOnly = data;
@@ -127,8 +143,19 @@ classdef mainAnalysis < handle
              
             % Run analysis
 %             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance);
-            depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring);
+%             depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring);
 %             depMeasures_rob = crossConditionAnalysis(data_robotOnly,1,1,1);
+
+            % Spring Test - diffpreturbation param
+%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3318_3319.mat');
+%             data_spring = data;
+%             clear data
+%             dexSpring = 1; % [336 N/m]
+%             dexForce_spring = 1; % [15N, 20N, 25N]
+%             dexDistance_spring = 1:2; % [will vary based on spring constant]
+%             depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring,'spring');
+
+
 
             % Make ANOVA Plots across human and spring trials
 %             this.plot_postion();

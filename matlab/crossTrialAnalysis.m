@@ -15,29 +15,37 @@ classdef crossTrialAnalysis < handle
     end
     
     methods
-        function [this] = crossTrialAnalysis(data,sfrq,f_target)
+        function [this] = crossTrialAnalysis(data,sfrq,f_target,subjectType)
             
             this.sfrq = sfrq;
             this.k_r = 300;
+            
+            if(strcmp(subjectType,'human'))
+                this.m = 2.15;
+            elseif(strcmp(subjectType,'spring'))
+                this.m = 1.15;
+            else
+                error('Spesify subjectType');
+            end
             
             % Look at data
 %             this.plot_postion();
 %             this.plot_force();
             
             % Estimate stiffnesses
-            this.get_k_hat_pulse(data,f_target);
+            this.get_k_hat_pulse(data,f_target,subjectType);
             this.get_k_hat_stocastic(data);
             this.get_k_hat_release(data);
             
         end
         
-        function [] = get_k_hat_pulse(this,data,f_target)
+        function [] = get_k_hat_pulse(this,data,f_target,subjectType)
             
             % Exclude empty cells (FIX Later)
             step_Pulse = 2;
             [N_trial] = size(data,1);
             count = 1;
-            for trial = 1:N_trial-1
+            for trial = 2:N_trial-1
                 if(~isempty(data{trial,step_Pulse}))
                     if( sum(data{trial,step_Pulse}.Fp(2,:)~=0) ~= 0 )
                         if(sum(data{trial,step_Pulse}.Fp(2,1:30)) == 0) % find pulse to close to start
@@ -56,7 +64,7 @@ classdef crossTrialAnalysis < handle
                                                  tmpData.Fp(2,:),...
                                                  tmpData.x(2,:),...
                                                  tmpData.ts,...
-                                                 f_target);
+                                                 f_target,subjectType);
             end
                         
         end
@@ -118,7 +126,7 @@ classdef crossTrialAnalysis < handle
             
         end
         
-        function [k_hat] = get_singleTrial_k_hat_pulse(this,f,Fp,x,ts,f_target)
+        function [k_hat] = get_singleTrial_k_hat_pulse(this,f,Fp,x,ts,f_target,subjectType)
             
             % Take average of last 15 measuremnts before the pulse ends
             t = 0:1/this.sfrq:(length(x)*(1/this.sfrq))-1/this.sfrq;
@@ -186,11 +194,20 @@ classdef crossTrialAnalysis < handle
                 x_dot = this.sfrq*diff(x);
                 x_dot(end+1) = x_dot(end);
                 
-                % (IMPORTANT) Cut with peak for springs
                 [pks,locs,w,p] = findpeaks((-sign(mean(Fp))) * x_dot(dexPulseStart:dexPulseEnd+extraDex));
                 locs = locs + dexPulseStart;
-                dexRange = dexPulseStart:locs(find(max(w)==w));
-                
+
+                if(strcmp(subjectType,'human'))
+                    % (IMPORTANT) Cut with peak (for Humans)
+                    dexRange = dexPulseStart:locs(find(max(w)==w));
+                elseif(strcmp(subjectType,'spring'))
+                    % (IMPORTANT) Remove friction part (for springs)
+                    [tmp,dexMin] = min(x_dot(dexPulseStart:locs(find(max(w)==w))));
+                    dexRange = (dexPulseStart+dexMin):locs(find(max(w)==w));
+                else
+                    error('Spesify subjectType');
+                end
+
                 % (IMPORTANT) Use entire pulse for humans
 %                 dexRange = dexPulseStart:dexPulseEnd;
                 
@@ -222,8 +239,6 @@ classdef crossTrialAnalysis < handle
                 X0 = [k_h,x_h,B];
                 
                 % 300/(2.75*2*pi)^2
-
-                this.m = 1.25;
                 
                 A = [];
                 b = [];
@@ -231,11 +246,17 @@ classdef crossTrialAnalysis < handle
                 beq = [];
                 lb = [0,-2,0];
                 ub = [5000,2,100];
-%                 options = optimoptions(fmincon,'TolFun', 0.00000001, 'MaxIter', 10000, ...
-%                        'MaxFunEvals', 100000, 'Display', 'notify' , ...
-%                        'DiffMinChange', 0.001, 'Algorithm', 'sqp');
-                [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x,x_dot,x_ddot,x_r,Fp,X_hat),X0,A,b,Aeq,beq,lb,ub);
+                options = optimoptions('fmincon','Display','off');
+                                
+%                 options = optimoptions('fmincon','TolFun', 1e-8, 'MaxIter', 10000, ...
+%                                        'MaxFunEvals', 100000, 'Display', 'off' , ...
+%                                        'DiffMinChange', 0.001, 'Algorithm', 'sqp');
+                [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x,x_dot,x_ddot,x_r,Fp,X_hat),X0,A,b,Aeq,beq,lb,ub,@(x)this.mycon,options);
                 
+                t_plot = t(dexRange)-t(dexRange(1));
+                f_threshold = (abs(x_dot)> 3e-3) | (abs(x_ddot) > 0.4);
+                f_threshold_dex = find(diff(f_threshold)>0);
+                                    
                 if(EXITFLAG == 1) % Local minimum successfully found
                     %                 m = X_hat(1);
                     %                 f_s = X_hat(2);
@@ -244,38 +265,85 @@ classdef crossTrialAnalysis < handle
                     x_h = X_hat(2);
                     B = X_hat(3);
                     
-                    [cost,x_dot_hat] = this.costFunc(x,x_dot,x_ddot,x_r,Fp,X_hat);
-                    
-                    t_plot = t(dexRange)-t(dexRange(1));
-                    
-                    figure;
-                    plot(t_plot,x_dot,'linewidth',3); hold on;
-                    plot(t_plot,x_dot_hat,'.','markersize',10);
-                    title(['k_{hat} = ',num2str(k_hat),...
-                        ', x_{hat} = ',num2str(x_h),...
-                        ', B = ',num2str(B)]);
-                    xlabel('Time (s)'); ylabel('Velocity (m/s)');
-                    set(gca,'fontsize',16);
+                    [cost,x_hat,x_dot_hat] = this.costFunc(x,x_dot,x_ddot,x_r,Fp,X_hat);
+                                        
+%                     figure;
+%                     
+%                     subplot(2,1,1);
+%                     plot(t_plot,x,'linewidth',3); hold on;
+%                     plot(t_plot,x_hat,'.','markersize',10);
+%                     title(['k_{hat} = ',num2str(k_hat),...
+%                         ', x_{hat} = ',num2str(x_h),...
+%                         ', B = ',num2str(B)]);
+%                     xlabel('Time (s)'); ylabel('Postion (m)');
+%                     set(gca,'fontsize',16);
+%                     
+%                     subplot(2,1,2);
+%                     plot(t_plot,x_dot,'linewidth',3); hold on;
+%                     plot(t_plot,x_dot_hat,'.','markersize',10);
+%                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
+%                     title(f_target);
+%                     set(gca,'fontsize',16);
 
 
                 else % Did not converge
                      k_hat = NaN;
                      x_h = NaN;
                      B = NaN;
+                     
+%                     figure;
+%                     
+%                     subplot(2,1,1);
+%                     plot(t_plot,x,'linewidth',3); hold on;
+%                     title('Failed to converge');
+%                     xlabel('Time (s)'); ylabel('Postion (m)');
+%                     set(gca,'fontsize',16);
+%                     
+%                     subplot(2,1,2);
+%                     plot(t_plot,x_dot,'linewidth',3); hold on;
+%                     plot(t_plot,f_threshold*max(x_dot),':k','linewidth',3);
+%                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
+%                     title(f_target);
+%                     set(gca,'fontsize',16);
+                    
                 end
                 
+                
+                
+%                     figure(1);
+%                     subplot(2,1,1);
+%                     plot(t_plot,x,'-b'); hold on;
+%                     if(EXITFLAG == 1)
+%                         plot(t_plot,x_hat,':r');
+%                     end
+%                     xlabel('Time (s)'); ylabel('Postion (m)');
+%                     set(gca,'fontsize',16);
+%                     
+%                     subplot(2,1,2);
+%                     plot(t_plot,x_dot,'-b'); hold on;
+%                     if(EXITFLAG == 1)
+%                         plot(t_plot,x_dot_hat,':r');
+%                         plot(t_plot(f_threshold_dex),0,'.g','markersize',10);
+%                     else
+%                         plot(t_plot(f_threshold_dex),0,'.k','markersize',10);
+%                     end
+%                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
+%                     set(gca,'fontsize',16); grid on;
+                
 
-%                    disp('test');
+%                     disp('test');
                 
             
         end
         
-        function [cost,x_dot_hat] = costFunc(this,x,x_dot,x_ddot,x_r,Fp,X_hat)
+        function [cost,x_hat,x_dot_hat] = costFunc(this,x,x_dot,x_ddot,x_r,Fp,X_hat)
             
             
             % Start at the measured postion
             x_dot_hat = zeros(size(x));
+            x_hat = zeros(size(x));
             x_dot_hat(1) = x_dot(1);
+            x_hat(1) = x(1);
             m = this.m;
             
             for i = 1:length(x)-1
@@ -287,12 +355,15 @@ classdef crossTrialAnalysis < handle
                 
                 % Dyanmic contraint
                 x_dot_hat(i+1) = x_dot_hat(i) + (1/this.sfrq)*x_ddot_hat;
+                x_hat(i+1) = x_hat(i) + (1/this.sfrq)*x_dot_hat(i);
                 
             end
             
             % Evaluate cost function
-            cost = sum(abs(x_dot_hat-x_dot).^2);% + abs(x_ddot_hat-x_ddot(end)).^2);
-            
+            cost = sum(abs(x_dot_hat-x_dot).^2);
+
+%             cost = sum(abs(x_hat-x).^2 + abs(x_dot_hat-x_dot).^2) + (1/this.sfrq)*abs(x_ddot_hat-x_ddot(end)).^2;
+           
         end
         
         function [f_noFric] = f_dynamics(this,x,Fp,x_r,X_hat)
@@ -301,7 +372,7 @@ classdef crossTrialAnalysis < handle
             k_h = X_hat(1);
             x_h = X_hat(2);
             
-            f_noFric = ( k_h*(x_h-x) + k_r*(x_r-x) + Fp );
+            f_noFric = k_h*(x_h-x) + k_r*(x_r-x) + Fp;
             
         end
         
@@ -319,6 +390,12 @@ classdef crossTrialAnalysis < handle
             end
             
         end
+        
+        function [c,ceq] = mycon(this,x)
+            c = 0;     % Compute nonlinear inequalities at x.
+            ceq = 0;   % Compute nonlinear equalities at x.
+        end 
+            
             
         function [k_hat] = get_singleTrial_k_hat_stocastic(this,X1,Y1,ts)
         
@@ -463,16 +540,16 @@ classdef crossTrialAnalysis < handle
 %             figure; plot(h_hat);
 
 %             figure;
-%             ax1 = subplot(2,1,1); plot(h_hat(dexStart:dexEnd));
-%             ax2 = subplot(2,1,2); plot(ts(dexStart:dexEnd));
+%             ax1 = subplot(2,1,1); plot(h_hat(dexStart-50:dexEnd));
+%             ax2 = subplot(2,1,2); plot(ts(dexStart-50:dexEnd));
 %             linkaxes([ax1,ax2],'x');
             
-            [h_model, M, B, K] =  this.fitModel(h_hat(dexStart:dexEnd), dexEnd-dexStart);
+            [h_model, B, K] =  this.fitModel(h_hat(dexStart:dexEnd), dexEnd-dexStart);
             
             k_hat = K;
         end
         
-        function [h_model, M_opt, B_opt, K_opt, VAFirf] =  fitModel(this, h_hat, L)
+        function [h_model, B_opt, K_opt, VAFirf] =  fitModel(this, h_hat, L)
             
             %% Part 2-2: 2nd order model approximation
             % Optimization to find the best I,B,K approximates (cost function may change..)
@@ -484,30 +561,36 @@ classdef crossTrialAnalysis < handle
             %         LB = [0,    0.1,   0];
             %         UB = [0.15, 5.0, 100];
             
-            M0 = 2;
-            B0 = 40;
-            K0 = 2500;
+            M0 = this.m;
+            B0 = 20;
+            K0 = 600;
 
 %             M0 = Z0(1);
 %             B0 = Z0(2);
 %             K0 = Z0(3);
             
-            LB = [-30, -400, -20000];
-            UB = [30, 400, 20000];
+%             LB = [-30, -400, -20000];
+%             UB = [30, 400, 20000];
+            LB = [-400, -20000];
+            UB = [400, 20000];
             
             % Bounded Nonlinear Optimization
             options = optimset('MaxFunEvals', 1000, 'MaxIter', 1000, 'TolFun',0.01);
-            [x fval exitflags outputs] = fminsearchbnd(@(x)this.irfFitting(x,h_hat,L),[M0 B0 K0],LB,UB,options);
-            M_opt = x(1);
-            B_opt = x(2);
-            K_opt = x(3);
+            [x fval exitflags outputs] = fminsearchbnd(@(x)this.irfFitting_knownM(x,M0,h_hat,L),[B0 K0],LB,UB,options);
+%             M_opt = x(1);
+%             B_opt = x(2);
+%             K_opt = x(3);
+            B_opt = x(1);
+            K_opt = x(2);
             
-            Y_model = tf(1,[M_opt,B_opt,K_opt]);
+            Y_model = tf(1,[M0,B_opt,K_opt]);
             h_model = impulse(Y_model,0:1/this.sfrq:L/this.sfrq);
             
 %             figure;
 %             plot(h_hat,'o'); hold on;
 %             plot(h_model,'.');
+%             title(['k_{hat} = ',num2str(K_opt),...
+%                  ', B_{hat} = ',num2str(B_opt)]);
 %             
             % VAF IRF Calculation
 %             VAFirf = 100*(1-std(h_hat-h_model)^2/std(h_hat)^2);
@@ -530,6 +613,17 @@ classdef crossTrialAnalysis < handle
 %                             weight = 2*(1-j/M2);
 %                             fval = fval + (h_hat(j-M1+1,1)-h_model(j-M1+1,1))^2*weight;
 %                         end
+            end
+            fval = sqrt(fval/L);
+        end
+
+        function fval = irfFitting_knownM(this,x,M0,h_hat,L)
+            Y_model = tf(1,[M0,x(1),x(2)]);
+            h_model = impulse(Y_model,0:1/this.sfrq:L/this.sfrq);
+            
+            fval=0;
+            for j=1:length(h_hat)
+                        fval = fval + (h_hat(j)-h_model(j))^2;
             end
             fval = sqrt(fval/L);
         end

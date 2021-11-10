@@ -12,11 +12,12 @@ classdef crossConditionAnalysis < handle
         k_hat_pulse
         k_hat_stocastic
         k_hat_release
+        k_nonNan
         
     end
     
     methods
-        function [this] = crossConditionAnalysis(data,dexSubject,dexDirection,dexDistance)
+        function [this] = crossConditionAnalysis(data,dexSubject,dexDirection,dexDistance,subjectType)
             
             % Define index to use (will replace soon as passed parameter)
             this.dexSubject = dexSubject;
@@ -25,7 +26,7 @@ classdef crossConditionAnalysis < handle
             this.sfrq = 500;
             
             %Compute all stiffness estimates
-            this.get_depMeasures(data);
+            this.get_depMeasures(data,subjectType);
             
             this.plot_postionForce_pulse(data);
 %             this.plot_positionForce_stocastic(data);
@@ -37,8 +38,10 @@ classdef crossConditionAnalysis < handle
 
             
             %% Look at Step Estimates
-            k_mean = nanmean(this.k_hat_pulse(:,:,:,5:end),4);
-            k_std = nanstd(this.k_hat_pulse(:,:,:,5:end),0,4);
+            k_mean = nanmean(this.k_hat_pulse(:,:,:,1:end),4);
+            k_std = nanstd(this.k_hat_pulse(:,:,:,1:end),0,4);
+            
+            this.k_nonNan = squeeze(sum(~isnan(this.k_hat_pulse),4));
             
             figure; 
             subplot(1,3,1);
@@ -50,8 +53,9 @@ classdef crossConditionAnalysis < handle
             xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
             legend(direcVal);
             set(gca,'fontsize',16);
-            
-            plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
+            if(strcmp(subjectType,'spring'))
+                plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
+            end
             
             % Tmp figure for lab presenation
 %             figure; 
@@ -125,11 +129,11 @@ classdef crossConditionAnalysis < handle
             % Make ANOVA Plots
             % Run ANOVA between subjects
 
-            disp('test');
+             disp([subjectType, ' estimate complete.']);
             
         end
         
-        function [] = get_depMeasures(this,data)
+        function [] = get_depMeasures(this,data,subjectType)
             
             sizeData = size(data);
             f_target_vec = [15,20,25];
@@ -146,7 +150,7 @@ classdef crossConditionAnalysis < handle
                             end
                         end
                         
-                        Tmp_depMeasures = crossTrialAnalysis(dataCross,this.sfrq,f_target_vec(dir));
+                        Tmp_depMeasures = crossTrialAnalysis(dataCross,this.sfrq,f_target_vec(dir),subjectType);
                         
                         if(length(Tmp_depMeasures.k_hat_pulse)~=0)
                             this.k_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.k_hat_pulse;
@@ -191,6 +195,31 @@ classdef crossConditionAnalysis < handle
                     xlabel('Time'); ylabel('Postion (m)'); set(gca,'fontsize',16);     
                 end
             end
+            
+            figure;
+            sgtitle('Pulse Preturbation');
+            subj = 1;
+            count = 1;
+            for dir = this.dexDirection
+                for dist = this.dexDistance
+                    
+                    subplot(length(this.dexDirection),length(this.dexDistance),count);
+                    for trial = 2:size(data,4)
+                        clear tmp_data
+                        if(~isempty(data{subj,dir,dist,trial,step_Pulse}))
+                            tmp_data = data{subj,dir,dist,trial,step_Pulse};
+                            dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
+                            
+                            plot(tmp_data.v(2,dexPulse)); hold on;
+                        end
+                        ylim([-0.2 0.2]);
+                    end
+                    count = count+1;
+                    xlabel('Time'); ylabel('Velocity (m/s)'); set(gca,'fontsize',16);     
+                end
+            end
+            
+            %% Make Mean Plot (ADD!!!)
             
             figure;
             sgtitle('Pulse Preturbation');
