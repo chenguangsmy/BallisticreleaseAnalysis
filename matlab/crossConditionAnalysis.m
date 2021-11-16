@@ -12,6 +12,8 @@ classdef crossConditionAnalysis < handle
         k_hat_pulse
         k_hat_stocastic
         k_hat_release
+        x0_hat_pulse
+        x_r
         k_nonNan
         
     end
@@ -27,105 +29,12 @@ classdef crossConditionAnalysis < handle
             
             %Compute all stiffness estimates
             this.get_depMeasures(data,subjectType);
+            this.get_mainPlot(subjectType);
             
-            this.plot_postionForce_pulse(data);
+%             this.plot_postionForce_pulse(data);
 %             this.plot_positionForce_stocastic(data);
 %             this.plot_postion_release(data);
-            
-            distVal = [2.5 5 7.5];
-%             direcVal = {'front','back','left','right'};
-            direcVal = {'F = 15N','F = 20N','F = 25N'};
 
-            
-            %% Look at Step Estimates
-            k_mean = nanmean(this.k_hat_pulse(:,:,:,1:end),4);
-            k_std = nanstd(this.k_hat_pulse(:,:,:,1:end),0,4);
-            
-            this.k_nonNan = squeeze(sum(~isnan(this.k_hat_pulse),4));
-            
-            figure; 
-            subplot(1,3,1);
-            for i = this.dexDirection
-                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
-            end
-            title('Pulse'); 
-            ylabel('Stiffness (N/m)');ylim([0 1500]);
-            xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
-            legend(direcVal);
-            set(gca,'fontsize',16);
-            if(strcmp(subjectType,'spring'))
-                plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
-            end
-            
-            % Tmp figure for lab presenation
-%             figure; 
-%             for i = this.dexDirection
-%                 errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'b','linewidth',3); hold on;
-%             end
-%             plot(ones(1,4).*[0;5],ones(2,1).*[160, 320, 640,0],'--k','linewidth',2.5);
-%             title('Pulse'); 
-%             ylabel('Stiffness (N/m)');ylim([0 1000]);
-%             xlabel('Distance'); xticks(distVal); xlim([0 5]); set(gca,'Xtick',[]);
-% %             legend(direcVal);
-%             set(gca,'fontsize',16);
-            
-            
-            
-%             for i = this.dexDirection
-%                 figure;
-%                 for j = this.dexDistance
-%                     plot(squeeze(this.k_hat_pulse(1,i,j,:)),'-o'); hold on;
-%                 end
-%             end
-            
-            %% Look at stocastic estimates
-            k_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
-            k_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
-            
-% %             figure;
-            subplot(1,3,2);
-            for i = this.dexDirection
-                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
-            end
-            title('Stocastic');
-            ylabel('Stiffness (N/m)');ylim([0 1500]);
-            xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
-%             legend(direcVal);
-            set(gca,'fontsize',16);
-            plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
-
-            
-%             for i = this.dexDirection
-%                 figure;
-%                 for j = this.dexDistance
-%                     plot(squeeze(this.k_hat_stocastic(1,i,j,:))); ylim([0 1000]); hold on;
-%                 end
-%             end
-            
-            %% Look at release estimates
-            k_mean = nanmean(this.k_hat_release(:,:,:,:),4);
-            k_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
-            
-%             figure; 
-            subplot(1,3,3);
-            for i = this.dexDirection
-                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
-            end
-            title('Release');
-            ylabel('Stiffness (N/m)'); ylim([0 1500]);
-            xlabel('Distance'); xticks(distVal); xlim([1.5 11]);
-%             legend(direcVal);
-            set(gca,'fontsize',16);
-            plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
-
-            
-%             for i = this.dexDirection
-%                 figure;
-%                 for j = this.dexDistance
-%                     plot(squeeze(this.k_hat_release(1,i,j,:))); ylim([0 1000]); hold on;
-%                 end
-%             end
-            
             % Make ANOVA Plots
             % Run ANOVA between subjects
 
@@ -154,6 +63,7 @@ classdef crossConditionAnalysis < handle
                         
                         if(length(Tmp_depMeasures.k_hat_pulse)~=0)
                             this.k_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.k_hat_pulse;
+                            this.x0_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.x0_hat_pulse;
                         end
                         
                         if(length(Tmp_depMeasures.k_hat_stocastic)~=0)
@@ -170,10 +80,180 @@ classdef crossConditionAnalysis < handle
             
         end
         
+        function [] = get_mainPlot(this,subjectType)
+            
+            distVal = [2.5 5 7.5];
+            %             direcVal = {'front','back','left','right'};
+            direcVal = {'F = 15N','F = 20N','F = 25N'};
+            
+            %% Human Estimates
+            if(strcmp(subjectType,'human'))
+
+            % Look at Pulse Estimates
+            k_pulse_mean = nanmean(this.k_hat_pulse(:,:,:,1:end),4);
+            k_pulse_std = nanstd(this.k_hat_pulse(:,:,:,1:end),0,4);
+            x0_pulse_mean = nanmean(this.x0_hat_pulse(:,:,:,1:end),4);
+            x0_pulse_std = nanstd(this.x0_hat_pulse(:,:,:,1:end),0,4);
+            
+            this.k_nonNan = squeeze(sum(~isnan(this.k_hat_pulse),4));
+            
+            k_stocastic_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
+            k_stocastic_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
+            
+            k_release_mean = nanmean(this.k_hat_release(:,:,:,:),4);
+            k_release_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
+            
+            xRange = [1.5 8.5];
+            
+            % Stiffness Plot
+            figure('Position',[300 314 929 420]);
+            ax1 = subplot(1,3,1); hold on;
+            ax2 = subplot(1,3,2); hold on;
+            ax3 = subplot(1,3,3); hold on;
+            
+            axes(ax1); title('Pulse');
+            ylabel('Stiffness (N/m)');ylim([0 1500]);
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax2); title('Stocastic');
+            ylim([0 1500]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax3); title('Release');
+            ylim([0 1500]); % ylabel('Stiffness (N/m)'); 
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16); grid on;
+
+            for i = this.dexDirection
+               axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_mean(1,i,:)),squeeze(k_pulse_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+            end
+            axes(ax1); legend(direcVal);
+
+            % X0 plot
+            figure('Position',[300 314 929 420]);
+            ax1 = subplot(1,3,1); hold on;
+            ax2 = subplot(1,3,2); hold on;
+            ax3 = subplot(1,3,3); hold on;
+            
+            axes(ax1); title('Pulse');
+            ylabel('Stiffness (N/m)');ylim([0 1500]);
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax2); title('Stocastic');
+            ylim([0 1500]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax3); title('Release');
+            ylim([0 1500]); % ylabel('Stiffness (N/m)'); 
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16); grid on;
+
+            for i = this.dexDirection
+               axes(ax1); errorbar(distVal(this.dexDistance),100*squeeze(x0_pulse_mean(1,i,:)),100*squeeze(x0_pulse_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+            end
+            axes(ax1); legend(direcVal);
+            
+            %% VAF ??
+            
+
+            
+
+
+            
+            %% Look at stocastic estimates
+            k_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
+            k_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
+            
+            % %             figure;
+            subplot(1,4,3);
+            for i = this.dexDirection
+                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
+            end
+            title('Stocastic');
+            ylabel('Stiffness (N/m)');ylim([0 1500]);
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);
+    
+     
+            %% Look at release estimates
+            k_mean = nanmean(this.k_hat_release(:,:,:,:),4);
+            k_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
+            
+            %             figure;
+            subplot(1,4,4);
+            for i = this.dexDirection
+                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
+            end
+        
+       
+
+            
+            
+            % Check learning
+            for i = this.dexDirection
+                figure;
+                for j = this.dexDistance
+                    plot(squeeze(this.k_hat_pulse(1,i,j,:)),'-o'); hold on;
+                end
+            end
+                        
+            %% Spring Estimates
+            elseif(strcmp(subjectType,'spring'))
+                
+                            %             x_s_known = 100*[0.0938, 0.0469, 0.0234,...
+            %                 0.1250, 0.0625, 0.0312 ,...
+            %                 0.1562, 0.0781, 0.0391];
+            %             k_plot_xs = [160,320,640,...
+            %                 160,320,640,...
+            %                 160,320,640];
+            %
+            %             plot(x_s_known,k_plot_xs,'.k','markerSize',30);
+            
+%             if(strcmp(subjectType,'spring'))
+%                 plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
+%             end
+                
+            else
+                error('Spesify subjectType');
+            end
+            
+            %% Extra K vs. x0
+                        colorVec = {'b','r','g'};
+            markerVec = {'o','+','*'};
+            figure;
+            subj = 1;
+            for dir = this.dexDirection
+                for dist = this.dexDistance
+                    plot(1./squeeze(100*this.x0_hat_pulse(subj,dir,dist,:)),...
+                        squeeze(this.k_hat_pulse(subj,dir,dist,:)),...
+                        'color',colorVec{dir},...
+                        'marker',markerVec{dist},...
+                        'LineStyle','none','linewidth',1.5,'markersize',7); hold on;
+                end
+            end
+            ylabel('Stiffness (N/m)'); ylim([0 1500]);
+            xlabel('x_0 (mm)'); %xlim([0 10]);
+            set(gca,'fontsize',16);
+            
+        end
+            
+        
         function [] = plot_postionForce_pulse(this,data)
             
             step_Pulse = 2;
+            cf = 20; % cutoff freqnency
+            [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
             
+            colorVec = {'b','r','k'};
+                        
             figure;
             sgtitle('Pulse Preturbation');
             subj = 1;
@@ -181,14 +261,14 @@ classdef crossConditionAnalysis < handle
             for dir = this.dexDirection
                 for dist = this.dexDistance
                     
-                    subplot(length(this.dexDirection),length(this.dexDistance),count);
+%                     subplot(length(this.dexDirection),length(this.dexDistance),count);
                     for trial = 2:size(data,4)
                         clear tmp_data
                         if(~isempty(data{subj,dir,dist,trial,step_Pulse}))
                             tmp_data = data{subj,dir,dist,trial,step_Pulse};
-                            dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
+                            dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))+300];
                             
-                            plot(tmp_data.x(2,dexPulse)); hold on;
+                            plot(tmp_data.x(2,dexPulse),colorVec{dist}); hold on;
                         end
                     end
                     count = count+1;
@@ -203,14 +283,14 @@ classdef crossConditionAnalysis < handle
             for dir = this.dexDirection
                 for dist = this.dexDistance
                     
-                    subplot(length(this.dexDirection),length(this.dexDistance),count);
+%                     subplot(length(this.dexDirection),length(this.dexDistance),count);
                     for trial = 2:size(data,4)
                         clear tmp_data
                         if(~isempty(data{subj,dir,dist,trial,step_Pulse}))
                             tmp_data = data{subj,dir,dist,trial,step_Pulse};
-                            dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
-                            
-                            plot(tmp_data.v(2,dexPulse)); hold on;
+                            dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))+100];
+                            v = filtfilt(b,a,tmp_data.v(2,dexPulse)); % apply fitler
+                            plot(v,colorVec{dist}); hold on;
                         end
                         ylim([-0.2 0.2]);
                     end
@@ -234,7 +314,8 @@ classdef crossConditionAnalysis < handle
                         if(~isempty(data{subj,dir,dist,trial,step_Pulse}))
                         tmp_data = data{subj,dir,dist,trial,step_Pulse};
                         dexPulse = [min(find(tmp_data.Fp(2,:)~=0)) : max(find(tmp_data.Fp(2,:)~=0))];
-                        plot(tmp_data.f(2,dexPulse)); hold on;
+                        f = filtfilt(b,a,tmp_data.f(2,dexPulse)); % apply fitler
+                        plot(f); hold on;
                         end
                     end
                     count = count+1;
@@ -309,12 +390,39 @@ classdef crossConditionAnalysis < handle
                         clear tmp_data
                         tmp_data = data{subj,dir,dist,trial,1};
                         if(~isempty(tmp_data))
-                        dexRelease = [min(find(tmp_data.ts== 4)) : max(find(tmp_data.ts == 5))];
-                        plot(tmp_data.x(2,dexRelease)); hold on;
+                        dexRelease = [max(find(tmp_data.ts== 4)) : max(find(tmp_data.ts == 6))];
+                        plot(tmp_data.x(2,dexRelease)-0.481); hold on;
                         end
                     end
                     count = count+1;
+                    ylim([0 0.1]);
                     xlabel('Time'); ylabel('Postion (m)'); set(gca,'fontsize',16);
+                end
+            end
+            
+            cf = 20; % cutoff freqnency
+            [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
+            
+            figure;
+            sgtitle('Release');
+            subj = 1;
+            count = 1;
+            for dir = this.dexDirection
+                for dist = this.dexDistance
+                    
+                    subplot(length(this.dexDirection),length(this.dexDistance),count);
+                    for trial = 2:15
+                        clear tmp_data
+                        tmp_data = data{subj,dir,dist,trial,1};
+                        if(~isempty(tmp_data))
+                        dexRelease = [max(find(tmp_data.ts== 4)) : max(find(tmp_data.ts == 6))];
+                        v = filtfilt(b,a,tmp_data.v(2,dexRelease)); % apply fitler
+                        plot(v); hold on;
+                        end
+                    end
+                    count = count+1;
+                    ylim([-0.5 0.5]);
+                    xlabel('Time'); ylabel('Velocity (m/s)'); set(gca,'fontsize',16);
                 end
             end
 
