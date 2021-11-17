@@ -126,12 +126,15 @@ classdef TrialScan
 %                 obj.ifpert = [];
 %             end
             maskMov     = sessionScanObj.Data.TaskStateMasks.Move;
+            maskBegin   = sessionScanObj.Data.TaskStateMasks.Begin;
             maskHold    = sessionScanObj.Data.TaskStateMasks.Hold;
             maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
             maskTrial(obj.bgn:obj.edn) = 1;   
             obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, maskMov & maskTrial));          % target-rotation
+            %obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, maskBegin & maskTrial));          % target-rotation
             %obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, obj.bgn:obj.edn));          % target-rotation
-            obj.tarL    = unique(sessionScanObj.Data.TaskJudging.Target(6, maskMov & maskTrial));    % target-length
+            obj.tarL    = unique(sessionScanObj.Data.TaskJudging.Target(6, maskMov & maskTrial));    % target-length % some old trials
+            %obj.tarL    = unique(sessionScanObj.Data.TaskJudging.Target(6, maskBegin & maskTrial));    % target-length
             %obj.tarL    = sort(unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(6, obj.bgn:obj.edn))));    % target-length
             if isempty(obj.tarL)
                 obj.tarL = nan;
@@ -1298,7 +1301,8 @@ classdef TrialScan
         
         % if pert happen eailier
         %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),3)) && obj.ifpert==1
-        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),4)) && obj.ifpert==1 % perturb at ts4
+        %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),4)) && obj.ifpert==1 % perturb at ts4
+        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4])) && obj.ifpert==1 % perturb at either ts3 or ts4
             dat.Fp = zeros(size(dat.Fp));
         end
         

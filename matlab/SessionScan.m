@@ -1272,7 +1272,7 @@ classdef (HandleCompatible)SessionScan < handle
                 for p_i = 1:2
                     %trial_list = setdiff(t_idx{p_i},1);
                     trial_list = find([obj.trials.outcome] == 1); % no failed trials 
-                    %trial_list = find([obj.trials.outcome] ~= -1);
+                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
                     trial_list = intersect(trial_list, t_idx{p_i});
                     %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
                     switch obj.ssnum
