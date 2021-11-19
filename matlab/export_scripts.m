@@ -125,37 +125,46 @@ save('data/processedData/ss2872_2876.mat', 'data')
 % | -------- | -------- | -------- | -------- | -------- |
 % |front     | 3259     | 3258     | 3257     | 3261     |
 
-ss_num = [  3259 3258 3257 3261 ];
+%ss_num = [  3259 3258 3257 3261 ];
+%ss_num = [3473 3471 3472 3474];
+%ss_num = [3478 3476 3477 3479];    % hongwei with block visual feedback
+%ss_num = [3480 3481 3482 3479];    % hongwei with visual feedback 
+ss_num = [3473 3471 3472 3474];     % Chenguang with block visual feedback
 
+%cpDatarg2(setdiff(ss_num, [3481 3479]));
 for dir_i = 1:size(ss_num,1)
     for tar_i = 1:3 % step perts
         ss_tmp = SessionScan(ss_num(dir_i, tar_i));
         celltmp = ss_tmp.export_as_formatted(1);
         
         trials_num = size(celltmp,1);
-        if trials_num>15
-            data(1,dir_i,tar_i,:,:) = celltmp(1:15,:);
-        else
+    %    if trials_num>15
+    %        data(1,dir_i,tar_i,:,:) = celltmp(1:15,:);
+    %    else
             data(1,dir_i,tar_i,1:trials_num,:) = celltmp(:,:);
-        end
+     %   end
     end
 
     ss_tmp = SessionScan(ss_num(dir_i, 4)); % stoc pert
     celltmp = ss_tmp.export_as_formatted(1);
     for tar_ii = 1:3 % as a session has 3 length
         trials_num = size(celltmp,2);
-        if trials_num>15
-            data(1,dir_i,tar_ii,1:15,3) = celltmp(tar_ii,1:15,3);
-        else
+        %if trials_num>15
+        %    data(1,dir_i,tar_ii,1:15,3) = celltmp(tar_ii,1:15,3);
+        %else
             data(1,dir_i,tar_ii,1:trials_num,3) = celltmp(tar_ii,:,3);
-        end
+        %end
     end
 end
-save('data/processedData/ss3257_3261.mat', 'data')
+%save('data/processedData/ss3257_3261.mat', 'data')
+%save('data/processedData/ss3471_3474.mat', 'data')
+%save('data/processedData/ss3477_3479.mat', 'data')
+%save('data/processedData/ss3480_3482.mat', 'data')
+save('data/processedData/ss3471_3474.mat', 'data')
 
 
 %% %%%% 2. Subject with multiple force levels %%%%%%%%%%
-% export a data from formatted requirements 
+%% export a data from formatted requirements 
 % Date: 2021-11-03 SUBJECT JAMES TOOKS THESE EXPERIMENTS, trying different
 % force level with 1 direction (the total last about 1h20min).
 % format like:
@@ -199,6 +208,49 @@ for dir_i = 1:size(ss_num,1)
 end
 save('data/processedData/ss3307_3314.mat', 'data')
 
+%% export a data from formatted requirements:: Export James' data in 6D
+% Date: 2021-11-03 SUBJECT JAMES TOOKS THESE EXPERIMENTS, trying different
+% force level with 1 direction (the total last about 1h20min).
+% format like:
+% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
+% | -------- | -------- | -------- | -------- | -------- |
+% |15N       | 3306     | 3307     | 3308     | 3317     |
+% |20N       | 3309     | 3310     | 3311     | 3318     |
+% |25N       | 3312     | 3313     | 3314     | 3319     |
+% export data defines as: 
+% data = cell(n_subject, n_dir, n_fce, n_trials, 3); 
+% whereas 3 means: 1) release; 2) step pert; 3) stoc pert;
+
+data = cell(1, 4, 3, 3, 15, 3);
+ss_num = [  3306 3307 3308 3317;
+            3309 3310 3311 3318;
+            3312 3313 3314 3319];
+
+for fce_i = 1:size(ss_num,1)
+    for tar_i = 1:3 % step perts
+        ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+        celltmp = ss_tmp.export_as_formatted(1);
+        
+        trials_num = size(celltmp,1);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+    end
+
+    ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    celltmp = ss_tmp.export_as_formatted(1);
+    for tar_i = 1:3 % as a session has 3 length
+        trials_num = size(celltmp,2);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+        end
+    end
+end
+save('data/processedData/ss3307_3314_6D.mat', 'data')
 %% export a data from formatted requirements 
 % Date: 2021-11-04 USE SPRINGS TO DO THE SAME THING with ss3307_ss3314
 % make sure that:   1. The force exerted on robot is the same with subject's level; 
@@ -275,6 +327,31 @@ for dir_i = 1:size(ss_num,1)
 
 end
 save('data/processedData/ss3318_3319.mat', 'data')
+
+%% format like:
+% still test with the 8N pulse perturbation and 2N stochastic perturbation.
+% 8N pulse: 1) sigma = 0.04s, 2) sigma = 0.02s
+% |sessions:        | K160     | K320      | 
+% | -------         | -------- | --------- | 
+% | sigma0.04       | 3466     | 3467      | 
+% | sigma0.02       | 3465     | 3468      | ??? 3464? 3465???
+ss_num = [3466, 3467; 3465, 3468];
+cpDatarg2(ss_num);
+for dir_i = 1:size(ss_num,1)
+    for tar_i = 1:size(ss_num,2) % different springs
+        ss_tmp = SessionScan(ss_num(dir_i, tar_i));
+        celltmp = ss_tmp.export_as_formatted_hybridss(1);
+        
+        trials_num = size(celltmp,1);
+        if trials_num>15
+            data(1,1,dir_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(1,1,dir_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+    end
+
+end
+save('data/processedData/ss3465_3468.mat', 'data')
 
 %% export a data from formatted requirements 
 % Date: 2021-11-06 CHENGUNG DO MULTIPLE DIRECTIONS
@@ -368,6 +445,107 @@ trial_i = 1
 axh(1) = subplot(2,1,1);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.f);
 axh(2) = subplot(2,1,2);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.ts);
 linkaxes(axh, 'x');
+
+%% export a data from formatted requirements 
+% Date: 2021-11-10 SUBJECT HIMANSHU TRYS THESE EXPERIMENTS, 
+% With the same force level, 3 distance, and with different task settings.
+% TASK SETTING  1. Allow overshoot and stop earlier; 
+%               2. Do not allow the trials have >1cm overshoot, and trials
+%                  of movement too long will fail (0.4s). 
+% EXPORT FORMAT: will fill these two settings in different force levels. 
+% format like:
+% 1. ALLOW OVERSHOOT
+% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
+% | -------- | -------- | -------- | -------- | -------- |
+% |15N       | 3433     | 3432     | 3431     | 3434     |
+% 2. FORBID OVERSHOOT
+% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
+% | -------- | -------- | -------- | -------- | -------- |
+% |15N       | 3438     | 3437     | 3436     | 3440     |
+
+% export data defines as: 
+% data = cell(n_subject, n_dir, n_fce, n_tar, n_trials, 3); 
+% whereas 3 means: 1) release; 2) step pert; 3) stoc pert;
+
+% Date: 2021-11-10 SUBJECT HONGWEI TRYS THESE EXPERIMENT
+% With the same force level, 3 distance, and with different task settings.
+% TASK SETTING  1. Subject cannot see the cursor during the movement; 
+%               2. Subject is able to visualize the dursor during movement 
+
+% 1. BLOCK visual feedback
+% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
+% | -------- | -------- | -------- | -------- | -------- |
+% |15N       | 3478     | 3476     | 3477     | 3479     |
+% 2. allow visual feedback
+% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
+% | -------- | -------- | -------- | -------- | -------- |
+% |15N       | 3480     | 3481     | 3482     | ----     |
+% note: ss3480 hase just not enough trials
+
+clear;
+% % HIMANSHU
+% ss_num = [  3433    3432	3431	3434;
+%             3438	3437 	3436	3440];
+% HONGWEI
+% ss_num = [3478 3476 3477 3479];
+% Chenguang with harder condition 
+ss_num = [3487 3486 3488 3415
+          3495 3494 3489 3416];
+
+% % HIMANSHU AT HARDER CONDITION, REALLY GOOD LOOKING DATA 
+% ss_num = [3492 3491 3493 3434];
+data = cell(1, 4, 3, 3, 15, 3);
+
+for fce_i = 1:size(ss_num,1)
+    for tar_i = 1:3 % step perts
+        ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+        celltmp = ss_tmp.export_as_formatted(1);
+        
+        trials_num = size(celltmp,1);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+    end
+
+    ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    celltmp = ss_tmp.export_as_formatted(1);
+    for tar_i = 1:3 % as a session has 3 length
+        trials_num = size(celltmp,2);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+        end
+    end
+end
+%save('data/processedData/ss3431_3440.mat', 'data')
+%save('data/processedData/ss3476_3479.mat', 'data')
+save('data/processedData/ss3486_3495.mat', 'data')
+%save('data/processedData/ss3491_3493.mat', 'data')
+%% also tidy up himanshu's data in our data 
+% subj: Chenguang, James, Himanshu
+clear; 
+data1 = cell(4, 4, 3, 3, 15, 3);
+load('data/processedData/ss3353_3417.mat', 'data');     %chenguang
+data1(1,:,:,:,:,:) = data(1,:,:,:,:,:);
+clear data;
+load('data/processedData/ss3307_3314_6D.mat', 'data');  % James
+data1(2,:,:,:,:,:) = data(1,:,:,:,:,:);
+clear data; 
+load('data/processedData/ss3431_3440.mat', 'data');     % Himanshu
+%data1(3,:,1,:,:,:) = data(1,:,1,:,:,:); % the data have too much submovements
+%data1(4,:,1,:,:,:) = data(1,:,2,:,:,:);
+data1(3,:,1,:,:,:) = data(1,:,2,:,:,:);
+load('data/processedData/ss3476_3479.mat', 'data');     %HONGWEI
+data1(4,:,1,:,:,:) = data(1,:,1,:,:,:); 
+clear data; 
+
+data = data1;
+%save('data/processedData/prelimData_3subj.mat', 'data')
+%save('data/processedData/prelimData_3subj_restict.mat', 'data')
+save('data/processedData/prelimData_4subj_fine.mat', 'data')
 
 %% %%%% 3. Subject/Springs with multiple perturb parameters %%%%%%%%%%
 
@@ -533,8 +711,10 @@ ss_num3 = [3129 3132 3133; 3130 3131 3134]; % Kr=300; the combination of ±4N sig
 ss_num4 = [3136 3137 3140; 3135 3138 3139]; % Kr=300; the combination of ±4N sigma = 0.16s
 ss_num5 = [3156 3157 3160; 3155 3158 3159]; % Kr=300; the combination of ±6N sigma = 0.04s
 ss_num6 = [3163 3166 3167; 3164 3165 3168]; % Kr=300; the combination of ±6N sigma = 0.16s
+% Kr=300; the combination of ±8N sigma = 0.02s
 
-ss_num_mat = {ss_num1  ss_num3  ss_num5; ss_num2 ss_num4 ss_num6}'
+ss_num_mat = {  ss_num1     ss_num3     ss_num5;
+                ss_num2     ss_num4     ss_num6}';
 mags_idx = [2 4 6];
 % Data-type: pert_mag * pert_duration * target_dist * pert_pos/neg
 Data = cell(3, 2, 3, 2);
@@ -556,6 +736,7 @@ for matri = 1:3
                     pert_mags = [pert_mags -1];
                     continue;
                 end
+                plot(pert_mag_C{ci}.Fp(2,:));
                 %pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))];
                 pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))*setdiff(unique(sign(pert_mag_C{ci}.Fp(2,:))), 0)];
             end
@@ -570,6 +751,63 @@ for matri = 1:3
 end
 save('data/processedData/PertParamSelection_gaussian_cg.mat', 'Data')
 
+%% export the parameter scanned data, with more parameter selection
+% The subject cg was performing all these data on Oct 17 2021 + Nov 10 2021 
+ss_num1 = [3147 3150 3151; 3148 3149 3154]; % Kr=300; the combination of ±2N sigma = 0.04s
+ss_num2 = [3142 3143 3146; 3141 3144 3145]; % Kr=300; the combination of ±2N sigma = 0.16s
+ss_num3 = [3129 3132 3133; 3130 3131 3134]; % Kr=300; the combination of ±4N sigma = 0.04s
+ss_num4 = [3136 3137 3140; 3135 3138 3139]; % Kr=300; the combination of ±4N sigma = 0.16s
+ss_num5 = [3156 3157 3160; 3155 3158 3159]; % Kr=300; the combination of ±6N sigma = 0.04s
+ss_num6 = [3163 3166 3167; 3164 3165 3168]; % Kr=300; the combination of ±6N sigma = 0.16s
+ss_num7 = [3445 3447 3448; 3451 3450 3449]; % Kr=300; the combination of ±8N sigma = 0.04s
+ss_num8 = [3458 3459 3460; 3463 3462 3461]; % Kr=300; the combination of ±8N sigma = 0.02s
+ss_num_blk = [];
+% Kr=300; the combination of ±8N sigma = 0.02s
+
+ss_num_mat = {  ss_num_blk  ss_num_blk  ss_num_blk  ss_num8;        % ... sigma = 0.02s
+                ss_num1     ss_num3     ss_num5     ss_num7;        % ... sigma = 0.04s 
+                ss_num2     ss_num4     ss_num6     ss_num_blk}';   % ... sigma = 0.16s
+mags_idx = [2 4 6 8];
+% Data-type: pert_mag * pert_duration * target_dist * pert_pos/neg
+r = size(ss_num_mat, 1);
+c = size(ss_num_mat, 1);
+Data = cell(r, c, 3, 2);
+for matri = 1:r
+    for matci = 1:c
+        ss_num = ss_num_mat{matri, matci};
+        if isempty(ss_num) % in case of no such data
+            continue;
+        end
+        fname = sprintf('ss%d_%d.mat', min(ss_num(:)), max(ss_num(:)));
+        mag_list = [-mags_idx(matri), mags_idx(matri)];
+        data = cell(size(ss_num,2), length(mag_list));
+        for ss_i = 1:length(ss_num(:))
+            close all;
+            ss_tmp = SessionScan(ss_num(ss_i));
+            celltmp = ss_tmp.export_as_formatted(1);
+            % find idx in this cell tmp
+            pert_mag_C = celltmp(:,2);
+            pert_mags = [];
+            for ci = 1:length(pert_mag_C)
+                if (isempty(pert_mag_C{ci}))
+                    pert_mags = [pert_mags -1];
+                    continue;
+                end
+                plot(pert_mag_C{ci}.Fp(2,:));
+                %pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))];
+                pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))*setdiff(unique(sign(pert_mag_C{ci}.Fp(2,:))), 0)];
+            end
+            % make sure the pert_mags are categorical:
+            pert_mags(pert_mags<1) = round(pert_mags(pert_mags<1)*10)/10;
+            pert_mags(pert_mags>=1) = round(pert_mags(pert_mags>=1));
+            % package
+            data{floor((ss_i+1)/2),find(pert_mags(1) == mag_list)} = pert_mag_C%
+        end
+        Data(matri, matci, :, :) = data;
+    end
+end
+save('data/processedData/PertParamSelection_gaussian_cg_4by3.mat', 'Data')
+
 %% export the method validation data with Spring tests. 
 % After the experiment, James want to use spring data to test the new model
 % with deconvolve. 
@@ -577,11 +815,18 @@ save('data/processedData/PertParamSelection_gaussian_cg.mat', 'Data')
 % with all of them have the [-4 +4 -6 +6] gaussian pert, the sigma of
 % gaussian is 0.04s
 %ss_num = [3180 3182 3184]; 
-ss_num = [3192 3189 3191 3201]; 
+% | ss_num  | descriptions                              | 
+% | ------- | ----------------------------------------- |
+% | 3192    | peak±4N,±6N, sigma = 0.04s Ks = 160N/m    |
+% | 3191    | peak±4N,±6N, sigma = 0.04s Ks = 320N/m    |
+% | 3189    | peak±4N,±6N, sigma = 0.04s Ks = 640N/m    |
+% | 3201    | no spring hooked                          |
 
-mags_idx = [4 6];
 % Data-type: pert_mag * pert_duration * spring_stiffness * pert_pos/neg
 Data = cell(2, 1, 3, 2);
+ss_num = [3192 3189 3191 3201]; 
+mags_idx = [4 6];
+
 for matri = 1:4
     ss_tmp = SessionScan(ss_num(matri));
     celltmp = ss_tmp.export_as_formatted(1);
@@ -609,9 +854,111 @@ for matri = 1:4
         Data(mag_i, 1, matri, :) = data;
     end
 end
-save('data/processedData/SpringGaussian3.mat', 'Data')
+%save('data/processedData/SpringGaussian3.mat', 'Data')
+
+%% export the method validation data with Spring tests. 
+% After the experiment, James want to use spring data to test the new model
+% with deconvolve, try to use the 8N to test 
+
+% | ss_num  | descriptions                              | 
+% | ------- | ----------------------------------------- |
+% | 3466    | peak -8N, sigma = 0.04s Ks = 160N/m       |
+% | 3467    | peak -8N, sigma = 0.04s Ks = 320N/m       |
+% | 3464    | peak -8N, sigma = 0.02s Ks = 160N/m       |3465?
+% | 3468    | peak -8N, sigma = 0.02s Ks = 320N/m       |
+
+% Data-type: pert_mag * pert_duration * spring_stiffness * pert_pos/neg
+Data = cell(1, 2, 2, 1);
+ss_num = [  3466    3467;
+            3465    3468]; 
+mags_idx = [ 8 ];
+
+for dur_i = 1:2
+    for stf_i = 1:2
+        ss_tmp = SessionScan(ss_num(dur_i, stf_i));
+        celltmp = ss_tmp.export_as_formatted_hybridss(1);
+ 
+        mag_list = [-mags_idx(1)];
+        data = cell(1, length(mag_list));
+        % find idx in this cell tmp
+        pert_mag_C = celltmp(:,2);
+        pert_mags = [];
+        for ci = 1:length(pert_mag_C)
+            if (isempty(pert_mag_C{ci}))
+                pert_mags = [pert_mags -1];
+                continue;
+            end
+            %pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))];
+            pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))*setdiff(unique(sign(pert_mag_C{ci}.Fp(2,:))), 0)];
+        end
+            % make sure the pert_mags are categorical:
+        pert_mags(pert_mags<1) = round(pert_mags(pert_mags<1)*10)/10;
+        pert_mags(pert_mags>=1) = round(pert_mags(pert_mags>=1));
+        % package
+        data{1,1} = pert_mag_C(pert_mags == mag_list(1))% pos and neg
+        Data(1, dur_i, stf_i, :) = data;
+    end
+end
+%save('data/processedData/SpringGaussian_8N.mat', 'Data')
+%save('data/processedData/SpringGaussian3.mat', 'Data')
 %% 
-% plot to check release 
+
+%% export the method validation data with Spring tests. 
+% JAMES said he want the 'standard format'. I'm guessing it is the subject
+% format with 6D
+
+% | ss_num  | descriptions                              | 
+% | ------- | ----------------------------------------- |
+% | 3466    | peak -8N, sigma = 0.04s Ks = 160N/m       |
+% | 3467    | peak -8N, sigma = 0.04s Ks = 320N/m       |
+% | 3464    | peak -8N, sigma = 0.02s Ks = 160N/m       |3465?
+% | 3468    | peak -8N, sigma = 0.02s Ks = 320N/m       |
+
+% Data-type: pert_mag * pert_duration * spring_stiffness * pert_pos/neg
+Data = cell(2, 1, 2, 2, 15, 3);
+ss_num = [  3466    3467;
+            3465    3468]; 
+mags_idx = [ 8 ];
+
+for dur_i = 1:2
+    for stf_i = 1:2
+        ss_tmp = SessionScan(ss_num(dur_i, stf_i));
+        celltmp = ss_tmp.export_as_formatted_hybridss(1);
+ 
+        mag_list = [-mags_idx(1)];
+        data = cell(1, length(mag_list));
+        % find idx in this cell tmp
+        pert_mag_C = celltmp(:,2);
+        pert_mags = [];
+        for ci = 1:length(pert_mag_C)
+            if (isempty(pert_mag_C{ci}))
+                pert_mags = [pert_mags -1];
+                continue;
+            end
+            %pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))];
+            pert_mags = [pert_mags max(abs(pert_mag_C{ci}.Fp(2,:)))*setdiff(unique(sign(pert_mag_C{ci}.Fp(2,:))), 0)];
+        end
+            % make sure the pert_mags are categorical:
+        pert_mags(pert_mags<1) = round(pert_mags(pert_mags<1)*10)/10;
+        pert_mags(pert_mags>=1) = round(pert_mags(pert_mags>=1));
+        % package
+        if length(pert_mag_C) > 15 % could be more than 15 trials 
+            Data(1, 1, dur_i, stf_i, 1:15,1) = celltmp(1:15, 1);
+            Data(1, 1, dur_i, stf_i, 1:15,2) = celltmp(1:15, 2);
+            Data(1, 1, dur_i, stf_i, 1:15,3) = celltmp(1:15, 3);
+        end
+        
+            
+        %data{1,1} = pert_mag_C(pert_mags == mag_list(1))% pos and neg
+        %Data(1, dur_i, stf_i, :) = data;
+    end
+end
+%Data(2,1,1,:,:,3) = Data(1,1,1,:,:,3);
+save('data/processedData/SpringGaussian_8N_format.mat', 'Data')
+%save('data/processedData/SpringGaussian3.mat', 'Data')
+
+
+%% plot to check release 
 dir_i = 1;
 tar_i = 1;
 sub_i = 1;
