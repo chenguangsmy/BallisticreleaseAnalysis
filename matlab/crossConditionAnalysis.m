@@ -15,6 +15,8 @@ classdef crossConditionAnalysis < handle
         x0_hat_pulse
         x_r
         k_nonNan
+        k_hat_pulse_VAF
+        k_hat_release_VAF
         
     end
     
@@ -64,6 +66,7 @@ classdef crossConditionAnalysis < handle
                         if(length(Tmp_depMeasures.k_hat_pulse)~=0)
                             this.k_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.k_hat_pulse;
                             this.x0_hat_pulse(subj,dir,dist,:) = Tmp_depMeasures.x0_hat_pulse;
+                            this.k_hat_pulse_VAF(subj,dir,dist,:) = Tmp_depMeasures.k_hat_pulse_VAF;
                         end
                         
                         if(length(Tmp_depMeasures.k_hat_stocastic)~=0)
@@ -72,6 +75,7 @@ classdef crossConditionAnalysis < handle
                         
                         if(length(Tmp_depMeasures.k_hat_release)~=0)
                             this.k_hat_release(subj,dir,dist,:) = Tmp_depMeasures.k_hat_release;
+                            this.k_hat_release_VAF(subj,dir,dist,:) = Tmp_depMeasures.k_hat_release_VAF;
                         end
                         
                     end
@@ -86,25 +90,31 @@ classdef crossConditionAnalysis < handle
             %             direcVal = {'front','back','left','right'};
             direcVal = {'F = 15N','F = 20N','F = 25N'};
             
-            %% Human Estimates
-            if(strcmp(subjectType,'human'))
-
             % Look at Pulse Estimates
             k_pulse_mean = nanmean(this.k_hat_pulse(:,:,:,1:end),4);
             k_pulse_std = nanstd(this.k_hat_pulse(:,:,:,1:end),0,4);
             x0_pulse_mean = nanmean(this.x0_hat_pulse(:,:,:,1:end),4);
             x0_pulse_std = nanstd(this.x0_hat_pulse(:,:,:,1:end),0,4);
             
-            this.k_nonNan = squeeze(sum(~isnan(this.k_hat_pulse),4));
+            k_pulse_VAF_mean = nanmean(this.k_hat_pulse_VAF(:,:,:,1:end),4);
+            k_pulse_VAF_std = nanstd(this.k_hat_pulse_VAF(:,:,:,1:end),0,4);
             
-            k_stocastic_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
-            k_stocastic_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
+            this.k_nonNan = squeeze(sum(~isnan(this.k_hat_pulse),4));
             
             k_release_mean = nanmean(this.k_hat_release(:,:,:,:),4);
             k_release_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
             
-            xRange = [1.5 8.5];
+            k_release_VAF_mean = nanmean(this.k_hat_release_VAF(:,:,:,1:end),4);
+            k_release_VAF_std = nanstd(this.k_hat_release_VAF(:,:,:,1:end),0,4);
             
+            k_stocastic_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
+            k_stocastic_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
+            
+            xRange = [1.5 8.5];
+                        
+            %% Human Estimates
+            if(strcmp(subjectType,'human'))
+
             % Stiffness Plot
             figure('Position',[300 314 929 420]);
             ax1 = subplot(1,3,1); hold on;
@@ -116,20 +126,21 @@ classdef crossConditionAnalysis < handle
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16);grid on;
             
-            axes(ax2); title('Stocastic');
-            ylim([0 1500]); %ylabel('Stiffness (N/m)');
-            xlabel('Distance'); xticks(distVal); xlim(xRange);
-            set(gca,'fontsize',16);grid on;
-            
-            axes(ax3); title('Release');
+            axes(ax2); title('Release');
             ylim([0 1500]); % ylabel('Stiffness (N/m)'); 
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16); grid on;
+                       
+            axes(ax3); title('Stocastic');
+            ylim([0 1500]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
 
             for i = this.dexDirection
                axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_mean(1,i,:)),squeeze(k_pulse_std(1,i,:)),'linewidth',2.5); hold on;
-               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
-               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+
             end
             axes(ax1); legend(direcVal);
 
@@ -140,63 +151,59 @@ classdef crossConditionAnalysis < handle
             ax3 = subplot(1,3,3); hold on;
             
             axes(ax1); title('Pulse');
-            ylabel('Stiffness (N/m)');ylim([0 1500]);
+            ylabel('x_0 (m)');ylim([0 10]);
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16);grid on;
             
-            axes(ax2); title('Stocastic');
-            ylim([0 1500]); %ylabel('Stiffness (N/m)');
-            xlabel('Distance'); xticks(distVal); xlim(xRange);
-            set(gca,'fontsize',16);grid on;
-            
-            axes(ax3); title('Release');
-            ylim([0 1500]); % ylabel('Stiffness (N/m)'); 
+            axes(ax2); title('Release');
+            ylim([0 10]); % ylabel('Stiffness (N/m)'); 
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16); grid on;
+            
+            axes(ax3); title('Stocastic');
+            ylim([0 10]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
 
             for i = this.dexDirection
                axes(ax1); errorbar(distVal(this.dexDistance),100*squeeze(x0_pulse_mean(1,i,:)),100*squeeze(x0_pulse_std(1,i,:)),'linewidth',2.5); hold on;
-%                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
-%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
             end
             axes(ax1); legend(direcVal);
             
             %% VAF ??
+            figure('Position',[300 314 929 420]);
+            ax1 = subplot(1,3,1); hold on;
+            ax2 = subplot(1,3,2); hold on;
+            ax3 = subplot(1,3,3); hold on;
             
-
-            
-
-
-            
-            %% Look at stocastic estimates
-            k_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
-            k_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
-            
-            % %             figure;
-            subplot(1,4,3);
-            for i = this.dexDirection
-                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
-            end
-            title('Stocastic');
-            ylabel('Stiffness (N/m)');ylim([0 1500]);
+            axes(ax1); title('Pulse');
+            ylabel('VAF');ylim([0 100]);
             xlabel('Distance'); xticks(distVal); xlim(xRange);
-            set(gca,'fontsize',16);
-    
-     
-            %% Look at release estimates
-            k_mean = nanmean(this.k_hat_release(:,:,:,:),4);
-            k_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
+            set(gca,'fontsize',16);grid on;
             
-            %             figure;
-            subplot(1,4,4);
-            for i = this.dexDirection
-                errorbar(distVal(this.dexDistance),squeeze(k_mean(1,i,:)),squeeze(k_std(1,i,:)),'linewidth',2.5); hold on;
-            end
-        
-       
+            axes(ax2); title('Release');
+            ylim([0 100]); % ylabel('Stiffness (N/m)'); 
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16); grid on;
+            
+            axes(ax3); title('Stocastic');
+            ylim([0 100]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
 
-            
-            
+            for i = this.dexDirection
+               axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_VAF_mean(1,i,:)),squeeze(k_pulse_VAF_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_VAF_mean(1,i,:)),squeeze(k_release_VAF_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+
+            end
+            axes(ax1); legend(direcVal,'location','south');
+
+
             % Check learning
             for i = this.dexDirection
                 figure;
@@ -207,6 +214,97 @@ classdef crossConditionAnalysis < handle
                         
             %% Spring Estimates
             elseif(strcmp(subjectType,'spring'))
+                
+             % Stiffness Plot
+            figure('Position',[300 314 929 420]);
+            ax1 = subplot(1,3,1); hold on;
+            ax2 = subplot(1,3,2); hold on;
+            ax3 = subplot(1,3,3); hold on;
+            
+            axes(ax1); title('Pulse');
+            ylabel('Stiffness (N/m)');ylim([0 1500]);
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax2); title('Release');
+            ylim([0 1500]); % ylabel('Stiffness (N/m)'); 
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16); grid on;
+                       
+            axes(ax3); title('Stocastic');
+            ylim([0 1500]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+
+            for i = this.dexDirection
+               axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_mean(1,i,:)),squeeze(k_pulse_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+
+            end
+            axes(ax1); legend(direcVal);
+
+            % X0 plot
+            figure('Position',[300 314 929 420]);
+            ax1 = subplot(1,3,1); hold on;
+            ax2 = subplot(1,3,2); hold on;
+            ax3 = subplot(1,3,3); hold on;
+            
+            axes(ax1); title('Pulse');
+            ylabel('x_0 (m)');ylim([0 10]);
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax2); title('Release');
+            ylim([0 10]); % ylabel('Stiffness (N/m)'); 
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16); grid on;
+            
+            axes(ax3); title('Stocastic');
+            ylim([0 10]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+
+            for i = this.dexDirection
+               axes(ax1); errorbar(distVal(this.dexDistance),100*squeeze(x0_pulse_mean(1,i,:)),100*squeeze(x0_pulse_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+            end
+            axes(ax1); legend(direcVal);
+            
+            %% VAF ??
+            figure('Position',[300 314 929 420]);
+            ax1 = subplot(1,3,1); hold on;
+            ax2 = subplot(1,3,2); hold on;
+            ax3 = subplot(1,3,3); hold on;
+            
+            axes(ax1); title('Pulse');
+            ylabel('VAF');ylim([0 100]);
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+            axes(ax2); title('Release');
+            ylim([0 100]); % ylabel('Stiffness (N/m)'); 
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16); grid on;
+            
+            axes(ax3); title('Stocastic');
+            ylim([0 100]); %ylabel('Stiffness (N/m)');
+            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            set(gca,'fontsize',16);grid on;
+            
+
+            for i = this.dexDirection
+               axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_VAF_mean(1,i,:)),squeeze(k_pulse_VAF_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_VAF_mean(1,i,:)),squeeze(k_release_VAF_std(1,i,:)),'linewidth',2.5); hold on;
+%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+
+            end
+            axes(ax1); legend(direcVal,'location','south');
+
+
+                
                 
                             %             x_s_known = 100*[0.0938, 0.0469, 0.0234,...
             %                 0.1250, 0.0625, 0.0312 ,...
@@ -226,7 +324,7 @@ classdef crossConditionAnalysis < handle
             end
             
             %% Extra K vs. x0
-                        colorVec = {'b','r','g'};
+            colorVec = {'b','r','g'};
             markerVec = {'o','+','*'};
             figure;
             subj = 1;
@@ -240,7 +338,7 @@ classdef crossConditionAnalysis < handle
                 end
             end
             ylabel('Stiffness (N/m)'); ylim([0 1500]);
-            xlabel('x_0 (mm)'); %xlim([0 10]);
+            xlabel('1/x_0 (mm)'); %xlim([0 10]);
             set(gca,'fontsize',16);
             
         end

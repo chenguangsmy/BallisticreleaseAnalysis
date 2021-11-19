@@ -14,6 +14,8 @@ classdef crossTrialAnalysis < handle
         m
         x_handelStart 
         x0_hat_pulse
+        k_hat_pulse_VAF
+        k_hat_release_VAF
         
     end
     
@@ -29,7 +31,7 @@ classdef crossTrialAnalysis < handle
                 this.m = 2.15;
             elseif(strcmp(subjectType,'spring'))
                 this.m = 1.15;
-                elsef
+            else
                 error('Spesify subjectType');
             end
             
@@ -67,7 +69,7 @@ classdef crossTrialAnalysis < handle
             for i = 1:length(dexTrialNonzero)
                 clear tmpData
                 tmpData = data{dexTrialNonzero(i),step_Pulse};
-                [this.k_hat_pulse(i),this.x0_hat_pulse(i)] = get_singleTrial_k_hat_pulse(this,tmpData.f(2,:),...
+                [this.k_hat_pulse(i),this.x0_hat_pulse(i),this.k_hat_pulse_VAF(i)] = get_singleTrial_k_hat_pulse(this,tmpData.f(2,:),...
                                                  tmpData.Fp(2,:),...
                                                  tmpData.x(2,:),...
                                                  tmpData.ts,...
@@ -126,7 +128,7 @@ classdef crossTrialAnalysis < handle
                 for i = 1:length(dexTrialNonzero)
                     clear tmpData
                     tmpData = data{dexTrialNonzero(i),release};
-                    this.k_hat_release(i) = get_singleTrial_k_hat_release(this,tmpData.x(2,:),tmpData.ts,targetForce);
+                    [this.k_hat_release(i),this.k_hat_release_VAF(i)] = get_singleTrial_k_hat_release(this,tmpData.x(2,:),tmpData.ts,targetForce);
                 end
                 
             end
@@ -531,6 +533,7 @@ classdef crossTrialAnalysis < handle
             [tmp,dexK] = find(1 < TF_freq  & TF_freq < 1.5);
 
             k_hat = mean(Z11_mag(dexK)) - this.k_r;
+%             OC_hat = OCx1y1(dexK,1);
             
             %% Impedance plot (Diagonal)
             xLowerLim = 0.5;
@@ -592,7 +595,7 @@ classdef crossTrialAnalysis < handle
             
         end
         
-        function [k_hat] = get_singleTrial_k_hat_release(this,x,ts,targetForce)
+        function [k_hat,VAF] = get_singleTrial_k_hat_release(this,x,ts,targetForce)
            
             % Cutting used prior to visit 11/3/21
 %             dexStart = min(find(ts== 4));
@@ -618,6 +621,8 @@ classdef crossTrialAnalysis < handle
             
             [h_model, B, K] =  this.fitModel(h_hat(dexStart:dexEnd), dexEnd-dexStart);
             
+            [VAF] = get_VAF(this,h_hat(dexStart:dexEnd)',h_model);
+
             k_hat = K;
         end
         
