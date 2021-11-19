@@ -387,29 +387,51 @@ save('data/processedData/ss3465_3468.mat', 'data')
 clear; close all; clc; 
 ss_num = zeros(3, 3, 4);
 data = cell(1, 4, 3, 3, 15, 3);
-%front
+% % % %%% Chenguang tested with the arm sling off...
+% % % %front
+% % % ss_num(1,:,:) =...
+% % %         [   3354        3355        3353        3415
+% % %             3359        3356        3358        3416
+% % %             3361        3363        3364        3417 ];
+% % % %back
+% % % ss_num(2,:,:) =...
+% % %          [  3372        3373        3371        3382     
+% % %             3376        3374        3375        3413     
+% % %             3377        3378        3379        3414 ];
+% % % 
+% % % % left
+% % % ss_num(3,:,:) =...
+% % %          [  3400        3401        3399        3408      
+% % %             3404        3402        3403        3409      
+% % %             3405        3406        3407        3410 ];
+% % % %right
+% % % ss_num(4,:,:) =...
+% % %            [3385        3386        3384        3395     
+% % %             3390        3387        3388        3411     
+% % %             3391        3393        3394        3412 ];
+%%% Chenguang tested with the arm sling on... 
 ss_num(1,:,:) =...
-        [   3354        3355        3353        3415
-            3359        3356        3358        3416
-            3361        3363        3364        3417 ];
+        [   3487   	3486  	3488    3415
+            3495   	3494  	3489    3415
+            3507   	3506  	3505    3415];
 %back
 ss_num(2,:,:) =...
-         [  3372        3373        3371        3382     
-            3376        3374        3375        3413     
-            3377        3378        3379        3414 ];
+         [ 	3510     3509    3508      3415       
+            3513     3512    3511      3415       
+            3514     3516    3515      3415];
 
 % left
 ss_num(3,:,:) =...
-         [  3400        3401        3399        3408      
-            3404        3402        3403        3409      
-            3405        3406        3407        3410 ];
+         [	3518     3517    3519      3415       
+            3522     3521    3520      3415       
+            3523     3525    3535      3415];
 %right
 ss_num(4,:,:) =...
-           [3385        3386        3384        3395     
-            3390        3387        3388        3411     
-            3391        3393        3394        3412 ];
+         [  3527     3526    3528      3415       
+            3531     3530    3529      3415       
+            3532     3534    3533      3415];
 
-for dir_i = 1:size(ss_num,1)
+for dir_i = 1:size(ss_num,1)%1:size(ss_num,1)
     for fce_i = 1:size(ss_num,2) 
         for tar_i = 1:3 % step perts
             ss_tmp = SessionScan(ss_num(dir_i, fce_i, tar_i));
@@ -438,13 +460,14 @@ for dir_i = 1:size(ss_num,1)
     end
 end
 %save('data/processedData/ss3353_3417.mat', 'data')
+save('data/processedData/ss3486_3534.mat', 'data')
 %save('data/processedData/ss3345.mat', 'data')
 
-% check the data
-trial_i = 1
-axh(1) = subplot(2,1,1);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.f);
-axh(2) = subplot(2,1,2);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.ts);
-linkaxes(axh, 'x');
+% % check the data
+% trial_i = 1
+% axh(1) = subplot(2,1,1);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.f);
+% axh(2) = subplot(2,1,2);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.ts);
+% linkaxes(axh, 'x');
 
 %% export a data from formatted requirements 
 % Date: 2021-11-10 SUBJECT HIMANSHU TRYS THESE EXPERIMENTS, 
@@ -489,11 +512,15 @@ clear;
 % HONGWEI
 % ss_num = [3478 3476 3477 3479];
 % Chenguang with harder condition 
-ss_num = [3487 3486 3488 3415
-          3495 3494 3489 3416];
+%ss_num = [3487 3486 3488 3415
+%          3495 3494 3489 3416];
 
 % % HIMANSHU AT HARDER CONDITION, REALLY GOOD LOOKING DATA 
 % ss_num = [3492 3491 3493 3434];
+% % HIMANSHU AT HARDER CONDITION, 3 FORCE LEVELS!!!
+ss_num = [  3499   3498  3500  3434
+            3492   3491  3497  3434
+            3502   3501  3503  3434];
 data = cell(1, 4, 3, 3, 15, 3);
 
 for fce_i = 1:size(ss_num,1)
@@ -522,7 +549,8 @@ for fce_i = 1:size(ss_num,1)
 end
 %save('data/processedData/ss3431_3440.mat', 'data')
 %save('data/processedData/ss3476_3479.mat', 'data')
-save('data/processedData/ss3486_3495.mat', 'data')
+%save('data/processedData/ss3486_3495.mat', 'data')
+save('data/processedData/ss3491_3503.mat', 'data')
 %save('data/processedData/ss3491_3493.mat', 'data')
 %% also tidy up himanshu's data in our data 
 % subj: Chenguang, James, Himanshu
@@ -546,6 +574,22 @@ data = data1;
 %save('data/processedData/prelimData_3subj.mat', 'data')
 %save('data/processedData/prelimData_3subj_restict.mat', 'data')
 save('data/processedData/prelimData_4subj_fine.mat', 'data')
+
+%% tidy up Himanshu's data as a comparation 
+clear; 
+data1 = cell(3, 4, 3, 3, 15, 3);
+load('data/processedData/ss3431_3440.mat', 'data');     % Himanshu
+data1(1,:,1,:,:,:) = data(1,:,1,:,:,:);     % the data have too much submovements
+data1(2,:,1,:,:,:) = data(1,:,2,:,:,:);     % limit submovemnets by displacement
+load('data/processedData/ss3491_3493.mat', 'data');     % Himanshu with change condition
+data1(3,:,1,:,:,:) = data(1,:,1,:,:,:);     % limit submovements by velocity
+clear data; 
+
+data = data1;
+%save('data/processedData/prelimData_3subj.mat', 'data')
+%save('data/processedData/prelimData_3subj_restict.mat', 'data')
+save('data/processedData/prelimData_subjHA_compare.mat', 'data')
+
 
 %% %%%% 3. Subject/Springs with multiple perturb parameters %%%%%%%%%%
 
@@ -956,6 +1000,18 @@ end
 %Data(2,1,1,:,:,3) = Data(1,1,1,:,:,3);
 save('data/processedData/SpringGaussian_8N_format.mat', 'Data')
 %save('data/processedData/SpringGaussian3.mat', 'Data')
+
+%% export data with only 3N stoc pert
+Data = cell(1, 1, 1, 1, 15, 3);
+ss_num = [  3504]; 
+mags_idx = [ 0 ];
+
+ss_tmp = SessionScan(ss_num(1));
+celltmp = ss_tmp.export_as_formatted_hybridss(1);
+Data(1, 1, 1, 1, 1:9,3) = celltmp(1:9, 3);
+save('data/processedData/SpringStoc_3N.mat', 'Data')
+%save('data/processedData/SpringGaussian3.mat', 'Data')
+
 
 
 %% plot to check release 
