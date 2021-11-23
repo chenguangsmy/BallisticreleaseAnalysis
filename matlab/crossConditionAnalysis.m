@@ -17,6 +17,7 @@ classdef crossConditionAnalysis < handle
         k_nonNan
         k_hat_pulse_VAF
         k_hat_release_VAF
+        OC_hat_stocastic
         
     end
     
@@ -71,6 +72,8 @@ classdef crossConditionAnalysis < handle
                         
                         if(length(Tmp_depMeasures.k_hat_stocastic)~=0)
                             this.k_hat_stocastic(subj,dir,dist,:) = Tmp_depMeasures.k_hat_stocastic;
+                            this.OC_hat_stocastic(subj,dir,dist,:) = Tmp_depMeasures.OC_hat_stocastic;
+
                         end
                         
                         if(length(Tmp_depMeasures.k_hat_release)~=0)
@@ -109,6 +112,9 @@ classdef crossConditionAnalysis < handle
             
             k_stocastic_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
             k_stocastic_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
+            
+            OC_hat_stocastic_mean = nanmean(this.OC_hat_stocastic(:,:,:,:),4);
+            OC_hat_stocastic_std = nanstd(this.OC_hat_stocastic(:,:,:,:),0,4);
             
             xRange = [1.5 8.5];
                         
@@ -168,8 +174,8 @@ classdef crossConditionAnalysis < handle
 
             for i = this.dexDirection
                axes(ax1); errorbar(distVal(this.dexDistance),100*squeeze(x0_pulse_mean(1,i,:)),100*squeeze(x0_pulse_std(1,i,:)),'linewidth',2.5); hold on;
-%                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
-%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
             end
             axes(ax1); legend(direcVal);
             
@@ -190,7 +196,7 @@ classdef crossConditionAnalysis < handle
             set(gca,'fontsize',16); grid on;
             
             axes(ax3); title('Stocastic');
-            ylim([0 100]); %ylabel('Stiffness (N/m)');
+            ylim([0 1]); ylabel('Coherence');
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16);grid on;
             
@@ -198,8 +204,7 @@ classdef crossConditionAnalysis < handle
             for i = this.dexDirection
                axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_VAF_mean(1,i,:)),squeeze(k_pulse_VAF_std(1,i,:)),'linewidth',2.5); hold on;
                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_VAF_mean(1,i,:)),squeeze(k_release_VAF_std(1,i,:)),'linewidth',2.5); hold on;
-%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
-
+               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(OC_hat_stocastic_mean(1,i,:)),squeeze(OC_hat_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
             end
             axes(ax1); legend(direcVal,'location','south');
 
@@ -273,7 +278,7 @@ classdef crossConditionAnalysis < handle
             end
             axes(ax1); legend(direcVal);
             
-            %% VAF ??
+            %% VAF/Coherence
             figure('Position',[300 314 929 420]);
             ax1 = subplot(1,3,1); hold on;
             ax2 = subplot(1,3,2); hold on;
@@ -285,12 +290,12 @@ classdef crossConditionAnalysis < handle
             set(gca,'fontsize',16);grid on;
             
             axes(ax2); title('Release');
-            ylim([0 100]); % ylabel('Stiffness (N/m)'); 
+            ylim([0 100]); ylabel('VAF'); 
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16); grid on;
             
             axes(ax3); title('Stocastic');
-            ylim([0 100]); %ylabel('Stiffness (N/m)');
+            ylim([0 1]); ylabel('Coherence');
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16);grid on;
             
@@ -298,7 +303,7 @@ classdef crossConditionAnalysis < handle
             for i = this.dexDirection
                axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_VAF_mean(1,i,:)),squeeze(k_pulse_VAF_std(1,i,:)),'linewidth',2.5); hold on;
                axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_VAF_mean(1,i,:)),squeeze(k_release_VAF_std(1,i,:)),'linewidth',2.5); hold on;
-%                axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(OC_hat_stocastic_mean(1,i,:)),squeeze(OC_hat_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
 
             end
             axes(ax1); legend(direcVal,'location','south');
