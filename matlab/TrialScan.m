@@ -112,6 +112,9 @@ classdef TrialScan
             if isfield(sessionScanObj.Data.TaskJudging, 'ifpert')
                 obj.ifpert  = ...
                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
+                if ~isempty(setdiff(obj.ifpert,0))
+                    obj.ifpert = setdiff(obj.ifpert, 0);
+                end
             else 
                 % look for perturbation message in wam.cf
                 obj.ifpert = ...
@@ -1275,6 +1278,19 @@ classdef TrialScan
             oy = interp1(obj.opt.datah.t, obj.opt.datah.y, dat.t, 'linear', 'extrap');
             oz = interp1(obj.opt.datah.t, obj.opt.datah.z, dat.t, 'linear', 'extrap');
             dat.ox = [ox; oy; oz];
+        end
+        
+        % deal with errors (that back to ts3) 
+        if (~isempty(find(ts==3 & [diff([1 ts]) == -1], 1 )))
+        ts = dat.ts;
+        %idx_forcefail = [find(ts==3 & [diff([1 ts]) == -1] )];  % index that back to ts3
+        %idx_forcefail = idx_forcefail(end); 
+        idx_forceadv = find(ts==4 & [diff([1 ts]) == 1]);      % going into force hold zone
+        idx_forceadv = idx_forceadv(end);
+        idx_forcein = find(ts==4);                             % in force zone (4)
+        idx_forcein  = idx_forcein(1); 
+        %dat.Fp(2,idx_forcein:idx_forcefail) = 0;
+        dat.Fp(2,idx_forcein:idx_forceadv) = 0;
         end
         
         % check the plot
