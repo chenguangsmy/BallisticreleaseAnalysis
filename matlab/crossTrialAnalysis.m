@@ -16,6 +16,7 @@ classdef crossTrialAnalysis < handle
         x0_hat_pulse
         k_hat_pulse_VAF
         k_hat_release_VAF
+        OC_hat_stocastic
         
     end
     
@@ -95,10 +96,12 @@ classdef crossTrialAnalysis < handle
             if(~isempty(dexTrialNonzero))
             
                 this.k_hat_stocastic = NaN*ones(1,9);
+                this.OC_hat_stocastic = NaN*ones(1,9);
+
                 for i = 1:length(dexTrialNonzero)
                     clear tmpData
                     tmpData = data{dexTrialNonzero(i),step_Stocastic};
-                    this.k_hat_stocastic(i) = get_singleTrial_k_hat_stocastic(this,tmpData.Fp(2,:),...
+                    [this.k_hat_stocastic(i),this.OC_hat_stocastic(i)] = get_singleTrial_k_hat_stocastic(this,tmpData.Fp(2,:),...
                         tmpData.x(2,:),...
                         tmpData.ts);
                 end
@@ -452,9 +455,8 @@ classdef crossTrialAnalysis < handle
             c = 0;     % Compute nonlinear inequalities at x.
             ceq = 0;   % Compute nonlinear equalities at x.
         end 
-            
-            
-        function [k_hat] = get_singleTrial_k_hat_stocastic(this,X1,Y1,ts)
+               
+        function [k_hat,OC_hat] = get_singleTrial_k_hat_stocastic(this,X1,Y1,ts)
         
 %             figure; plot(X1);
 %             figure; plot(Y1);
@@ -465,7 +467,7 @@ classdef crossTrialAnalysis < handle
 %             dexEnd = min(find(ts==4));
             
             dexStart = max([min(find(X1~=0)),min(find(ts==4))])+500; % Preturbation does not start at state 4 always
-%             dexStart = min(find(ts==4))+500; 
+%             dexStart = min(find(ts==4))+500;
             dexEnd = max(find(ts==4));
             X1 = X1(dexStart:dexEnd);
             Y1 = Y1(dexStart:dexEnd);
@@ -533,7 +535,7 @@ classdef crossTrialAnalysis < handle
             [tmp,dexK] = find(1 < TF_freq  & TF_freq < 1.5);
 
             k_hat = mean(Z11_mag(dexK)) - this.k_r;
-%             OC_hat = OCx1y1(dexK,1);
+            OC_hat = OCx1y1(dexK,1);
             
             %% Impedance plot (Diagonal)
             xLowerLim = 0.5;
@@ -546,24 +548,27 @@ classdef crossTrialAnalysis < handle
 %             zeta = 1;
 %             b_fit = 2*zeta*this.m*sqrt(k_hat/this.m);
 %             s = tf('s');
-% %             G = (this.m*s^2+b_fit*s+k_hat)*(this.m*s^2+b_fit*s+k_hat)/200;
+% %             G = (this.m*s^2+b_fit*s+k_hat)*(this.m*s^2+b_fit*s+k_hat)/200
+% %             G = (1/10)*(s^3);
 %             G = tf([this.m,b_fit,k_hat],1);
-%             opts = bodeoptions('cstprefs');
-%             opts.MagUnits = 'abs';
-%             opts.MagScale = 'log';
-%             [MAG,PHASE] = bode(G,TF_freq);
+% %             opts = bodeoptions('cstprefs');
+% %             opts.MagUnits = 'abs';
+% %             opts.MagScale = 'log';
+% %             opts.FreqUnits = 'rad/s';
+% %             figure;bode(G,TF_freq,opts);
+%             [MAG,PHASE] = bode(G,TF_freq*2*pi);
 %             MAG = squeeze(MAG);
 %             PHASE = squeeze(PHASE);
 %             
 %             figure; loglog(TF_freq,MAG);
-            
-            
+%             
+%             
 %             figure(1); hold on;%figure('position',[440 61 560 736]); 
 %             % Magnitude plot of ankle impedance
 %             ax1 = subplot(3,1,1,'XScale','log','YScale','log');
 %             set(gca,'fontWeight','bold','fontSize',12); hold on;
 %             plot(TF_freq,Z11_mag(:,1),'LineWidth',2); grid on; box on;
-% %             plot(TF_freq,MAG); 
+%             plot(TF_freq,MAG); 
 %             axis([xLowerLim xUpperLim yLowerLim11 yUpperLim11]);
 %             plot(TF_freq(dexK),Z11_mag(dexK,1),'.','markersize',20);
 %             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14);
@@ -573,10 +578,10 @@ classdef crossTrialAnalysis < handle
 %             ax2 = subplot(3,1,2,'XScale','log');
 %             set(gca,'fontWeight','bold','fontSize',12); hold on;
 %             plot(TF_freq,Z11_phi(:,1),'LineWidth',2); grid on; box on;
-% %             plot(TF_freq,PHASE);
+%             plot(TF_freq,PHASE);
 %             axis([xLowerLim xUpperLim 0 180]);
 %             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
-%                          
+%             
 %             % Partial Coherence Plot
 %             xLowerLim = 0.5;
 % %             figure; hold on;
