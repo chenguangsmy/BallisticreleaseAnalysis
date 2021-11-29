@@ -73,22 +73,21 @@ classdef SessionScanWam
             
             
             try
-            obj.time = Data(:,idx_time);
-            obj.jp   = Data(:,idx_jp);   
-            obj.jv   = Data(:,idx_jv);    
-            obj.tp   = Data(:,idx_tp);     
-            obj.tv   = Data(:,idx_tv);     
-            obj.jt   = Data(:,idx_jt);    
-            obj.rdt  = Data(:,idx_rdt);   
-            obj.it   = Data(:,idx_it);
-            obj.cf   = Data(:,idx_cf);
+            obj.time = Data(:,idx_time)';
+            obj.jp   = Data(:,idx_jp)';   
+            obj.jv   = Data(:,idx_jv)';    
+            obj.tp   = Data(:,idx_tp)';     
+            obj.tv   = Data(:,idx_tv)';     
+            obj.jt   = Data(:,idx_jt)';    
+            obj.rdt  = Data(:,idx_rdt)';   
+            obj.it   = Data(:,idx_it)';
+            obj.cf   = Data(:,idx_cf)';
             if(exist('idx_state','var'))
-                obj.state = Data(:,idx_state);
+                obj.state = Data(:,idx_state)';
             end
             catch
                 
             end
-            obj = convert0tonan_RDT(obj);
         end
         
         function obj = concatinateTrials2File(obj, tarL_list, fTh_list, rdt_ranges_all)
@@ -187,12 +186,6 @@ classdef SessionScanWam
             
         end
         
-        function obj = convert0tonan_RDT(obj)
-            rdt = double(obj.rdt);
-            rdt_idx = find([rdt==0]);
-            rdt(rdt_idx) = NaN;
-            obj.rdt = rdt;
-        end
         function outputArg = method1(obj,inputArg)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here

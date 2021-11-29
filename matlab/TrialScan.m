@@ -36,23 +36,23 @@ classdef TrialScan
         opt
         opth
         fTh             % force-threshold
-        force           % 
-        force_h         % from NetFT, 3-by-n
-        force_t
-        position
-        position_h      % from WAM
+        %force           % 
+        %force_h         % from NetFT, 3-by-n
+        %force_t
+        %position
+        %position_h      % from WAM
         position_offset % steady position before release, as wam uses impedance control
-        position_t
-        pertfce_h
-        wamtqe_h       % torque
-        wamrdt          % wam readtime
-        wam_ts
-        velocity
-        velocity_h
-        velocity_t
+        %position_t
+        %pertfce_h
+        %wamtqe_h       % torque
+        %wamrdt          % wam readtime
+        %wam_ts
+        %velocity
+        %velocity_h
+        %velocity_t
+        data
         ifpert
         pert_f
-        pert_dx0
         wamKp
         wamBp
         % predicted varialbes:
@@ -71,10 +71,10 @@ classdef TrialScan
         pred_J
         pred_S %snap
         % perturbation related variables
-        pert_t_bgn                      % perturbation time start
-        pert_t_edn                      % perturbation time end
-        pert_rdt_bgn                    % perturbation ReadTime bgn, RDT is SessionScanWam::rdt 
-        pert_rdt_edn                    % perturbation ReadTime edn
+%         pert_t_bgn                      % perturbation time start
+%         pert_t_edn                      % perturbation time end
+%         pert_rdt_bgn                    % perturbation ReadTime bgn, RDT is SessionScanWam::rdt 
+%         pert_rdt_edn                    % perturbation ReadTime edn
         pert_iter
         perturbation_length = 1000
     end
@@ -91,17 +91,16 @@ classdef TrialScan
             ST_BGN = 1; 
             ST_PRT = 2;
             ST_FCR = 3; % force ramp
-            ST_MOV = 4;
-            ST_HLD = 5;
-            ST_END = 6;
-            ST_RST = 7;
+            ST_FHD = 4; % force hold
+            ST_MOV = 5;
+            ST_HLD = 6;
+            ST_END = 7;
+            ST_RST = 8;
             
             obj.tNo = trialNo;
             idx = find(sessionScanObj.Data.TrialNo == trialNo);
             obj.bgn = idx(1);
             obj.edn = idx(end);                             % end_idx, avlid confliction
-%             obj.bgn_t = sessionScanObj.Data.Time(obj.bgn);  % time for high_sample
-%             obj.edn_t = sessionScanObj.Data.Time(obj.edn);
             obj.bgn_t = sessionScanObj.time(obj.bgn);  % time for high_sample
             obj.edn_t = sessionScanObj.time(obj.edn);
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
@@ -109,6 +108,17 @@ classdef TrialScan
             obj.states  = unique(sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn));
             obj.states_arr= sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn);
             
+            %%%%%%%%%%%%%%%% block of getting data %%%%%%%%%%%%%%%%%%%%%%%%
+            data_idx = sessionScanObj.data.t >= obj.bgn_t & sessionScanObj.data.t <= obj.edn_t;
+            obj.data.t  = sessionScanObj.data.t(data_idx);
+            obj.data.x  = sessionScanObj.data.x(:,data_idx);
+            obj.data.v  = sessionScanObj.data.v(:,data_idx);
+            obj.data.Fp = sessionScanObj.data.Fp(:,data_idx);
+            obj.data.tq = sessionScanObj.data.tq(:,data_idx);
+            obj.data.ts = sessionScanObj.data.ts(:,data_idx);
+            obj.data.f  = sessionScanObj.data.f(:,data_idx);
+            
+            %%%%%%%%%%%%%%%% deal with perturbation, etc %%%%%%%%%%%%%%%%%%
             if isfield(sessionScanObj.Data.TaskJudging, 'ifpert')
                 obj.ifpert  = ...
                 double(unique(sessionScanObj.Data.TaskJudging.ifpert(obj.bgn:obj.edn)));
@@ -145,14 +155,14 @@ classdef TrialScan
             [x, y]      = pol2cart(obj.tarR, obj.tarL);                       % TODO: consider the tarR convert to degree 
             obj.tarP    = [x, y];
              % state indexes, if multile there, select the first one
-            tSCV = sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn); % taskStateCodeValues
-            obj.idx_bgn = find_first_safe(tSCV, ST_BGN); % the first value
-            obj.idx_prt = find_first_safe(tSCV, ST_PRT);
-            obj.idx_fcr = find_first_safe(tSCV, ST_FCR); 
-            obj.idx_mov = find_first_safe(tSCV, ST_MOV); 
-            obj.idx_hld = find_first_safe(tSCV, ST_HLD); 
-            obj.idx_end = find_first_safe(tSCV, ST_END); 
-            obj.idx_rst = find_first_safe(tSCV, ST_RST); 
+            ts = sessionScanObj.Data.TaskStateCodes.Values(obj.bgn:obj.edn); % taskStateCodeValues
+            obj.idx_bgn = find_first_safe(ts, ST_BGN); % the first value
+            obj.idx_prt = find_first_safe(ts, ST_PRT);
+            obj.idx_fcr = find_first_safe(ts, ST_FCR); 
+            obj.idx_mov = find_first_safe(ts, ST_MOV); 
+            obj.idx_hld = find_first_safe(ts, ST_HLD); 
+            obj.idx_end = find_first_safe(ts, ST_END); 
+            obj.idx_rst = find_first_safe(ts, ST_RST); 
             obj.time_orn= sessionScanObj.time(obj.bgn:obj.edn);
             obj.time    = sessionScanObj.time(obj.bgn:obj.edn) - sessionScanObj.time(obj.bgn);       % time after aligned 
              % specific ballistic-realease
@@ -160,15 +170,15 @@ classdef TrialScan
             if isempty(obj.fTh)
                 obj.fTh = nan;
             end
-            try  % only ss2767 and after
-                obj.pert_dx0 = unique(sessionScanObj.pertCond.pertdx0_mag(maskTrial & maskHold));
+            
+            if length(sessionScanObj.pertCond.wamKp) == 1
+                obj.wamKp    = sessionScanObj.pertCond.wamKp;
+                obj.wamBp    = sessionScanObj.pertCond.wamBp;
+            else
                 obj.wamKp    = unique(sessionScanObj.pertCond.wamKp(maskTrial & maskHold));
                 obj.wamBp    = unique(sessionScanObj.pertCond.wamBp(maskTrial & maskHold));
-            catch 
-                obj.pert_dx0 = [];
-                obj.wamKp   = [];
-                obj.wamBp   = [];
             end
+
             try
                 obj.pert_f   = unique(sessionScanObj.pertCond.pertdf(maskTrial & maskHold));
             catch
@@ -176,30 +186,8 @@ classdef TrialScan
             end
             
             obj.comboTT = getComboTT(obj,sessionScanObj);
-            obj.force    = sessionScanObj.force(:,obj.bgn:obj.edn);
-            obj.position = sessionScanObj.Data.Position.Actual(obj.bgn:obj.edn,:);
-            if (~isempty(sessionScanObj.force_h))
-                forceh_idx   = sessionScanObj.force_t >= obj.bgn_t & sessionScanObj.force_t <= obj.edn_t;
-                obj.force_h  = sessionScanObj.force_h(:,forceh_idx);      % from NetFT
-                obj.force_t  = sessionScanObj.force_t(forceh_idx) - sessionScanObj.time(obj.bgn);      % time aligned with trial 
-            end
-            if (~isempty(sessionScanObj.wamp_h))
-                positionh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
-                obj.position_h  = sessionScanObj.wamp_h(positionh_idx,:)';     % from WAM
-                obj.position_t  = sessionScanObj.wam_t(positionh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
-                obj.pertfce_h   = sessionScanObj.wam.cf(positionh_idx,:)'; % for now only perturb at y direction
-                obj.wamtqe_h   = sessionScanObj.wam.jt(positionh_idx,:)'; % f
-                obj.wamrdt      = sessionScanObj.wam.rdt(positionh_idx);
-                obj.pert_iter   = sessionScanObj.wam.it(positionh_idx);
-            end
-            if (~isempty(sessionScanObj.wamp_h))
-                velocityh_idx   = sessionScanObj.wam_t >= obj.bgn_t & sessionScanObj.wam_t <= obj.edn_t;
-                obj.velocity_h  = sessionScanObj.wamv_h(velocityh_idx,:)';     % from WAM
-                obj.velocity_t  = sessionScanObj.wam_t(velocityh_idx) - sessionScanObj.time(obj.bgn);     % time aligned with trial
-            end
-            if (~isempty(sessionScanObj.wam_ts))
-                obj.wam_ts = sessionScanObj.wam_ts(positionh_idx);
-            end
+            
+            
             if isempty(setdiff(obj.tarR, [0,4])) %only y direction
                 obj.xyi = 1;
             elseif isempty(setdiff(obj.tarR, [2, 6]))
@@ -209,9 +197,9 @@ classdef TrialScan
             ifplot = 1;
             if (ifplot)
                 axh(1) = subplot(2,1,1);
-                plot(obj.position_t, obj.position_h);
+                plot(obj.data.t, obj.data.x);
                 axh(2) = subplot(2,1,2);
-                plot(obj.force_t, obj.force_h);
+                plot(obj.data.t, obj.data.f);
                 linkaxes(axh, 'x');
             end
             
@@ -249,17 +237,14 @@ classdef TrialScan
         function ifpert = findPerturbationinWAMcf(obj, sessionScanObj)
             % find if being perturbed via looking at wam.cf data 
             % applicable for some sessions without ifpert variable
-            %wam_t = sessionScanObj.wam.time; % may inaccurate as the wam time may not consistant with RTMA time
-            wam_t = sessionScanObj.wam_t;
-            stt = obj.bgn_t;
-            edt = obj.edn_t;
-            [~, st_idx] = min(abs(wam_t-stt));
-            [~, ed_idx] = min(abs(wam_t-edt));
-            wam_cf = sessionScanObj.wam.cf(st_idx:ed_idx,:);
+            wam_t = obj.data.t;
+            wam_cf = obj.data.Fp;
+            wam_ts = obj.data.ts;
+            position_h = obj.data.x;
             ifpert = ~sum(sum(abs(wam_cf)))==0;
             
-            if (~isempty(obj.wam_ts) && ~isempty(obj.pertfce_h))
-                pertsig = setdiff((unique(obj.wam_ts(obj.pertfce_h(2,:)~=0))), 3);
+            if (~isempty(wam_ts) && ~isempty(wam_cf))
+                pertsig = setdiff((unique(wam_ts(wam_cf(2,:)~=0))), 3);
                 if (isempty(pertsig))
                     obj.ifpert = 0;
                     ifpert = 0;
@@ -267,13 +252,11 @@ classdef TrialScan
                 ifplot = 1;
                 if(ifplot)
                     axhl(1) = subplot(3,1,1);
-                    plot(obj.position_t, obj.position_h(2,:));
+                    plot(wam_t, position_h(2,:));
                     axhl(2) = subplot(3,1,2);
-                    plot(obj.position_t, obj.pertfce_h(2,:));
+                    plot(wam_t, wam_cf(2,:));
                     axhl(3) = subplot(3,1,3); hold on;
-                    plot(obj.position_t, obj.wam_ts', 'r');
-                    plot(obj.time, obj.states_arr, 'b');
-                    legend('WAM-TS', 'RTMA-TS')
+                    plot(wam_t, wam_ts, 'r');
                     linkaxes(axhl, 'x');
                 end
 
@@ -325,12 +308,12 @@ classdef TrialScan
         function obj = findStepPerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on ForceRamp
             % This is only for the STEP PERTURBATION.
-            wam_pert_signal = obj.pertfce_h(2,:);
+            wam_pert_signal = obj.data.Fp(2,:);
             wam_pert_init_idx = find(wam_pert_signal == 0 & [diff(wam_pert_signal) 0]~=0); 
             wam_pert_edn_idx  = find(wam_pert_signal ~= 0 & [diff(wam_pert_signal) 0]~=0); 
             if obj.ifpert == 0 || isempty(wam_pert_init_idx)
 %                 obj.pert_rdt_bgn = [];
-                obj.pert_rdt_edn = [];
+%                 obj.pert_rdt_edn = [];
                 % The comming line, only works at the real experiment,
                 % if were conducting spring test, can comment it out.
                 %obj.ifpert = 0; % re-write (some trial should be perturbed, but did not wait until it)
@@ -346,7 +329,7 @@ classdef TrialScan
                 obj.pert_rdt_edn = [];
             end
             idxh = fin_pert_init_idx:fin_pert_edn_idx;
-            pert_t = obj.position_t(idxh);
+            pert_t = obj.data.t(idxh);
             % find time  
             try
              obj.pert_t_bgn = pert_t(1);
@@ -354,13 +337,13 @@ classdef TrialScan
             catch
                 return
             end
-             % find RDT
-             obj.pert_rdt_bgn = obj.wamrdt(fin_pert_init_idx);    % force increasing time (pert start)
-             obj.pert_rdt_edn = obj.wamrdt(fin_pert_edn_idx);  % release time (pert finished)
-             
-             % position offset
-             pos_bef_pert = obj.position_h(2, fin_pert_init_idx-100:fin_pert_init_idx-1); 
-             obj.position_offset = mean(pos_bef_pert);
+%              % find RDT
+%              obj.pert_rdt_bgn = obj.wamrdt(fin_pert_init_idx);    % force increasing time (pert start)
+%              obj.pert_rdt_edn = obj.wamrdt(fin_pert_edn_idx);  % release time (pert finished)
+%              
+%              % position offset
+%              pos_bef_pert = obj.position_h(2, fin_pert_init_idx-100:fin_pert_init_idx-1); 
+%              obj.position_offset = mean(pos_bef_pert);
         end
         function obj = findStepx0PerterbTime(obj, sessionScanObj)
             % find perturbation based on we only perturb on x0
@@ -413,16 +396,14 @@ classdef TrialScan
             %alignMOV align all trials at ST_MOV
             %   Just do linear shift, do NOT skew time
             time = obj.time;
-            time_offset = time(obj.idx_mov);
+            idx = find(obj.data.ts == 5);
+            time_offset = obj.data.t(idx(1));
             % if no ST_MOV, abort align
             if (~isempty(time_offset))
                 obj.time = time - time_offset;
                 
-                if(~isempty(obj.position_t))
-                    obj.position_t = obj.position_t - time_offset;
-                end
-                if(~isempty(obj.force_t))
-                    obj.force_t = obj.force_t - time_offset;
+                if(~isempty(obj.data.t))
+                    obj.data.t_shift = obj.data.t - time_offset;
                 end
                 if(~isempty(obj.opt))
                     obj.opt.data.t = obj.opt.data.t - time_offset;

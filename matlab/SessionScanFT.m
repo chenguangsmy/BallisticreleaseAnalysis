@@ -38,9 +38,9 @@ classdef SessionScanFT
             obj.force0 = [  Data.Fx0';
                             Data.Fy0';
                             Data.Fz0'];
-            obj.RDT = [Data.RDT];           % read-time sequence
-            obj.FT = [Data.FT];             % FT sequence
-            obj.elapse = [Data.elapse];     % read time elapse, wrongly elapse... Change code! 
+            obj.RDT = [Data.RDT]';           % read-time sequence
+            obj.FT = [Data.FT]';             % FT sequence
+            obj.elapse = [Data.elapse]';     % read time elapse, wrongly elapse... Change code! 
             obj = forceFTconvert(obj);
             %plotForce(obj)
             
@@ -56,6 +56,11 @@ classdef SessionScanFT
         end
         
         function obj = intropTime(obj)
+            % obj = intropTime(obj)
+            % introp the time of the data from RDT. 
+            % elapse was pfem time, and this time would be the same for
+            % every batch (n==10) time. 
+
             time = obj.elapse; 
             rdt  = obj.RDT;
             
