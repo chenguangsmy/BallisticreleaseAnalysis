@@ -44,7 +44,6 @@ classdef (HandleCompatible)SessionScan < handle
         endpoint0 = [-0.517 0.481 0.0] 
         col_vec = colormap('lines');
         badTrials = [1];       % bad trial, cull in data
-%         badTrials = [1, 278];       % FOR SS1898
         stateNames = {'Begin', 'Present', 'FrcRamp', 'FrcHold', 'Move', 'Hold', 'End', 'Reset'};
         
     end
@@ -100,7 +99,7 @@ classdef (HandleCompatible)SessionScan < handle
             
             fname0 = ([file_dir_formmed '/' file_name]);
             fname1 = ([file_dir_int '/' file_name]);
-            flag_progress = 1;      % progress display
+            flag_progress = 0;      % progress display
             try 
                 load(fname, 'Data');
             catch 
@@ -224,16 +223,20 @@ classdef (HandleCompatible)SessionScan < handle
             percent_prev = 0;
             for trial_i = 1:length(trials_all)
                 trial_percent = floor(trial_i/length(trials_all) * 20)*5;
-                if ~(trial_percent == percent_prev) % avoid showing a lot.
-                    fprintf('  %02d%%...', trial_percent);
-                    percent_prev = trial_percent;
+                if (flag_progress)
+                    if ~(trial_percent == percent_prev) % avoid showing a lot.
+                        fprintf('  %02d%%...', trial_percent);
+                        percent_prev = trial_percent;
+                    end
                 end
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
                 %obj.trials(trial_i) = alignPertInit(obj.trials(trial_i));
-                if (trial_i == length(trials_all)) % last trial
-                    fprintf('  100%%  FINISHED!\n');
+                if (flag_progress)
+                    if (trial_i == length(trials_all)) % last trial
+                        fprintf('  100%%  FINISHED!\n');
+                    end
                 end
             end
             if (nargin>1) %specify bad trials
@@ -333,6 +336,19 @@ classdef (HandleCompatible)SessionScan < handle
 % %             display(['For session' num2str(obj.ssnum)]);
 % %             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
 % %             T = table(sR_table(:,1), sR_table(:,2), sR_table(:,3), sR_table(:,4), sR_table(:,5), 'VariableNames', VarNames)
+        end
+        function displayBlockCondition(obj)
+            % displayBlockCondition(obj)
+            all_trials = length(obj.trials);
+            fin_trials = sum([obj.trials.outcome]==1);
+            rate = fin_trials/all_trials;
+            if (length(obj.tarLs) == 1)
+                fprintf("tar: %.1f(cm), F: %d(N): %d/%d, rate: %f \n" ,...
+                    obj.tarLs(1)*100, obj.fThs(1), fin_trials, all_trials, rate);
+            else 
+                fprintf("Stoc, F: %d(N): %d/%d, rate: %f \n" ,...
+                 obj.fThs(1), fin_trials, all_trials, rate);
+            end
         end
         function [time_mean] = getConditionaltime(obj) 
             % todo... form to multi-conditional function
@@ -553,62 +569,76 @@ classdef (HandleCompatible)SessionScan < handle
             %   x: 3-by-N matrix, robot endpoint
             %   v: 3-by-N matrix, robot velocity
             %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
+            %   Fp: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
             %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,3);
-            for p_i = 1:3
-                 t_idx{p_i} = find(pert_trials==p_i-1); % 0,nopert; 1, pulse; 2, stoc
+            %   t: 1-by-N matrix, time 
+            %   mvst: the mask that robot can freely move
+            trial_perturbs = [obj.trials.ifpert];
+            pert_max = max(3, (max(trial_perturbs)+1)); % 0,nopert; 1, pulse; 2, stoc
+            t_idx = cell(2,pert_max);                   % succ/failure * pert_types
+            for sf = 1:2
+                for p_i = 1:pert_max
+                     t_idx{sf,p_i} = intersect(find(trial_perturbs==p_i-1), ...
+                                    find([obj.trials.outcome]==2-sf));  % 1 or 0
+                     t_idx{sf,p_i} = setdiff(t_idx{sf,p_i}, 1);
+                end
             end
             
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
+            % TODO: consider remove correction trials here? 
+            
+            % export part ...
+            
+            if ~isempty([t_idx{1:2,3}]) % stoc-perturbed trials. 
+                % Stocpert do not in the same session with step ones in current experiments
+                cellsmat = cell(2, length(obj.tarLs), 15, 3); % think!!! 
+                for sf = 1:2 % suceed and failed trials
+                    for tl_i = 1:length(obj.tarLs)
+                        %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                        trial_list = intersect(find([obj.trials.tarL] == obj.tarLs(tl_i)) , t_idx{sf,3});
+%                         trial_list = setdiff(trial_list,1);
+                        for t_i = 1:length(trial_list)
+                            t_tmp = obj.trials(trial_list(t_i));
+                            cellsmat{sf,tl_i,t_i,3} = t_tmp.export_as_formatted;
+                        end
                     end
                 end
             else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
-                for p_i = 1:2
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1); % no failed trials 
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    trial_list = setdiff(trial_list,[1]);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
+                trial_max = max([length(t_idx{1,1}), length(t_idx{1,2}),...
+                                length(t_idx{2,1}), length(t_idx{2,2})]);
+                cellsmat = cell(2,trial_max,3);
+                for sf =  1:2
+                    for p_i = 1:2
+                        %trial_list = setdiff(t_idx{p_i},1);
+%                         trial_list = find([obj.trials.outcome] == 1); % no failed trials
+                        trial_list = t_idx{sf,p_i};
+                        %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
+%                         trial_list = intersect(trial_list, t_idx{p_i});
+                        %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
+                        switch obj.ssnum
+                            case 3402
+                                trial_list = setdiff(trial_list,18);
+                            case 3385
+                                trial_list = setdiff(trial_list,28);
+                            case 3387
+                                trial_list = setdiff(trial_list,9);
+                            case 3361
+                                trial_list = setdiff(trial_list,9);
+                        end
+                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        %trial_list = setdiff(trial_list,[1 2 51:60]);
+%                         trial_list = setdiff(trial_list,[1]);
+                        for t_i = 1:length(trial_list)
+                            t_tmp = obj.trials(trial_list(t_i));
+                            cellsmat{sf,t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                            xlim([-5 -4])
+                            ifplot = true;
+                            if (ifplot)
+                                subplot(2,1,1);
+                                plot(cellsmat{sf,t_i, p_i}.t, cellsmat{sf,t_i, p_i}.x(2,:));
+                                subplot(2,1,2);
+                                plot(cellsmat{sf,t_i, p_i}.t, cellsmat{sf,t_i, p_i}.f(2,:));
+                            end
+                        end
                     end
                 end
             end
@@ -630,10 +660,10 @@ classdef (HandleCompatible)SessionScan < handle
                     end
                     if (p_i ~= 3)
                         for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
+                            if(isempty(cellsmat{1,t_i, p_i}))
                                 continue;
                             end
-                            dt = diff(cellsmat{t_i,p_i}.t);
+                            dt = diff(cellsmat{1,t_i,p_i}.t);
                             dt = [dt(1) dt];
                             plot(t_i*plt_offset + dt);
                         end
@@ -642,10 +672,10 @@ classdef (HandleCompatible)SessionScan < handle
                             continue
                         end
                         tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
+                        for tl_i = 1:size(cellsmat, 2)
+                            for t_i = 1:length(cellsmat(1,tl_i,:,p_i))
+                                if ~isempty(cellsmat{1,tl_i,t_i,p_i})
+                                dt = diff(cellsmat{1,tl_i,t_i,p_i}.t);
                                 dt = [dt(1) dt];
                                 tiofst = tiofst+1;
                                 plot(tiofst*plt_offset + dt);
@@ -656,389 +686,6 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
-        function [cellsmat] = export_as_formatted_4(obj, ifplot)
-            % THIS FUNCTION IS DESIGNED FOR EXPORTING TRIALS WITH step perturbation
-            % THE EACH EXPORTED DATA COLUMN IS: 
-            %   1. NO PULSE;
-            %   2. PULSE;
-            %   3. STOC;
-            %   4. STEP;
-            
-            if (~exist('ifplot', 'var'))
-                ifplot = 0;
-            end
-            % export as a t(trials_num)-by-p(perturbation options) cell mat
-            % for each cell, the data format are each trial, which contains:
-            %   x: 3-by-N matrix, robot endpoint
-            %   v: 3-by-N matrix, robot velocity
-            %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
-            %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,4);
-            ifpert_keys = [0 1 2 4];
-            for p_i = 1:4
-                 t_idx{p_i} = find(pert_trials==ifpert_keys(p_i)); % 0,nopert; 1, pulse; 2, stoc; 3, step; 4. square
-            end
-            
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                    end
-                end
-            else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3}), length(t_idx{4})]),3);
-                for p_i = [1:2 4]
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1); % no failed trials 
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    trial_list = setdiff(trial_list,[1]);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
-                    end
-                end
-            end
-            
-            % plot out the time skew
-            ifplot = 0; %-test
-            
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        function [cellsmat] = export_as_formatted_5(obj, ifplot)
-            % THIS FUNCTION IS DESIGNED FOR EXPORTING TRIALS WITH NO
-            % RELEASE
-            % THE EACH EXPORTED DATA COLUMN IS: 
-            %   1. NO PULSE;
-            %   2. PULSE;
-            %   3. STOC;
-            %   4. NO RELEASE;
-            
-            if (~exist('ifplot', 'var'))
-                ifplot = 0;
-            end
-            % export as a t(trials_num)-by-p(perturbation options) cell mat
-            % for each cell, the data format are each trial, which contains:
-            %   x: 3-by-N matrix, robot endpoint
-            %   v: 3-by-N matrix, robot velocity
-            %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
-            %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,4);
-            ifpert_keys = [0 1 2 5];
-            for p_i = 1:4
-                 t_idx{p_i} = find(pert_trials==ifpert_keys(p_i)); % 0,nopert; 1, pulse; 2, stoc; 3, step; 5. no release
-            end
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                    end
-                end
-            else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3}), length(t_idx{4})]),3);
-                for p_i = [1:2 4]
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1); % only select sucessful trials 
-                    % the session-specific cases here
-                    if (sum(obj.ssnum == [3602 3603]))
-                        trial_list = find([obj.trials.outcome] ~= -1);
-                    end
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    if (sum(obj.ssnum ~= [3603 3602]))
-                        trial_list = setdiff(trial_list,[1]);
-                    end
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
-                    end
-                end
-            end
-            
-            % plot out the time skew
-            ifplot = 0; %-test
-            
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        function [cellsmat] = export_as_formatted_5_failedTrials(obj, ifplot)
-            % This is work only for the failed trials
-            % If the failed trial is less than 15, repeat it to be 15... 
-            % THIS FUNCTION IS DESIGNED FOR EXPORTING TRIALS WITH NO
-            % RELEASE
-            % THE EACH EXPORTED DATA COLUMN IS: 
-            %   1. NO PULSE;
-            %   2. PULSE;
-            %   3. STOC;
-            %   4. NO RELEASE;
-            
-            if (~exist('ifplot', 'var'))
-                ifplot = 0;
-            end
-            % export as a t(trials_num)-by-p(perturbation options) cell mat
-            % for each cell, the data format are each trial, which contains:
-            %   x: 3-by-N matrix, robot endpoint
-            %   v: 3-by-N matrix, robot velocity
-            %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
-            %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,4);
-            ifpert_keys = [0 1 2 5];
-            for p_i = 1:4
-                 t_idx{p_i} = find(pert_trials==ifpert_keys(p_i)); % 0,nopert; 1, pulse; 2, stoc; 3, step; 5. no release
-            end
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                    end
-                end
-            else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3}), length(t_idx{4})]),3);
-                for p_i = [1:2 4]
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    %trial_list = find([obj.trials.outcome] == 1); % only select sucessful trials 
-                    trial_list = find([obj.trials.outcome] == 0); % only select failed trials 
-                    % the session-specific cases here
-                    if (sum(obj.ssnum == [3602 3603]))
-                        trial_list = find([obj.trials.outcome] ~= -1);
-                    end
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    if (sum(obj.ssnum ~= [3603 3602]))
-                        trial_list = setdiff(trial_list,[1]);
-                    end
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
-                    end
-                end
-                
-                %%%% repeat the last in conidtion (failed trials)
-                for trial_i = 1:15
-                    if isempty(cellsmat{trial_i,2})
-                        cellsmat(trial_i,2) = cellsmat(trial_i-1,2);
-                    end
-                end
-            end
-            
-            % plot out the time skew
-            ifplot = 0; %-test
-            
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        
         function [cellsmat] = export_as_formatted_hybridss(obj, ifplot)
             % hybrids can have pulse, stoc and no pulse pert
             if (~exist('ifplot', 'var'))

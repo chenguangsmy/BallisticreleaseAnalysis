@@ -26,6 +26,7 @@ classdef SessionScanFT
             %fname = 'KingKongFT01865.csv';
             fname = sprintf('KingKongFT%05d.csv', ss_num);
             Data = readtable([fdir '/' fname]);
+            Data = dealRDTError(Data);
             obj.force_origin = [Data.Fx' + Data.Fx0'
                                 Data.Fy' + Data.Fy0'
                                 Data.Fz' + Data.Fz0'];
@@ -167,3 +168,12 @@ classdef SessionScanFT
     end
 end
 
+function Data = dealRDTError(Data)
+    FT = [Data.FT]';
+    [FTunq, idx_raw, idx_clean] = unique(FT);
+    if (length(FTunq) < length(FT))
+        disp('WARNING: FT time skew detected, abort data point!');
+    end
+    idx_valid = idx_raw;
+    Data = Data(idx_valid, :);
+end

@@ -527,38 +527,42 @@ clear; clc; close all;
 %ss_num = [3581 3580 3584 3434];
 
 % MICHEAL WITH 20N force level. 
-%ss_num = [3617 3615 3616 3618];
+ss_num = [  3629 3630 3631 3632
+            3617 3615 3616 3618
+            3627 3624 3626 3628];
 
 % ADAM WITH 3 FORCE LEVELS;
-ss_num = [  3621    3620    3622    3596]; 
+% ss_num = [  3621    3620    3622    3596]; 
 
 % CHENGUANG TRY BACKWARD FULLY EXTENDED
 % ss_num = [  3587    3586    3585    3596
 %             3588    3590    3589    3595
 %             3592    3591    3593    3594];
 data = cell(1, 4, 3, 3, 15, 3);
-
+idx_sf = 1; % only choose suceed trials 
 for fce_i = 1:size(ss_num,1)
     for tar_i = 1:3 % step perts
         ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+        ss_tmp.displayBlockCondition();
         celltmp = ss_tmp.export_as_formatted(1);
         
-        trials_num = size(celltmp,1);
+        trials_num = size(celltmp,2);
         if trials_num>15
-            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+            data(1,1,fce_i,tar_i,:,:) = celltmp(idx_sf,1:15,:);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(idx_sf,:,:);
         end
     end
 
     ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    ss_tmp.displayBlockCondition();
     celltmp = ss_tmp.export_as_formatted(1);
     for tar_i = 1:3 % as a session has 3 length
-        trials_num = size(celltmp,2);
+        trials_num = size(celltmp,3);
         if trials_num>15
-            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(idx_sf,tar_i,1:15,3);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(idx_sf,tar_i,:,3);
         end
     end
 end
@@ -569,8 +573,8 @@ end
 %save('data/processedData/ss3491_3493.mat', 'data')
 %save('data/processedData/ss3580_3582.mat', 'data')
 %save('data/processedData/ss3585_3596.mat', 'data')
-%save('data/processedData/ss3615_3618.mat', 'data')      % MICHEAL TRY "TOLERANT" TASK CONDITION
-save('data/processedData/ss3620_3629.mat', 'data')       % ADAM TRY "TOLERANT" TASK CONDITION
+save('data/processedData/ss3615_3618.mat', 'data')      % MICHEAL TRY "TOLERANT" TASK CONDITION
+%save('data/processedData/ss3620_3629.mat', 'data')       % ADAM TRY "TOLERANT" TASK CONDITION
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % try Andy's idea on no release only pulse 
