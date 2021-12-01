@@ -546,11 +546,11 @@ for fce_i = 1:size(ss_num,1)
         ss_tmp.displayBlockCondition();
         celltmp = ss_tmp.export_as_formatted(1);
         
-        trials_num = size(celltmp,2);
+        trials_num = size(celltmp,3);
         if trials_num>15
-            data(1,1,fce_i,tar_i,:,:) = celltmp(idx_sf,1:15,:);
+            data(1,1,fce_i,tar_i,:,:) = celltmp(idx_sf,1,1:15,:);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(idx_sf,:,:);
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(idx_sf,1,:,:);
         end
     end
 

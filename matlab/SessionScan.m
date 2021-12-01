@@ -605,7 +605,7 @@ classdef (HandleCompatible)SessionScan < handle
             else
                 trial_max = max([length(t_idx{1,1}), length(t_idx{1,2}),...
                                 length(t_idx{2,1}), length(t_idx{2,2})]);
-                cellsmat = cell(2,trial_max,3);
+                cellsmat = cell(2,length(obj.tarLs),trial_max,3); % for block design, only fill idx_tarLs==1 
                 for sf =  1:2
                     for p_i = 1:2
                         %trial_list = setdiff(t_idx{p_i},1);
@@ -629,14 +629,14 @@ classdef (HandleCompatible)SessionScan < handle
 %                         trial_list = setdiff(trial_list,[1]);
                         for t_i = 1:length(trial_list)
                             t_tmp = obj.trials(trial_list(t_i));
-                            cellsmat{sf,t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                            cellsmat{sf,1,t_i,p_i} = t_tmp.export_as_formatted;  % each trial
                             xlim([-5 -4])
                             ifplot = true;
                             if (ifplot)
                                 subplot(2,1,1);
-                                plot(cellsmat{sf,t_i, p_i}.t, cellsmat{sf,t_i, p_i}.x(2,:));
+                                plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.x(2,:));
                                 subplot(2,1,2);
-                                plot(cellsmat{sf,t_i, p_i}.t, cellsmat{sf,t_i, p_i}.f(2,:));
+                                plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.f(2,:));
                             end
                         end
                     end
