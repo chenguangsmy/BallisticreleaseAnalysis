@@ -35,35 +35,16 @@ classdef (HandleCompatible)SessionScan < handle
         wam             % object of wam
         emg             % object of emg
         opt             % object of opt (OPTOTRAK)
-        force_h         % time for wam seperate data
         force_t         % time for ft seperate data
-        wamp_h          % highly sampled from wam
-        wamv_h
-        wamt_h
         wam_t
-        wam_ts
         emg_h
         emg_t
-        
+        data            % all the data including force and wam information (aligned)
         %%% other variables
-        endpoint0 = [-0.517 0.483 0.001]
-        col_vec = [1 0 0
-                    0 1 0
-                    0 0 1 
-                    0 1 1
-                    1 0 1
-                    1 1 0
-                    0.5 0.5 0.5
-                    0 0.4470 0.7410
-                    0.8500 0.3250 0.0980
-                    0.9290 0.6940 0.1250
-                    0.4940 0.1840 0.5560
-                    0.4660 0.6740 0.1880
-                    0.3010 0.7450 0.9330
-                    0.6350 0.0780 0.1840]   % color for plot, rgb cmyk
-        %badTrials = [1];       % bad trial, cull in data
-        badTrials = [1, 278];       % FOR SS1898
-        stateNames = {'Begin', 'Present', 'FrcRamp', 'Move', 'Hold', 'End', 'Reset'};
+        endpoint0 = [-0.517 0.481 0.0] 
+        col_vec = colormap('lines');
+        badTrials = [1];       % bad trial, cull in data
+        stateNames = {'Begin', 'Present', 'FrcRamp', 'FrcHold', 'Move', 'Hold', 'End', 'Reset'};
         
     end
     
@@ -73,18 +54,19 @@ classdef (HandleCompatible)SessionScan < handle
             %VARSCAN Construct an instance of this class
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
-            % load the intermediate file for the time 
+            % load the INTERMEDIATE file for the time 
             file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % an examplary trial
-            file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
-            data1 = load([file_dir  file_name], 'Data');
+            file_dir_formmed = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
+            file_dir_int = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
+            data1 = load([file_dir_int  file_name], 'Data');
             wam_sendt = data1.Data.QL.Headers.BURT_STATUS.send_time;
             wam_recvt = data1.Data.QL.Headers.BURT_STATUS.recv_time;
             wam_rdt   = double(data1.Data.QL.Data.BURT_STATUS.RDT);
             wam_intm = [wam_sendt; wam_recvt; wam_rdt];
             ft_sendt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.send_time;
             ft_recvt = data1.Data.QL.Headers.FORCE_SENSOR_DATA.recv_time;
-            % load hardware synchrony signals
-            try 
+            % load synchrony signals from the intermediate message
+            try  
                 % from message
                 MID_NETBOX = 67;
                 msgidx = data1.Data.QL.Headers.TIME_SYNC.src_mod_id == MID_NETBOX;
@@ -115,13 +97,11 @@ classdef (HandleCompatible)SessionScan < handle
             %clear file_name  file_dir data1
             
             
-            file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % an examplary trial
-            file_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
-            file_dir_int = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
-            %file_dir = ['data/'];
-            fname0 = ([file_dir '/' file_name]);
+            fname0 = ([file_dir_formmed '/' file_name]);
             fname1 = ([file_dir_int '/' file_name]);
-            flag_progress = 0;      % show something to make me less anxious
+
+            flag_progress = 0;      % progress display
+
             try 
                 load(fname, 'Data');
             catch 
@@ -134,7 +114,7 @@ classdef (HandleCompatible)SessionScan < handle
                 disp('no intermediate data');
             end
             % objects
-            noFW_data = 0;
+            flag_noFW_data = 0;
             try
                 if (flag_progress)
                     disp('Loading raw FT and WAM...');
@@ -143,17 +123,17 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.wam = SessionScanWam(obj.ssnum);
             catch 
                 disp('no ft and wam data here! ');
-                noFW_data = 1;
+                flag_noFW_data = 1;
             end
+            % cg: currently we are not focusing on the EMG and OPT -Nov2021
             try 
                 if (flag_progress)
                     disp('Loading (intermed/raw) EMG...');
                 end
                 obj.emg = SessionScanEMG(obj.ssnum);
             catch
-                if (flag_progress)
-                    disp('no EMG data here! ')
-                end
+
+%                 disp('no EMG data here! ')
             end
             
             try 
@@ -162,19 +142,19 @@ classdef (HandleCompatible)SessionScan < handle
                 end
                 obj.opt = SessionScanOPT(obj.ssnum);
             catch 
-                if (flag_progress)
-                    disp('no OPT data here! ');
-                end
+
+%                 disp('no OPT data here! '); 
+
             end
                 
             % other data
 
             obj.Data = Data;
             % obj.time = Data.Time; % how to make this time same with the bk time?
-            timetmp = Data.SpikeTimestamp;
+            timetmp = Data.SpikeTimestamp;  % blackrock time
             timetmp1 = interp1(find(~isnan(timetmp)),timetmp(~isnan(timetmp)), 1:length(timetmp), 'linear', 'extrap');
             ifplot = 0;
-            if(ifplot)
+            if(1)
                 clf;
                 hold on;
                 plot(1:length(timetmp), timetmp, '*');
@@ -187,24 +167,22 @@ classdef (HandleCompatible)SessionScan < handle
             TrialNo = Data.TrialNo;
             obj.trials_num = max(TrialNo);
             try
-            obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
-            obj.hand_pos_offset = obj.hand_pos_offset(:,1); 
-            catch 
+                obj.hand_pos_offset = Data.Position.Center(:,~isnan(Data.Position.Center(1,:)));
+                obj.hand_pos_offset = obj.hand_pos_offset(:,1);
+            catch
                 disp('no position info!');
             end
-            obj.taskState.Values = Data.TaskStateCodes.Values;
-            obj.taskState.Outcome = Data.OutcomeMasks;
+            obj.taskState.Values = Data.TaskStateCodes.Values;              % cg: what does it mean 99?
             obj.taskState.trialNo = Data.TrialNo;
-            obj.force = forceFTconvert(obj);
+            obj.force = rotateAxisForce(obj);                                % cg: .... change it into aligned one
             obj.duration = max(obj.time);
-            targets_idx = ~isnan(obj.Data.TaskJudging.Target(1,:));
-            obj.tarRs = unique(obj.Data.TaskJudging.Target(5,targets_idx)); %have 0
-            obj.tarLs = setdiff(unique(obj.Data.TaskJudging.Target(6,targets_idx)),0); % deviate 0
-            obj.fThs  = setdiff(unique(obj.Data.TaskJudging.Target(4,targets_idx)),0); % deviate 0
+            obj.tarRs = unique(obj.Data.TaskJudging.Target(5,obj.Data.TaskStateMasks.Move)); %have 0
+            obj.tarLs = unique(obj.Data.TaskJudging.Target(6,obj.Data.TaskStateMasks.Move)); % deviate 0
+            obj.fThs  = unique(obj.Data.TaskJudging.Target(4,obj.Data.TaskStateMasks.Move)); % deviate 0
             try 
-                obj.pertCond.pertdx0_mag = Data.TaskJudging.pertdx0_mag;
-                obj.pertCond.wamKp = Data.TaskJudging.wamKp;
-                obj.pertCond.wamBp = Data.TaskJudging.wamBp;
+                obj.pertCond.pertdx0_mag = unique(Data.TaskJudging.pertdx0_mag(obj.Data.TaskStateMasks.FrcHold));
+                obj.pertCond.wamKp = unique(Data.TaskJudging.wamKp(obj.Data.TaskStateMasks.FrcHold));
+                obj.pertCond.wamBp = unique(Data.TaskJudging.wamBp(obj.Data.TaskStateMasks.FrcHold));
             catch 
                 obj.pertCond.pertdx0_mag = [];
                 obj.pertCond.wamKp = [];
@@ -216,31 +194,32 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.pertCond.pertdf= [];
             end
                 
-            % execution functions 
-            % trialTimeAverage(obj); % how to use class function?
 
             % processing 
-            obj = convert0toNan(obj);
             trials_all = setdiff(unique(TrialNo), 0);
             [obj, syncflag] = updateTimeBlackRock(obj);
-            if (~isempty(obj.ft))
-                if (flag_progress)
-                    disp('FT High Sample...');
-                end
-                obj = forceHighSample(obj, obj.ft, ft_intm);
-            end
-            if (~isempty(obj.wam))
-                if (flag_progress)
-                    disp('WAM High Sample...');
-                end
-                obj = wamHighSample(obj, obj.wam, wam_intm);
-            end
-            if (~isempty(obj.emg))
-                if (flag_progress)
-                    disp('EMG High Sample...');
-                end
-                obj = emgHighSample(obj, obj.emg);
-            end
+%             if (~isempty(obj.ft))
+%                 if (flag_progress)
+%                     disp('FT High Sample...');
+%                 end
+%             %    obj = highSampleForce(obj, obj.ft, ft_intm);
+%             end
+%             if (~isempty(obj.wam))
+%                 if (flag_progress)
+%                     disp('WAM High Sample...');
+%                 end
+%             %    obj = highSampleWam(obj, obj.wam, wam_intm);
+%             end
+%             if (~isempty(obj.emg))
+%                 if (flag_progress)
+%                     disp('EMG High Sample...');
+%                 end
+%                 obj = highSampleEmg(obj, obj.emg);
+%             end
+            
+            % should interpolate all the data here !!!!!
+            obj = interpData(obj);
+
             
             if (flag_progress)
                     disp('Trialfy...');
@@ -259,8 +238,10 @@ classdef (HandleCompatible)SessionScan < handle
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
                 %obj.trials(trial_i) = alignPertInit(obj.trials(trial_i));
-                if (trial_i == length(trials_all)) % last trial
-                    fprintf('  100%%  FINISHED!\n');
+                if (flag_progress)
+                    if (trial_i == length(trials_all)) % last trial
+                        fprintf('  100%%  FINISHED!\n');
+                    end
                 end
             end
             if (nargin>1) %specify bad trials
@@ -288,7 +269,7 @@ classdef (HandleCompatible)SessionScan < handle
             %[axhF, axhP] = plotSameTrial(obj);
             
             % remove error task conditions to avoid code error 
-            obj = obj.dealingSessionsExceptions();
+            obj = obj.dealingSessionsExceptions(); % nothing here 
 
         end
         function obj = dealingSessionsExceptions(obj)
@@ -296,739 +277,279 @@ classdef (HandleCompatible)SessionScan < handle
             % sessions
 
         end
-        function obj = convert0toNan(obj) % dealing with some Nan-int confliction
-            try
-            rdt = double(obj.Data.Position.RDT);
-            catch 
-                disp('no robot rdt');
-                rdt = zeros(size(obj.Data.Position));
-            end
-            rdt_idx = find([rdt==0]);
-            rdt(rdt_idx) = NaN;
-            obj.Data.Position.RDT = rdt;
-            
-            rdt = double(obj.Data.Force.RDTSeq);
-            rdt_idx = find([rdt==0]);
-            rdt(rdt_idx) = NaN;
-            obj.Data.Force.RDTSeq = rdt;
-        end
-        function trialTimeAverage(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            obj.duration_avg = obj.duration/double(obj.trials_num);
-        end
         function [sT, tT, sR] = getConditionalSucessTrials(obj) 
-            % [sucessTrials, totalTrials, sucessRate] = getConditionalSucessTrials(obj) 
-            % sT: sucessTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
-            % tT: totalTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
-            % sR: sucessRate, 4(directions)-by-n(targetnum)-by-m(forcenum)
-            
-            tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
-            if isempty(tard)
-                tard = 0;
+            % tobe re-written for the multi sessions processing
+% %             % getConditionalSucessTrials(obj) 
+% %             % This function is for display the sucess rate of the trials . 
+% %             % [sucessTrials, totalTrials, sucessRate] = getConditionalSucessTrials(obj) 
+% %             % sT: sucessTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
+% %             % tT: totalTrials, 4(directions)-by-n(targetnum)-by-m(forcenum)
+% %             % sR: sucessRate, 4(directions)-by-n(targetnum)-by-m(forcenum)
+% %             
+% %             tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
+% %             if isempty(tard)
+% %                 tard = 0;
+% %             end
+% %             tar_num = length(tard);
+% %             tarl = obj.tarLs;
+% %             tarl_num = length(tarl);
+% %             fThs = obj.fThs;
+% %             fThs_num = length(fThs);
+% %             sT = zeros(tar_num, tarl_num, fThs_num);    % sucessful trials
+% %             tT = zeros(tar_num, tarl_num, fThs_num);    % total trials
+% %             sR = zeros(tar_num, tarl_num, fThs_num); 
+% %             % copy all the tarR, tarL, fTh from all trials first
+% %             tarR = zeros(1, obj.trials_num);
+% %             tarL = zeros(1, obj.trials_num);
+% %             fTh  = zeros(1, obj.trials_num);
+% %             for trial_i = 1:obj.trials_num
+% %                 if isempty(obj.trials(trial_i).tarR)
+% %                     tarR(trial_i) = -1;
+% %                 else
+% %                     tarR(trial_i) = obj.trials(trial_i).tarR;
+% %                 end
+% %                 if isempty(obj.trials(trial_i).tarL)
+% %                     tarL(trial_i) = -1;
+% %                 else
+% %                     tarL(trial_i) = obj.trials(trial_i).tarL;
+% %                 end
+% %                 if isempty(obj.trials(trial_i).fTh) 
+% %                     fTh(trial_i) = -1;
+% %                 else
+% %                     fTh(trial_i) = obj.trials(trial_i).fTh;
+% %                 end
+% %             end
+% %             for tard_i = 1:tar_num
+% %                 for tarl_i = 1:tarl_num
+% %                     for fThi = 1:fThs_num
+% %                         tT(tard_i, tarl_i, fThi) = ...
+% %                             sum(tarR == tard(tard_i) &...
+% %                             tarL == tarl(tarl_i) & ...
+% %                             fTh  == fThs(fThi));
+% %                         sT(tard_i, tarl_i, fThi) = ...
+% %                             sum(tarR == tard(tard_i) &...
+% %                             tarL == tarl(tarl_i) & ...
+% %                             fTh  == fThs(fThi) & ...
+% %                             [obj.trials.outcome] == 1);
+% %                         sR(tard_i, tarl_i, fThi) = sT(tard_i, tarl_i, fThi)/tT(tard_i, tarl_i, fThi);
+% %                     end
+% %                 end
+% %             end
+% %             sR_2d = reshape(sR(1,:,:), size(sR, 2), size(sR, 3));
+% %             sR_table = [[obj.fThs]', sR_2d'];
+% %             % display rate using table
+% %             display(['For session' num2str(obj.ssnum)]);
+% %             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
+% %             T = table(sR_table(:,1), sR_table(:,2), sR_table(:,3), sR_table(:,4), sR_table(:,5), 'VariableNames', VarNames)
+        end
+        function displayBlockCondition(obj)
+            % displayBlockCondition(obj)
+            all_trials = length(obj.trials);
+            fin_trials = sum([obj.trials.outcome]==1);
+            rate = fin_trials/all_trials;
+            if (length(obj.tarLs) == 1)
+                fprintf("tar: %.1f(cm), F: %d(N): %d/%d, rate: %f \n" ,...
+                    obj.tarLs(1)*100, obj.fThs(1), fin_trials, all_trials, rate);
+            else 
+                fprintf("Stoc, F: %d(N): %d/%d, rate: %f \n" ,...
+                 obj.fThs(1), fin_trials, all_trials, rate);
             end
-            tar_num = length(tard);
-            tarl = obj.tarLs;
-            tarl_num = length(tarl);
-            fThs = obj.fThs;
-            fThs_num = length(fThs);
-            sT = zeros(tar_num, tarl_num, fThs_num);
-            tT = zeros(tar_num, tarl_num, fThs_num);
-            sR = zeros(tar_num, tarl_num, fThs_num); 
-            % copy all the tarR, tarL, fTh from all trials first
-            tarR = zeros(1, obj.trials_num);
-            tarL = zeros(1, obj.trials_num);
-            fTh  = zeros(1, obj.trials_num);
-            for trial_i = 1:obj.trials_num
-                if isempty(obj.trials(trial_i).tarR)
-                    tarR(trial_i) = -1;
-                else
-                    tarR(trial_i) = obj.trials(trial_i).tarR;
-                end
-                if isempty(obj.trials(trial_i).tarL)
-                    tarL(trial_i) = -1;
-                else
-                    tarL(trial_i) = obj.trials(trial_i).tarL;
-                end
-                if isempty(obj.trials(trial_i).fTh) 
-                    fTh(trial_i) = -1;
-                else
-                    fTh(trial_i) = obj.trials(trial_i).fTh;
-                end
-            end
-            for tard_i = 1:tar_num
-                for tarl_i = 1:tarl_num
-                    for fThi = 1:fThs_num
-                        tT(tard_i, tarl_i, fThi) = ...
-                            sum(tarR == tard(tard_i) &...
-                            tarL == tarl(tarl_i) & ...
-                            fTh  == fThs(fThi));
-                        sT(tard_i, tarl_i, fThi) = ...
-                            sum(tarR == tard(tard_i) &...
-                            tarL == tarl(tarl_i) & ...
-                            fTh  == fThs(fThi) & ...
-                            [obj.trials.outcome] == 1);
-                        sR(tard_i, tarl_i, fThi) = sT(tard_i, tarl_i, fThi)/tT(tard_i, tarl_i, fThi);
-                    end
-                end
-            end
-            sR_2d = reshape(sR(1,:,:), size(sR, 2), size(sR, 3));
-            sR_table = [[obj.fThs]', sR_2d'];
-            % display rate using table
-            display(['For session' num2str(obj.ssnum)]);
-            VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
-            T = table(sR_table(:,1), sR_table(:,2), sR_table(:,3), sR_table(:,4), sR_table(:,5), 'VariableNames', VarNames)
         end
         function [time_mean] = getConditionaltime(obj) 
-            % [trialTime] = getConditionaltime(obj) 
-            tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
-            if isempty(tard)
-                tard = 0;
-            end
-            tar_num = length(tard);
-            tarl = obj.tarLs;
-            tarl_num = length(tarl);
-            fThs = obj.fThs;
-            fThs_num = length(fThs);
-            trialTime = zeros(tar_num, tarl_num, fThs_num);
-            % copy all the tarR, tarL, fTh from all trials first
-            tarR = zeros(1, obj.trials_num);
-            tarL = zeros(1, obj.trials_num);
-            fTh  = zeros(1, obj.trials_num);
-            for trial_i = 1:obj.trials_num
-                if isempty(obj.trials(trial_i).tarR)
-                    tarR(trial_i) = -1;
-                else
-                    tarR(trial_i) = obj.trials(trial_i).tarR;
-                end
-                if isempty(obj.trials(trial_i).tarL)
-                    tarL(trial_i) = -1;
-                else
-                    tarL(trial_i) = obj.trials(trial_i).tarL;
-                end
-                if isempty(obj.trials(trial_i).fTh) 
-                    fTh(trial_i) = -1;
-                else
-                    fTh(trial_i) = obj.trials(trial_i).fTh;
-                end
-            end
-            for tard_i = 1:tar_num
-                for tarl_i = 1:tarl_num
-                    for fThi = 1:fThs_num
-                        trialid = ...
-                            (tarR == tard(tard_i) &...
-                            tarL == tarl(tarl_i) & ...
-                            fTh  == fThs(fThi));
-                        time_all = [obj.trials(trialid).edn_t] - [obj.trials(trialid).bgn_t];
-                        time_mean(tard_i, tarl_i, fThi) = mean(time_all);
-                    end
-                end
-            end
-            time_2d = reshape(time_mean(1,:,:), size(time_mean, 2), size(time_mean, 3));
-            time_table = [[obj.fThs]', time_2d'];
-            % display rate using table
-            display(['For session' num2str(obj.ssnum)]);
-            VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
-            T = table(time_table(:,1), time_table(:,2), time_table(:,3), time_table(:,4), time_table(:,5), 'VariableNames', VarNames)
+            % todo... form to multi-conditional function
+% %             % [trialTime] = getConditionaltime(obj) 
+% %             tard = setdiff([obj.tarRs], 0); % potential BUG here if both 0 and others are targets direction!
+% %             if isempty(tard)
+% %                 tard = 0;
+% %             end
+% %             tar_num = length(tard);
+% %             tarl = obj.tarLs;
+% %             tarl_num = length(tarl);
+% %             fThs = obj.fThs;
+% %             fThs_num = length(fThs);
+% %             trialTime = zeros(tar_num, tarl_num, fThs_num);
+% %             % copy all the tarR, tarL, fTh from all trials first
+% %             tarR = zeros(1, obj.trials_num);
+% %             tarL = zeros(1, obj.trials_num);
+% %             fTh  = zeros(1, obj.trials_num);
+% %             for trial_i = 1:obj.trials_num
+% %                 if isempty(obj.trials(trial_i).tarR)
+% %                     tarR(trial_i) = -1;
+% %                 else
+% %                     tarR(trial_i) = obj.trials(trial_i).tarR;
+% %                 end
+% %                 if isempty(obj.trials(trial_i).tarL)
+% %                     tarL(trial_i) = -1;
+% %                 else
+% %                     tarL(trial_i) = obj.trials(trial_i).tarL;
+% %                 end
+% %                 if isempty(obj.trials(trial_i).fTh) 
+% %                     fTh(trial_i) = -1;
+% %                 else
+% %                     fTh(trial_i) = obj.trials(trial_i).fTh;
+% %                 end
+% %             end
+% %             for tard_i = 1:tar_num
+% %                 for tarl_i = 1:tarl_num
+% %                     for fThi = 1:fThs_num
+% %                         trialid = ...
+% %                             (tarR == tard(tard_i) &...
+% %                             tarL == tarl(tarl_i) & ...
+% %                             fTh  == fThs(fThi));
+% %                         time_all = [obj.trials(trialid).edn_t] - [obj.trials(trialid).bgn_t];
+% %                         time_mean(tard_i, tarl_i, fThi) = mean(time_all);
+% %                     end
+% %                 end
+% %             end
+% %             time_2d = reshape(time_mean(1,:,:), size(time_mean, 2), size(time_mean, 3));
+% %             time_table = [[obj.fThs]', time_2d'];
+% %             % display rate using table
+% %             display(['For session' num2str(obj.ssnum)]);
+% %             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
+% %             T = table(time_table(:,1), time_table(:,2), time_table(:,3), time_table(:,4), time_table(:,5), 'VariableNames', VarNames)
         end
-        function obj = forceHighSample(obj, force_obj, ft_intm)
-            % align force to higher resolution according to a seperate
-            % ft_obj file. the seperate ft_obj file should extract from
-            % object of SessionScanFT
-            % check variable 
-            align_frdt = obj.Data.Force.RDTSeq;
-            align_Frdt = reshape(force_obj.RDT, 1, length(force_obj.RDT));
-            align_time = obj.time;
-            %plot(align_frdt, align_time, '*', align_Frdt, align_Time, 'o');
-            % aim: find all non-NaN value of frdts, fill the corresponding
-            %      time to align_Time, and linearly fill each interval 
-            %%% use each interval seperately
-             if (length(align_frdt)<2)
-                 msg = 'Data error: not enough sample, aborted!';
-                 error(msg);
-            end
-            %align_time_= align_time(~isnan(align_frdt));
-%             [~,idxFrdt] = intersect(align_Frdt,align_frdt,'stable'); %??? check this line
-%             [~,idxfrdt]          = intersect(align_frdt,align_Frdt,'stable'); %??? check this line
-%             align_Time = nan(1, length(align_Frdt));           % ??? can this work
-%             align_Time(idxFrdt) = align_time(idxfrdt);
-             
-             align_frdt_idx = [min(find(~isnan(align_frdt))) max(find(~isnan(align_frdt)))];
-             align_Time = interp1(align_frdt(align_frdt_idx), obj.time(align_frdt_idx), force_obj.RDT, 'linear', 'extrap');
-            % loop each interval
-%             for i = 1:length(idxFrdt)-1
-%                 idx_l = idxFrdt(i); 
-%                 idx_r = idxFrdt(i+1);
-%                 aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
-%                 %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
-%                 %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
-%                 align_Time(idx_l:idx_r) = aligned_tmp';
-%             end
-            ifplot = 0;
-            if(ifplot) % validation figure
-                %figure();
+        function obj = interpData(obj)
+            % OBJ = INTERPDATA(OBJ)
+            % INTERPOLATE DATA TO ALIGNED DATA IN FORMAT 
+            %   CONDITION: wam_t and force_t was aligned to the blackrock
+            %   time
+            %   TODO: align force_t into wam_t time, interpolate and save
+            %   data in the obj.data
+%             obj.force_t
+%             obj.wam_t
+            force_h = interp1(obj.force_t', obj.ft.force', obj.wam_t', 'linear', 'extrap')'; 
+            ifplot = 1;
+            if (ifplot)
                 clf;
-                plot(align_frdt, align_time, 'o', align_Frdt, align_Time, '.');
-                legend('reconstructed (fake) time', 'introplated time'); 
-                xlabel('RDT seq num'); ylabel('time'); 
-                title('validation interp');
-                
+                axh(1) = subplot(3,1,1);  hold on;
+                plot(obj.force_t, obj.ft.force(1,:), 'r.');
+                plot(obj.wam_t, force_h(1,:), 'b.');
+                axh(2) = subplot(3,1,2);  hold on;
+                plot(obj.force_t, obj.ft.force(2,:), 'r.');
+                plot(obj.wam_t, force_h(2,:), 'b.');
+                axh(3) = subplot(3,1,3);  hold on;
+                plot(obj.force_t, obj.ft.force(3,:), 'r.');
+                plot(obj.wam_t, force_h(3,:), 'b.');
+                linkaxes(axh, 'x');
+            end
+
+            obj.data.t = obj.wam_t;
+            obj.data.x = obj.wam.tp;
+            obj.data.v = obj.wam.tv;
+            obj.data.Fp = obj.wam.cf;
+            obj.data.tq = obj.wam.jt;
+            obj.data.jp = obj.wam.jp;
+            obj.data.ts = obj.wam.state;
+            obj.data.f = force_h;
+            
+            if (ifplot)
                 clf;
-                title('lo- hi- sampled data');
-                plot(obj.time, obj.force(2,:), '*'); hold on;
-                plot(align_Time, force_obj.force(2,:), '.');
-                legend('lo-sample, RTMA', 'hi-sample, reconstructed time');
-                
+                axh(1) = subplot(5,1,1);  hold on;
+                plot(obj.data.t, obj.data.x(2,:), 'r.'); 
+                ylabel('position (m)');
+                axh(2) = subplot(5,1,2);  hold on;
+                plot(obj.data.t, obj.data.v(2,:), 'b.');
+                ylabel('velocity (m/s)');
+                axh(3) = subplot(5,1,3);  hold on;
+                plot(obj.data.t, obj.data.f(2,:), 'r.');
+                ylabel('force (N)');
+                axh(4) = subplot(5,1,4);  hold on;
+                plot(obj.data.t, obj.data.Fp(2,:), 'r.');
+                ylabel('PertForce (N)');
+                axh(5) = subplot(5,1,5);  hold on;
+                plot(obj.data.t, obj.data.tq(4,:), 'b.');
+                ylabel('torque (Nm)');
+                linkaxes(axh, 'x');
             end
-             %obj.force_h = force_obj.force_net;    % not rotated
-             obj.force_h = force_obj.force;         % rotated
-             if isempty(obj.force_t)
-                disp('Force did not aligned with blackrock signal, align using messages');
-                obj.force_t = align_Time; % not work after ss 3046
-                obj.force_t = reshape(obj.force_t, 1, length(obj.force_t));
-             end
         end
-        function obj = wamHighSample(obj, wam_obj, wam_intm)
-            % align robot movement to higher resolution according to a
-            % seperate wam.obj file. the seperate wam.obj file should
-            % extract from SessionScanWam
-
-             wam_obj = convert0tonan_RDT(wam_obj);
-             align_wrdt = obj.Data.Position.RDT;
-             
-             ifplot = 0;
-             if (ifplot)
-                 clf; % 1. see the formatted rdt and wam rdt
-                 plot(align_wrdt, '*'); hold on;
-                 plot(wam_intm(3,:), '.');
-                 
-                 clf;
-                 align_wrdt_idx = [min(find(~isnan(align_wrdt))) max(find(~isnan(align_wrdt)))] ;
-                 align_wrdt_idxi = [find(wam_intm(3,:)==align_wrdt(align_wrdt_idx(1))) find(wam_intm(3,:)==align_wrdt(align_wrdt_idx(end)))];
-                 plot(align_wrdt, obj.time, '*'); hold on;
-                 plot(wam_intm(3,:), wam_intm(1,:) - wam_intm(1,align_wrdt_idxi(1)) + obj.time(align_wrdt_idx(1)), '.'); % constrained by the 1st
-                 % constrained by the 1st and the end
-                 time_k = (obj.time(align_wrdt_idx(end)) - obj.time(align_wrdt_idx(1)))/(wam_intm(1,align_wrdt_idxi(end)) - wam_intm(1,align_wrdt_idxi(1)));
-                 % assume two machine (robot, and process machine, have a constant time factor)
-                 plot(wam_intm(3,:), (wam_intm(1,:) - wam_intm(1,align_wrdt_idxi(1)) + obj.time(align_wrdt_idx(1)))*time_k, '.'); % constrained by the 1st
-                 ylabel('constructed time');
-                 xlabel('rdt');
-                 legend('constructed (fake) time', '1 type constrain', '2 ends constrain' );
-             end
-  
-             align_Wrdt = reshape(wam_obj.rdt, 1, length(wam_obj.rdt));
-             align_time = obj.time;
-             
-            % aim: find the max and min non-NaN value of wrdt, and time, 
-            %       Apply interval to all align_Wrdt
-
-            if (length(align_wrdt)<2)
-                 msg = 'Data error: not enough sample, aborted!';
-                 error(msg);
-            end
-            % 1. find the rdt
-%             [~,idxWrdt] = intersect(align_Wrdt,align_wrdt,'stable'); %??? check this line
-%             [~,idxwrdt]          = intersect(align_wrdt,align_Wrdt,'stable'); %??? check this line
-            align_wrdt_idx = [min(find(~isnan(align_wrdt))) max(find(~isnan(align_wrdt)))] ;
-                 
-%             align_Time = nan(1, length(align_Wrdt));           % ??? can this work
-%             align_Time(idxWrdt) = align_time(idxwrdt);
-            align_Time = interp1(align_wrdt(align_wrdt_idx), obj.time(align_wrdt_idx), wam_obj.rdt, 'linear', 'extrap');
-%             % 2. loop each interval, and get the data
-%             for i = 1:length(idxWrdt)-1
-%                 idx_l = idxWrdt(i); 
-%                 idx_r = idxWrdt(i+1);
-%                 aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
-%                 %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
-%                 %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
-%                 align_Time(idx_l:idx_r) = aligned_tmp';
-%             end
-%             
-             % check code...
-             ifplot = 1;
-             if (ifplot)
-%                  clf; 
-%                  plot(1./diff(obj.time)); % just random assigned a time!
-                 
-%                  clf;
-%                  plot(1./diff(align_Time));
-                
-                 clf; % here shows how I screw up the time!
-                 
-                 axh(1) = subplot(1,2,1); 
-                 plot(1./diff(obj.wam.time), 'b*'); title('wam freq');
-                 axh(2) = subplot(1,2,2); 
-                 plot(1./diff(align_Time), 'r.'); title('reconstructed RTMA freq');
-                 linkaxes(axh, 'y');
-
-                 
-                 %axh(1) = subplot(2,1,1); 
-                 plot(obj.time, obj.Data.Position.RDT, 'b*'); hold on;
-                 %axh(2) = subplot(2,1,2); 
-                 plot(align_Time, obj.wam.rdt, 'r.');
-                 %linkaxes(axh, 'x');
-                 
-                 clf;
-                 axh(1) = subplot(2,1,1); 
-                 plot(obj.wam.time, obj.wam.tp(:,2), '.'); % if the wam is continuous
-                 title('WAM timed torque');
-                 axh(2) = subplot(2,1,2); 
-                 plot(align_Time, obj.wam.tp(:,2), 'r.');
-                 title('aligned time torque')
-                 linkaxes(axh, 'x'); 
-                 
-                 clf; 
-                 title('lo-hi sampled')
-                 plot(obj.time, obj.Data.Position.Actual(:,2)', '*'); hold on;
-                 plot(align_Time, obj.wam.tp(:,2), 'r.');
-                 legend('lo sample', 'wam hi sample, reconstructed time');
-             end
-             
-             if (ifplot) % validation figure
-                 figure();
-                 plot(align_wrdt, align_time, 'o', align_Wrdt, align_Time, '*');
-                 legend('RTMA time', 'WAM time');
-                 xlabel('RDT seq num'); ylabel('time');
-                 title('validation interp');
-             end
-            %size(align_Time)
-            obj.wamp_h = wam_obj.tp;
-            obj.wamv_h = wam_obj.tv;
-            obj.wamt_h = wam_obj.jt;
-            % not work after ss3046;
-            if (isempty(obj.wam_t))
-                disp('wam_data did not aligned with blackrock signal, align using messages');
-                obj.wam_t = align_Time;
-                obj.wam_t = reshape(obj.wam_t, 1, length(obj.wam_t));
-            end
-            if ~isempty(wam_obj.state)
-                obj.wam_ts = wam_obj.state;
-            end
-            
-        end
-        function obj = emgHighSample(obj, emg_obj)
-            % obj = emgHighSample(obj, emg_obj)
-            % align EMG to task time. EMG data comes from a  seperate 
-            % emg.obj file. the seperate emg.obj file should  extract from 
-            % SessionScanEMG 
-            % the after sampled data will still be the same sampling rate
-            % as the EMG file, but the time has being aligned with the task
-            % time.
-            brtime_receieved = obj.Data.SpikeTimestamp;
-            disp([num2str(sum(isnan(brtime_receieved))) ' timepoints were nan']);
-            brtime_receieved(1) = brtime_receieved(2) - mean(diff(brtime_receieved), 'omitnan');
-            brrawtime_aligned = interp1(brtime_receieved, obj.Data.Time, emg_obj.brtime, 'linear', 'extrap');
-            obj.emg_h = emg_obj.dat;
-            obj.emg_t = brrawtime_aligned;
-            
-        end
-        function force = forceFTconvert(obj) % convert from select into world axis
+        function force = rotateAxisForce(obj) % convert from select into world axis
+            % force = rotateAxisForce(obj) 
+            % This is because the force here is from RTMA message
             force = obj.FTrot_M * obj.Data.Force.Sensor(1:3,:);
         end
-        function [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx, timezone)
-            % [resample_t, resample_f] = trialDataResampleFT(obj, trial_idx)
+        function [t, f_mat] = alignTrialDataF(obj, trial_idx, timezone)
+    %  [t, f_mat] = alignTrialDataF(obj, trial_idx, timezone)
             % for all trials resample the original data and time
             % origin data and time are Nonuniformly sampled
-            % due to the FT is non-normally distributed (code bug of
-            % FTmodule -cg), I used resample to get code data
             if nargin<2
-                trial_idx = [obj.trials.outcome]==1;
+                trial_idx = find([obj.trials.outcome]==1);
             end
-            trial_idx_num = find(trial_idx);
-            trials = (obj.trials(trial_idx));
-            %display(['Enter function Resample;']);
+            trial_idx_num = trial_idx;
+            trialstmp = (obj.trials(trial_idx_num));
             if exist('timezone', 'var')
                 tz_bgn = timezone(1);
                 tz_edn = timezone(2);
             else
                 tz_bgn = -0.5;
-                tz_edn =  1.0;
+                tz_edn =  0.7;
             end
-            resample_freq = 500;   % 500Hz
-            resample_t = [tz_bgn: (1/resample_freq): tz_edn];
-            resample_t = resample_t(2:end); % looks like this one is loger 1 element than Ty? how to deal withit?
-            resample_f = zeros(length(trials), length(resample_t), 3); % resample_value, respectively, x, y, z
 
-            for trial_i = 1:length(trials) % for all trials
+            for trial_i = 1:length(trialstmp) % for all trials
                 % select specific timezone
-                idx_t = trials(trial_i).force_t > tz_bgn & trials(trial_i).force_t <= tz_edn;
-                irregTx = trials(trial_i).force_t(idx_t); % problem here, not wanted force_t
-                
-                for dim_i = 1:3 % x, y, z seperately
-                    x = trials(trial_i).force_h(dim_i,idx_t);
-                    try
-                    [y, Ty] = resample(x,irregTx,resample_freq);            % the non-uniform resample
-                    %[y, Ty] = resample(y,irregTx,resample_freq);
-                    catch
-                        y = [];
-                        Ty = [];
-                        display(['Unable to resample trial' num2str(trial_i) ' dim' num2str(dim_i)]);
-                    end
-                    
-                    if (0) % visualize the resample result
-                        figure(); 
-                        hold on;
-                        plot(irregTx,x,'.-', Ty,y,'o-')
-                        legend('Original','Resampled')
-                        plot(Ty);
-                    end
-                    try
-                        resample_f(trial_i,:,dim_i) = y;
-                    catch
-                    %    display(['trial:' num2str(trial_idx_num(trial_i))]);
-                        y = resample(y,size(resample_f,2),length(y));         % may cause time skew here!
-                        resample_f(trial_i,:,dim_i) = y;
-                    end
+                idx_t = trialstmp(trial_i).data.t_shift > tz_bgn & trialstmp(trial_i).data.t_shift <= tz_edn;
+                if (trial_i) == 1
+                    t = trialstmp(trial_i).data.t_shift(idx_t);
                 end
-                %resample_t = Ty;  % still have 1ms variance between different trials, why?
+
+                for dim_i = 1:3 % x, y, z seperately
+                    f_mat(trial_i,:,dim_i) = trialstmp(trial_i).data.f(dim_i,idx_t);
+                end
             end
         end
-        function [resample_t, resample_p, resample_v] = trialDataAlignWAM(obj, trial_idx, timezone)
-            % for all trials align the original data and time into one
-            % matrix
-            % Assuming they are uniformlly sampled within one trial
-            % pick correct ones and save them in the matrix
+        function [t, x_mat, v_mat] = alignTrialDataX(obj, trial_idx, timezone)
+        %  [t, x_mat, v_mat] = alignTrialDataX(obj, trial_idx, timezone)
+            % for all trials resample the original data and time
+            % origin data and time are Nonuniformly sampled
             if nargin<2
-                trial_idx = [obj.trials.outcome]==1;
+                trial_idx = find([obj.trials.outcome]==1);
             end
+            trial_idx_num = trial_idx;
+            trialstmp = (obj.trials(trial_idx_num));
             if exist('timezone', 'var')
                 tz_bgn = timezone(1);
                 tz_edn = timezone(2);
             else
-                tz_bgn = -0.5; %time-zone
-                tz_edn =  0.8;
-            end
-            trial_idx_num = find(trial_idx);
-            trials = (obj.trials(trial_idx));
-            display(['Enter function Resample;']);
-
-            resample_freq = 500;   % 500Hz, same with WAM
-            resample_t = [tz_bgn: (1/resample_freq): tz_edn];
-            [~,idx_tmp] = sort(abs(resample_t - 0),2,'ascend'); 
-            resample_p = nan(length(trials), length(resample_t), 3); % x, y z
-            resample_v = nan(length(trials), length(resample_t), 3); % x, y z
-            resample_left_num = sum(resample_t<=0);         % left contain zero
-            %resample_left_idx = -resample_left_num+1:0;
-            resample_right_num = sum(resample_t>0);
-            %resample_right_idx = 1:resample_right_num;
-            % resample for all the positions
-
-            for trial_i = 1:length(trials) % for all trials
-                wam_t = trials(trial_i).position_t;
-                % find the cloest to zero 1
-                [~,idx_Tmp] = sort(abs(wam_t - 0),2,'ascend');
-                resample_Left_num = idx_Tmp(1); 
-                resample_Right_num = length(wam_t) - idx_Tmp(1);
-                % pair index
-                left_num = min(resample_left_num, resample_Left_num);
-                right_num = min(resample_right_num, resample_Right_num);
-                resample_left_idx = -left_num + idx_tmp(1)+1;     % avoid 0
-                resample_right_idx= right_num + idx_tmp(1);
-                resample_Left_idx = -left_num + idx_Tmp(1)+1;
-                resample_Right_idx= right_num + idx_Tmp(1);
-                % put index in the resampe_p and resample_v
-                resample_p(trial_i,resample_left_idx:resample_right_idx,1) = ...
-                    trials(trial_i).position_h(1,resample_Left_idx:resample_Right_idx);
-                resample_p(trial_i,resample_left_idx:resample_right_idx,2) = ...
-                    trials(trial_i).position_h(2,resample_Left_idx:resample_Right_idx);
-                resample_p(trial_i,resample_left_idx:resample_right_idx,3) = ...
-                    trials(trial_i).position_h(3,resample_Left_idx:resample_Right_idx);
-                resample_v(trial_i,resample_left_idx:resample_right_idx,1) = ...
-                    trials(trial_i).velocity_h(1,resample_Left_idx:resample_Right_idx);
-                resample_v(trial_i,resample_left_idx:resample_right_idx,2) = ...
-                    trials(trial_i).velocity_h(2,resample_Left_idx:resample_Right_idx);
-                resample_v(trial_i,resample_left_idx:resample_right_idx,3) = ...
-                    trials(trial_i).velocity_h(3,resample_Left_idx:resample_Right_idx);
+                tz_bgn = -0.5;
+                tz_edn =  0.7;
             end
 
-        end
-        function [obj, axh_list] = batchPredImpedanceLinDev_4th(obj)
-            axh_list = zeros(size(obj.trials));
-            for trial_i = 1:length(obj.trials)
-                if obj.trials(trial_i).outcome==1 
-                    try
-                        obj.trials(trial_i) = obj.trials(trial_i).predictImpedanceLinDev();
-                        %axh_list(trial_i) = obj.trials(trial_i).plotPredictedForceOnPosition();
-                    catch
-                        display(['unable to calculate in trial' num2str(obj.trials(trial_i).tNo)]);
-                    end
+            for trial_i = 1:length(trialstmp) % for all trials
+                % select specific timezone
+                idx_t = trialstmp(trial_i).data.t_shift > tz_bgn & trialstmp(trial_i).data.t_shift <= tz_edn;
+                if (trial_i) == 1
+                    t = trialstmp(trial_i).data.t_shift(idx_t);
+                end
+
+                for dim_i = 1:3 % x, y, z seperately
+                    x_mat(trial_i,:,dim_i) = trialstmp(trial_i).data.x(dim_i,idx_t);
+                    v_mat(trial_i,:,dim_i) = trialstmp(trial_i).data.v(dim_i,idx_t);
                 end
             end
         end
-        function [obj, axh_list] = batchPredImpedanceLinDev_5th(obj)
-            axh_list = zeros(size(obj.trials));
-            for trial_i = 1:length(obj.trials)
-                if obj.trials(trial_i).outcome==1 
-                    try
-                        obj.trials(trial_i) = obj.trials(trial_i).predictImpedanceLinDevS();
-                        %axh_list(trial_i) = obj.trials(trial_i).plotPredictedForceOnPosition();
-                    catch
-                        display(['unable to calculate in trial' num2str(obj.trials(trial_i).tNo)]);
-                    end
-                end
+        function pert_idx = getPerturbedTrialIdx(obj, outcome)
+            % PERT_IDX = GETPERTURBEDTRIALIDX(OBJ,OUTCOME)
+            % return the trials index that has perturbations 
+            % default, outcome = 1 (suceed trials);
+            % when specify outcome = 0, return unsucessful trials; 
+            % when specify outcome = -1, return all perturbed trials 
+            if ~exist('outcome', 'var')
+                outcome = 1;
             end
-        end
-        function pert_idx = getPerturbedTrialIdx(obj)
                 pert_idx = find([obj.trials.ifpert]);     % only depend on ifpert, is it safe?
                 pert_idx = setdiff(pert_idx, 1);          % first trial always have bad output, remvoe it
-                trials_fin  = find([obj.trials(:).outcome] == 1);
-                
-                pert_idx = intersect(pert_idx, trials_fin);
-                empty_idx = zeros(size(obj.trials));
-
-                for trial_i = 1:length(obj.trials)
-                    empty_idx(trial_i) = isempty(obj.trials(trial_i).pert_t_bgn);
+                trials_fin  = find([obj.trials(:).outcome] == outcome);
+                if (outcome ~= -1) 
+                    pert_idx = intersect(pert_idx, trials_fin);
                 end
-                pert_idx = setdiff(pert_idx, find(empty_idx));
-                
             return
         end
-        function yield_positions = getPertPos(obj, filtHz)
-            ifLowpass = 1; % read out the `$low_pass_freq` low pass force
-            if ~exist('filtHz', 'var')
-                low_pass_freq = 10; % Hz 
-            else
-                low_pass_freq = filtHz;
-            end
-            % return each trial Position according to the task condition
-            % (if more than 1 task conditions, may cause error).
-            % The position was calculated the average value from epecified
-            % time zone, of the last time during perturbation. (on the last
-            % datapoint in the pulse).
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            % align for the perturbation time
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            yield_positions = [];
-            % get the mean
-            % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-            hold on;
-            % get the perturbation time
-                % go with the first peturbed trial
-            obj = obj.updatePertEachTrial;
-            trials_idx = obj.getPerturbedTrialIdx();
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            pert_tz = [obj.trials(trials_idx(1)).pert_t_bgn obj.trials(trials_idx(1)).pert_t_edn]; % timezone 
-                                                                            %... This line always get wrong for no reason, but not when execute seperately
-            clearance = 0.2;
-            tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
-            [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx,tz_interest);
-            freq = 1/mean(diff(resample_t));
-            respp = zeros(size(resample_p));
-            for axi = 1:size(resample_p,3) % xyz
-                for ti = 1:size(resample_p,1)
-                    if (ifLowpass)
-                        respp(ti,:,axi) = smooth(resample_p(ti,:,axi), ceil(freq/low_pass_freq));
-                    end
-                end
-            end
-            if_substeady = 2;
-            if (if_substeady==1)    % relatively error
-                respp( :,:, 1) = respp(:,:,1) - mean(respp(:,1:50,1), 2, 'omitnan');
-                respp( :,:, 2) = respp(:,:,2) - mean(respp(:,1:50,2), 2, 'omitnan');
-                respp( :,:, 3) = respp(:,:,3) - mean(respp(:,1:50,3), 2, 'omitnan');
-            elseif (if_substeady == 2)  % absolute error
-                respp( :,:, 1) = respp(:,:,1) - 0.482;
-                respp( :,:, 2) = respp(:,:,2) - 0.482;
-                respp( :,:, 3) = respp(:,:,3) - 0.482;
-            elseif (if_substeady == 3)  % absolute value
-                respp( :,:, 1) = respp(:,:,1);
-                respp( :,:, 2) = respp(:,:,2);
-                respp( :,:, 3) = respp(:,:,3);
-            end
-            % find stady values of resample_p
-            steadyVal = findSteadyValue(respp(:,:,2), 50, 1);
-            yield_positions = steadyVal;
-        end
-        function yield_force = getPertFce(obj, filtHz)
-            % return each trial censored Force according to the task condition
-            % (if more than 1 task conditions, may cause error).
-            % The position was calculated the average value from epecified
-            % time zone, of the last time during perturbation. (on the last
-            % datapoint in the pulse).
-            ifLowpass = 1; % read out the `$low_pass_freq` low pass force
-            if ~exist('filtHz', 'var')
-                low_pass_freq = 10; % Hz 
-            else
-                low_pass_freq = filtHz;
-            end
-          
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            % align for the perturbation time
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            yield_force = [];
-            % get the mean
-            % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-            trials_idx = obj.getPerturbedTrialIdx();
-            % get the perturbation time
-                % go with the first peturbed trial
-            obj = obj.updatePertEachTrial;
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            pert_tz = [obj.trials(trials_idx(1)).pert_t_bgn obj.trials(trials_idx(1)).pert_t_edn]; % timezone
-            clearance = 0.2;
-            tz_interest = [pert_tz(1)-clearance, pert_tz(2)+clearance];
-            [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx, tz_interest);
-            freq = 1/mean(diff(resample_t));
-            if (ifLowpass)
-                resample_fF = zeros(size(resample_f));
-                for axi = 1:size(resample_f, 3)     % xyz 
-                    for ti = 1:size(resample_f,1) % trial_i
-                        resample_fF(ti,:,axi) = smooth(resample_f(ti,:,axi), ceil(freq/low_pass_freq));
-                    end
-                end
 
-            end
-            if_substeady = 1;
-            if (if_substeady==1)    % relatively error
-                resample_fF( :,:, 1) = resample_fF(:,:,1) - mean(resample_fF(:,1:50,1), 2, 'omitnan');
-                resample_fF( :,:, 2) = resample_fF(:,:,2) - mean(resample_fF(:,1:50,2), 2, 'omitnan');
-                resample_fF( :,:, 3) = resample_fF(:,:,3) - mean(resample_fF(:,1:50,3), 2, 'omitnan');
-            elseif (if_substeady == 2)  % absolute error
-                resample_fF( :,:, 1) = resample_fF(:,:,1) - 0.482;
-                resample_fF( :,:, 2) = resample_fF(:,:,2) - 0.482;
-                resample_fF( :,:, 3) = resample_fF(:,:,3) - 0.482;
-            end
-            % low-pass filter the fce
-            % find stady values of resample_p
-            steadyVal = findSteadyValue(resample_fF(:,:,2), 200, 1);
-            yield_force = steadyVal;
-        end
-        function command_force = getPertFce_cmd(obj)
-            % extract command force directly from the session data
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            
-            trials_idx = obj.getPerturbedTrialIdx();
-            command_force = (zeros(size(trials_idx)))';
-            % get the perturbation time
-                % go with the first peturbed trial
-            pert_time_idx = find(obj.trials(trials_idx(1)).pertfce_h ~= 0);
-            for trial_i = 1:length(trials_idx)
-                try
-                    command_force(trial_i) = setdiff(unique(obj.trials(trials_idx(trial_i)).pertfce_h(pert_time_idx)), 0);
-                catch 
-                    disp(['no pertfce on trial' num2str(trials_idx(trial_i)) ', give a 0!']);
-                    command_force(trial_i) = 0;
-                end
-            end
-        end
         %%% other process
         function obj_new = ConcatTrials(obj1, obj2, trial_idx1, trial_idx2)
             trials = [obj1.trials(trial_idx1) obj2.trials(trial_idx2)];
             obj_new = obj1;
             obj_new.trials = trials;
         end
-        function obj = processSession_n(obj)
-            if obj.ssnum == 1965
-                % all trial 
-                for trial_i = 1:length(obj.trials)
-                    % set fTh = 15;
-                    obj.trials(trial_i).fTh = 15;
-                    % all trial set force_y+5.4;
-                    obj.trials(trial_i).force(2,:) = obj.trials(trial_i).force(2,:)+5.4;
-                    obj.trials(trial_i).force_h(2,:) = obj.trials(trial_i).force_h(2,:)+5.4;
-                end
-            end
-        end
-        function obj = updatePertEachTrial(obj)
-            % obj = updatePertEachTrial()
-            % Updating if_pert variable depend on whether perturbed or not,
-            % because some time a trial should be perturbed, however as the
-            % force threshold never achieved enough long, the perturbed was
-            % not achieved. 
-            % Use function TrialScan.findStepPerterbTime()
-            
-            %trial_num = length(obj.trials);
-            
-            trial_idx = obj.getPerturbedTrialIdx();
-            for trial_i = trial_idx
-                if obj.trials(trial_i).ifpert && (obj.trials(trial_i).outcome==1)
-                    switch obj.trials(trial_i).getPerturbationPattern
-                        case 2
-                            obj.trials(trial_i) = obj.trials(trial_i).findStepPerterbTime();
-                        case 3
-                        obj.trials(trial_i) = obj.trials(trial_i).findStepx0PerterbTime();
-                    end
-                else
-                    obj.trials(trial_i).pert_t_bgn = nan; % will this cause error?
-                end
-            end
-        end
-        %%% communicate 
-        function obj = generateWamPertData(obj)
-            % send data into wam function to help SessionScanWam generate perturbation-only data
-            % perturbation rdt already saved in TrialScan
-            tarL_list = [];
-            fTh_list = [];
-            rdt_ranges_all = {};
-            i = 0;
-            for tarLi = obj.tarLs
-                for fThi = obj.fThs
-                    i = i+1;
-                    trials_idx = [obj.trials.tarL] == tarLi &...
-                                    [obj.trials.fTh] == fThi &...
-                                    [obj.trials.outcome] == 1;      % only sucessful trials
-                    rdt_ranges = [obj.trials(trials_idx).pert_rdt_bgn;...  
-                                    obj.trials(trials_idx).pert_rdt_edn];
-                    tarL_list = [tarL_list tarLi];
-                    fTh_list  = [fTh_list fThi];
-                    rdt_ranges_all{i} = rdt_ranges;
-                end
-            end
-            obj.wam = obj.wam.concatinateTrials2File(tarL_list, fTh_list, rdt_ranges_all);
-            % for each trial condition, concatinate a structure
-            
-             % call generateWamPertData()
-        end
-        
         function [obj] = add_to_PertData(obj, new_Data_pert)
             n_test1 = length(obj.wam.Data_pert);
             n_test2 = length(new_Data_pert);
@@ -1039,208 +560,12 @@ classdef (HandleCompatible)SessionScan < handle
             
         end
         
-        function obj = generateWamPertData_ensemble(obj)
-            % send data into wam function to help SessionScanWam generate perturbation-only data
-            % perturbation rdt already saved in TrialScan
-            
-            % Find and talk out start up time in zero state
-            dexStart = max(find(obj.wam.state == 0))+1;
-%             dexEnd = max(find(abs(diff(obj.wam.state(1:499999))) == 6)); % Temporarly cut end due to change in sampling rate
-            dexEnd = max(find(abs(diff(obj.wam.state)) == 6)); % Keep all
 
-            state = obj.wam.state(dexStart:dexEnd);
-            
-            % Figure out state
-            success = zeros(size(state));
-            last_dexForceRamp = 0;
-            for i = 1:length(state)-1
-                % Set last to 1 if its the start of the force hold
-                if(state(i) == 2 && state(i+1) == 3)
-                    last_dexForceRamp = i;
-                end
-                
-                % Set state last to zero if trial progreses to fast
-                if((state(i+1)-state(i)~=0))
-                    if((state(i+1)-state(i))~=1)
-                        % leave success at zero
-                        last_dexForceRamp = 0;
-                    end
-                end
-                
-                % If both checks are passed and 6 is reached consider it a
-                % success
-                if(last_dexForceRamp ~= 0 && state(i+1) == 6)
-                    success(last_dexForceRamp:i) = 1;
-                end
-            end
-            
-            % Find trial onset
-            dexForceRampStart = find(state.*success == 3 & [0;abs(diff(state))>=1])+dexStart;
-            dexMovOnset = find(state.*success == 4 & [0;abs(diff(state))>=1])+dexStart-1;
-            dexHoldEnd = find(state.*success == 6 & [0;abs(diff(state))>=1])+dexStart-2;
-            
-            state_advance = zeros(size(state));
-            state_advance(dexForceRampStart) = 1;
-            state_advance(dexMovOnset) = 2;
-            state_advance(dexHoldEnd) = 3;
-            
-                            
-            % Chop first trial
-            dexForceRampStart = dexForceRampStart(2:end-3);
-            dexMovOnset = dexMovOnset(2:end-3);
-            dexHoldEnd = dexHoldEnd(2:end-3);
-            
-%             % Check if the size of the dexs are the same. If not check
-%             % order
-%             if(0~=sum(diff([length(dexForceRampStart),length(dexMovOnset),length(dexHoldEnd)])))
-%                 if(dexMovOnset(1) > dexForceRampStart(1)) % remove extra trial
-%                     dexMovOnset = dexMovOnset(2:end);
-%                     dexHoldEnd = dexHoldEnd(2:end);
-%                 end
-%                 
-%                 if(length(dexHoldEnd) > length(dexForceRampStart)+100) % If weird problem
-%                     dexHoldEnd = dexHoldEnd(1:length(dexMovOnset));
-%                     dexForceRampStart = dexForceRampStart(1:length(dexMovOnset));
-%                 end
-%             end
-            
-%             % Check for failed trials that did not go through all states
-%             % If length is all the same dont bother checking
-%             if ~(length(dexHoldEnd) == length(dexMovOnset))
-%                 dexSkip = find(dexHoldEnd(1:length(dexMovOnset)) - dexMovOnset<0,1); 
-%                 dexForceRampStart = dexForceRampStart([1:dexSkip-1,dexSkip+1:length(dexForceRampStart)]);
-%                 dexHoldEnd = dexHoldEnd([1:dexSkip-1,dexSkip+1:length(dexHoldEnd)]);
-%             end
-
-            
-            % Check the ranges were chosen correctly
-            figure; 
-            ax1 = subplot(3,1,1);
-            plot(obj.wam.time,obj.wam.tp(:,2),'linewidth',2.5); hold on;
-            plot(obj.wam.time(dexForceRampStart),obj.wam.tp(dexForceRampStart(1), 2),'o','linewidth',2.5); hold on;
-            plot(obj.wam.time(dexMovOnset),obj.wam.tp(dexMovOnset, 2),'*','linewidth',2.5); grid on;
-            plot(obj.wam.time(dexHoldEnd),obj.wam.tp(dexHoldEnd, 2),'+','linewidth',2.5); grid on;
-            ylabel('Postion');
-            
-            ax2 = subplot(3,1,2);
-            plot(obj.wam.time,obj.wam.state,'linewidth',2.5); hold on; grid on; ylim([0 8]);
-%             plot(obj.wam.time(dexStart:dexEnd),success);
-            plot(obj.wam.time(dexForceRampStart),obj.wam.state(dexForceRampStart),'o','linewidth',2.5); hold on;
-            plot(obj.wam.time(dexMovOnset),obj.wam.state(dexMovOnset),'*','linewidth',2.5); grid on;
-            plot(obj.wam.time(dexHoldEnd),obj.wam.state(dexHoldEnd),'+','linewidth',2.5); grid on;
-            ylabel('State');
-            
-            ax3 = subplot(3,1,3);
-            plot(obj.wam.time(1:end-1),1./diff(obj.wam.time),'.','linewidth',2.5);
-            ylabel('Sampling rate (samples/s)'); xlabel('Time (s)');
-            
-            linkaxes([ax1, ax2, ax3],'x');
-        
-            tarL_list = [];
-            fTh_list = [];
-            rdt_ranges_all = {};
-            i = 0;
-            for tarLi = obj.tarLs
-                for fThi = obj.fThs
-                    i = i+1;
-                    % Remove trials_idx for now add to select successful
-                    % and right contion in the onset time (e.g. obj.trials(trials_idx).idx_fcr)
-%                     trials_idx = [obj.trials.tarL] == tarLi &...
-%                                     [obj.trials.fTh] == fThi;%; &...
-%                                     [obj.trials.outcome] == 1;      % only sucessful trials
-%                                 
-%                     % Find movement onsent time and align them            
-%                     rdt_tmp = [obj.trials.idx_fcr;...
-%                                     obj.trials.idx_mov;...
-%                                     obj.trials.idx_end];
-%                     rdt_ranges = [obj.trials(trials_idx).bgn] + ...
-%                         [[obj.trials(trials_idx).idx_mov] -  min(rangeDiff(1,:));...
-%                         [obj.trials(trials_idx).idx_mov] +  min(rangeDiff(2,:))];
-%                     rdt_mov = [obj.trials(trials_idx).bgn] + [obj.trials(trials_idx).idx_mov]; % Movement onset use to alter time vector
-
-                    rangeDiff = diff([dexForceRampStart';...
-                               dexMovOnset';...
-                               dexHoldEnd']);
-                             
-                    ranges = [[dexMovOnset'] -  min(rangeDiff(1,:));...
-                              [dexMovOnset'] +  min(rangeDiff(2,:))];
-                    tarL_list = [tarL_list tarLi];
-                    fTh_list  = [fTh_list fThi];
-                    rdt_ranges_all{i} = ranges;
-                    dexMovOnset_all{i} = dexMovOnset;
-                end
-            end
-            obj.wam = obj.wam.concatinateTrials2File_ensemble(tarL_list, fTh_list, rdt_ranges_all, dexMovOnset_all);
-            % for each trial condition, concatinate a structure
-            % call generateWamPertData_ensemble()
-            
-        end
-        
-        function [obj] = add_to_ensemble(obj, new_Data_pert_ensemble)
-            
-            for i = 1:length(new_Data_pert_ensemble)
-                n = length(obj.wam.Data_pert_ensemble(i).time_r) - length(new_Data_pert_ensemble(i).time_r);
-                
-                obj.wam.Data_pert_ensemble(i).time_r = [obj.wam.Data_pert_ensemble(i).time_r;...
-                                         obj.get_chopOrPadd(new_Data_pert_ensemble(i).time_r,n)];
-                                     
-                obj.wam.Data_pert_ensemble(i).z_r_1 = [obj.wam.Data_pert_ensemble(i).z_r_1;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).z_r_1,n)];
-                obj.wam.Data_pert_ensemble(i).z_r_2 = [obj.wam.Data_pert_ensemble(i).z_r_2;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).z_r_2,n)];  
-                                    
-                obj.wam.Data_pert_ensemble(i).u_r_1 = [obj.wam.Data_pert_ensemble(i).u_r_1;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).u_r_1,n)];
-                obj.wam.Data_pert_ensemble(i).u_r_2 = [obj.wam.Data_pert_ensemble(i).u_r_2;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).u_r_2,n)];  
-                                    
-                obj.wam.Data_pert_ensemble(i).v_r_1 = [obj.wam.Data_pert_ensemble(i).v_r_1;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).v_r_1,n)];          
-                obj.wam.Data_pert_ensemble(i).v_r_2 = [obj.wam.Data_pert_ensemble(i).v_r_2;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).v_r_2,n)];  
-                                    
-                obj.wam.Data_pert_ensemble(i).it_r = [obj.wam.Data_pert_ensemble(i).it_r;...
-                                       obj.get_chopOrPadd(new_Data_pert_ensemble(i).it_r,n)]; 
-                                   
-                obj.wam.Data_pert_ensemble(i).rdt_r = [obj.wam.Data_pert_ensemble(i).rdt_r;...
-                                        obj.get_chopOrPadd(new_Data_pert_ensemble(i).rdt_r,n)]; 
-                                    
-                obj.wam.Data_pert_ensemble(i).state_r = [obj.wam.Data_pert_ensemble(i).state_r;...
-                                          obj.get_chopOrPadd(new_Data_pert_ensemble(i).state_r,n)]; 
-            end
-
-        % Old
-            % R1 = size(ss1972.wam.Data_pert_ensemble,2);
-            % R2 = size(ss1973.wam.Data_pert_ensemble,2);
-            % n =  size(ss1973.wam.Data_pert_ensemble(1).tp,1) - size(ss1972.wam.Data_pert_ensemble(54).tp,1);
-            %
-            % for i = 1:R2
-            %     ss1972.wam.Data_pert_ensemble(R1+i).FT = 10;
-            %     ss1972.wam.Data_pert_ensemble(R1+i).x0 = 0.05;
-            %
-            %     ss1972.wam.Data_pert_ensemble(R1+i).time = [ss1973.wam.Data_pert_ensemble(i).time; zeros(n,1)];
-            %     ss1972.wam.Data_pert_ensemble(R1+i).tp = [ss1973.wam.Data_pert_ensemble(i).tp; zeros(n,3)];
-            %     ss1972.wam.Data_pert_ensemble(R1+i).tv = [ss1973.wam.Data_pert_ensemble(i).tv; zeros(n,3)];
-            %     ss1972.wam.Data_pert_ensemble(R1+i).cf = [ss1973.wam.Data_pert_ensemble(i).cf; zeros(n,3)];
-            %     ss1972.wam.Data_pert_ensemble(R1+i).it = [ss1973.wam.Data_pert_ensemble(i).it; zeros(n,1)];
-            %     ss1972.wam.Data_pert_ensemble(R1+i).rdt = [ss1973.wam.Data_pert_ensemble(i).rdt; zeros(n,1)];
-            %
-            % end
-            
-        end
-        
-        function [mat] = get_chopOrPadd(obj,mat,n)
-            if(n==0)
-                mat = mat;
-            elseif(n > 0)
-                mat = [zeros(size(mat,1),n),mat];
-            elseif(n < 0) 
-                mat = mat(:,1:end+n);
-            end  
-        end
-        
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % EXPORT CODE FOR FURTHER ANALYSIS
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [cellsmat] = export_as_formatted(obj, ifplot)
-            
+            % ...TODO: RE-EDIT IT TO GET BETTER OUTPUT
             if (~exist('ifplot', 'var'))
                 ifplot = 0;
             end
@@ -1249,62 +574,76 @@ classdef (HandleCompatible)SessionScan < handle
             %   x: 3-by-N matrix, robot endpoint
             %   v: 3-by-N matrix, robot velocity
             %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
+            %   Fp: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
             %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,3);
-            for p_i = 1:3
-                 t_idx{p_i} = find(pert_trials==p_i-1); % 0,nopert; 1, pulse; 2, stoc
+            %   t: 1-by-N matrix, time 
+            %   mvst: the mask that robot can freely move
+            trial_perturbs = [obj.trials.ifpert];
+            pert_max = max(3, (max(trial_perturbs)+1)); % 0,nopert; 1, pulse; 2, stoc
+            t_idx = cell(2,pert_max);                   % succ/failure * pert_types
+            for sf = 1:2
+                for p_i = 1:pert_max
+                     t_idx{sf,p_i} = intersect(find(trial_perturbs==p_i-1), ...
+                                    find([obj.trials.outcome]==2-sf));  % 1 or 0
+                     t_idx{sf,p_i} = setdiff(t_idx{sf,p_i}, 1);
+                end
             end
             
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
+            % TODO: consider remove correction trials here? 
+            
+            % export part ...
+            
+            if ~isempty([t_idx{1:2,3}]) % stoc-perturbed trials. 
+                % Stocpert do not in the same session with step ones in current experiments
+                cellsmat = cell(2, length(obj.tarLs), 15, 3); % think!!! 
+                for sf = 1:2 % suceed and failed trials
+                    for tl_i = 1:length(obj.tarLs)
+                        %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
+                        trial_list = intersect(find([obj.trials.tarL] == obj.tarLs(tl_i)) , t_idx{sf,3});
+%                         trial_list = setdiff(trial_list,1);
+                        for t_i = 1:length(trial_list)
+                            t_tmp = obj.trials(trial_list(t_i));
+                            cellsmat{sf,tl_i,t_i,3} = t_tmp.export_as_formatted;
+                        end
                     end
                 end
             else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
-                for p_i = 1:2
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1); % no failed trials 
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    trial_list = setdiff(trial_list,[1]);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
+                trial_max = max([length(t_idx{1,1}), length(t_idx{1,2}),...
+                                length(t_idx{2,1}), length(t_idx{2,2})]);
+                cellsmat = cell(2,length(obj.tarLs),trial_max,3); % for block design, only fill idx_tarLs==1 
+                for sf =  1:2
+                    for p_i = 1:2
+                        %trial_list = setdiff(t_idx{p_i},1);
+%                         trial_list = find([obj.trials.outcome] == 1); % no failed trials
+                        trial_list = t_idx{sf,p_i};
+                        %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
+%                         trial_list = intersect(trial_list, t_idx{p_i});
+                        %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
+                        switch obj.ssnum
+                            case 3402
+                                trial_list = setdiff(trial_list,18);
+                            case 3385
+                                trial_list = setdiff(trial_list,28);
+                            case 3387
+                                trial_list = setdiff(trial_list,9);
+                            case 3361
+                                trial_list = setdiff(trial_list,9);
+                        end
+                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        %trial_list = setdiff(trial_list,[1 2 51:60]);
+%                         trial_list = setdiff(trial_list,[1]);
+                        for t_i = 1:length(trial_list)
+                            t_tmp = obj.trials(trial_list(t_i));
+                            cellsmat{sf,1,t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                            xlim([-5 -4])
+                            ifplot = true;
+                            if (ifplot)
+                                subplot(2,1,1);
+                                plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.x(2,:));
+                                subplot(2,1,2);
+                                plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.f(2,:));
+                            end
+                        end
                     end
                 end
             end
@@ -1326,10 +665,10 @@ classdef (HandleCompatible)SessionScan < handle
                     end
                     if (p_i ~= 3)
                         for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
+                            if(isempty(cellsmat{1,t_i, p_i}))
                                 continue;
                             end
-                            dt = diff(cellsmat{t_i,p_i}.t);
+                            dt = diff(cellsmat{1,t_i,p_i}.t);
                             dt = [dt(1) dt];
                             plot(t_i*plt_offset + dt);
                         end
@@ -1338,10 +677,10 @@ classdef (HandleCompatible)SessionScan < handle
                             continue
                         end
                         tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
+                        for tl_i = 1:size(cellsmat, 2)
+                            for t_i = 1:length(cellsmat(1,tl_i,:,p_i))
+                                if ~isempty(cellsmat{1,tl_i,t_i,p_i})
+                                dt = diff(cellsmat{1,tl_i,t_i,p_i}.t);
                                 dt = [dt(1) dt];
                                 tiofst = tiofst+1;
                                 plot(tiofst*plt_offset + dt);
@@ -1352,389 +691,6 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
         end
-        function [cellsmat] = export_as_formatted_4(obj, ifplot)
-            % THIS FUNCTION IS DESIGNED FOR EXPORTING TRIALS WITH step perturbation
-            % THE EACH EXPORTED DATA COLUMN IS: 
-            %   1. NO PULSE;
-            %   2. PULSE;
-            %   3. STOC;
-            %   4. STEP;
-            
-            if (~exist('ifplot', 'var'))
-                ifplot = 0;
-            end
-            % export as a t(trials_num)-by-p(perturbation options) cell mat
-            % for each cell, the data format are each trial, which contains:
-            %   x: 3-by-N matrix, robot endpoint
-            %   v: 3-by-N matrix, robot velocity
-            %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
-            %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,4);
-            ifpert_keys = [0 1 2 4];
-            for p_i = 1:4
-                 t_idx{p_i} = find(pert_trials==ifpert_keys(p_i)); % 0,nopert; 1, pulse; 2, stoc; 3, step; 4. square
-            end
-            
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                    end
-                end
-            else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3}), length(t_idx{4})]),3);
-                for p_i = [1:2 4]
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1); % no failed trials 
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    trial_list = setdiff(trial_list,[1]);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
-                    end
-                end
-            end
-            
-            % plot out the time skew
-            ifplot = 0; %-test
-            
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        function [cellsmat] = export_as_formatted_5(obj, ifplot)
-            % THIS FUNCTION IS DESIGNED FOR EXPORTING TRIALS WITH NO
-            % RELEASE
-            % THE EACH EXPORTED DATA COLUMN IS: 
-            %   1. NO PULSE;
-            %   2. PULSE;
-            %   3. STOC;
-            %   4. NO RELEASE;
-            
-            if (~exist('ifplot', 'var'))
-                ifplot = 0;
-            end
-            % export as a t(trials_num)-by-p(perturbation options) cell mat
-            % for each cell, the data format are each trial, which contains:
-            %   x: 3-by-N matrix, robot endpoint
-            %   v: 3-by-N matrix, robot velocity
-            %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
-            %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,4);
-            ifpert_keys = [0 1 2 5];
-            for p_i = 1:4
-                 t_idx{p_i} = find(pert_trials==ifpert_keys(p_i)); % 0,nopert; 1, pulse; 2, stoc; 3, step; 5. no release
-            end
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                    end
-                end
-            else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3}), length(t_idx{4})]),3);
-                for p_i = [1:2 4]
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    trial_list = find([obj.trials.outcome] == 1); % only select sucessful trials 
-                    % the session-specific cases here
-                    if (sum(obj.ssnum == [3602 3603]))
-                        trial_list = find([obj.trials.outcome] ~= -1);
-                    end
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    if (sum(obj.ssnum ~= [3603 3602]))
-                        trial_list = setdiff(trial_list,[1]);
-                    end
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
-                    end
-                end
-            end
-            
-            % plot out the time skew
-            ifplot = 0; %-test
-            
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        function [cellsmat] = export_as_formatted_5_failedTrials(obj, ifplot)
-            % This is work only for the failed trials
-            % If the failed trial is less than 15, repeat it to be 15... 
-            % THIS FUNCTION IS DESIGNED FOR EXPORTING TRIALS WITH NO
-            % RELEASE
-            % THE EACH EXPORTED DATA COLUMN IS: 
-            %   1. NO PULSE;
-            %   2. PULSE;
-            %   3. STOC;
-            %   4. NO RELEASE;
-            
-            if (~exist('ifplot', 'var'))
-                ifplot = 0;
-            end
-            % export as a t(trials_num)-by-p(perturbation options) cell mat
-            % for each cell, the data format are each trial, which contains:
-            %   x: 3-by-N matrix, robot endpoint
-            %   v: 3-by-N matrix, robot velocity
-            %   f: 3-by-N matrix, force transducer force
-            %   Fpert: 1-by-N matrix, perturbation force, in stoc 2-by-N(xy)
-            %   ts: 1-by-N matrix, task states
-            %   time: 1-by-N matrix, time 
-            %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
-            pert_trials = [obj.trials.ifpert];
-            t_idx = cell(1,4);
-            ifpert_keys = [0 1 2 5];
-            for p_i = 1:4
-                 t_idx{p_i} = find(pert_trials==ifpert_keys(p_i)); % 0,nopert; 1, pulse; 2, stoc; 3, step; 5. no release
-            end
-
-            if ~isempty(t_idx{3}) % stoc-perturbed trials. 
-                % Assume only stocpert do not in the same session with step ones
-                cellsmat = cell(length(obj.tarLs), max(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),15),3);
-                for tl_i = 1:length(obj.tarLs)
-                    %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
-                    trial_list = setdiff(trial_list,1);
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                    end
-                end
-            else
-                cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3}), length(t_idx{4})]),3);
-                for p_i = [1:2 4]
-                    %trial_list = setdiff(t_idx{p_i},1);
-                    %trial_list = find([obj.trials.outcome] == 1); % only select sucessful trials 
-                    trial_list = find([obj.trials.outcome] == 0); % only select failed trials 
-                    % the session-specific cases here
-                    if (sum(obj.ssnum == [3602 3603]))
-                        trial_list = find([obj.trials.outcome] ~= -1);
-                    end
-                    %trial_list = find([obj.trials.outcome] ~= -1); % spring test parameter selection
-                    trial_list = intersect(trial_list, t_idx{p_i});
-                    %%%%%%%%%%%%%%%%%% add some exceptions here %%%%%%%%%%%%%%%%%%
-                    switch obj.ssnum
-                        case 3402
-                            trial_list = setdiff(trial_list,18);
-                        case 3385
-                            trial_list = setdiff(trial_list,28);
-                        case 3387
-                            trial_list = setdiff(trial_list,9);
-                        case 3361
-                            trial_list = setdiff(trial_list,9);
-                    end
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    %trial_list = setdiff(trial_list,[1 2 51:60]);
-                    if (sum(obj.ssnum ~= [3603 3602]))
-                        trial_list = setdiff(trial_list,[1]);
-                    end
-                    for t_i = 1:length(trial_list)
-                        t_tmp = obj.trials(trial_list(t_i));
-                        cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
-                        xlim([-5 -4])
-                        ifplot = true;
-                        if (ifplot) 
-                        subplot(2,1,1);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.x(2,:));
-                        subplot(2,1,2);
-                        plot(cellsmat{t_i, p_i}.t, cellsmat{t_i, p_i}.f(2,:));
-                        end 
-                    end
-                end
-                
-                %%%% repeat the last in conidtion (failed trials)
-                for trial_i = 1:15
-                    if isempty(cellsmat{trial_i,2})
-                        cellsmat(trial_i,2) = cellsmat(trial_i-1,2);
-                    end
-                end
-            end
-            
-            % plot out the time skew
-            ifplot = 0; %-test
-            
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 1)
-                            for t_i = 1:length(cellsmat(tl_i,:,p_i))
-                                if ~isempty(cellsmat{tl_i,t_i,p_i})
-                                dt = diff(cellsmat{tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        
         function [cellsmat] = export_as_formatted_hybridss(obj, ifplot)
             % hybrids can have pulse, stoc and no pulse pert
             if (~exist('ifplot', 'var'))
@@ -1839,18 +795,11 @@ classdef (HandleCompatible)SessionScan < handle
             end
         end
         
-        %%% with perturbations
-        function pert_ct = countPerturbation(obj)
-            % pert_ct = countPerturbation(); % return the trial # being
-            % perturbed
-            pert_ct = 0;
-            for trial_i = 1:length(obj.trials)
-                ifpert = obj.trials(trial_i).ifpert;
-                pert_ct = pert_ct + double(ifpert);
-            end
-        end
         %%% plot all session as a line
-        function taskScanTrials(obj)
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % CHECK THE TASK PERFORMANCE DATA  
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        function dispTaskScanTrials(obj)
             % I need true combo here! see the ProcessRawData
             all_fTH = unique([obj.trials.fTh]);
             all_fTH = all_fTH(~isnan(all_fTH));
@@ -1886,7 +835,8 @@ classdef (HandleCompatible)SessionScan < handle
             ylabel('target type number');
             title('Task trials finish condition');
         end
-        function taskStateMuskFig(obj)
+        function plotTaskStateMuskFig(obj)
+            % TODO: ... THINK HOW TO MAKE THIS EASIER TO UNDERSTAND!!! 
             % display task masks in y-axis, blue: suceed, red: failure
             fields_t = fieldnames(obj.Data.TaskStateMasks); 
             fields_num = length(fields_t);
@@ -1917,143 +867,138 @@ classdef (HandleCompatible)SessionScan < handle
                 plot(idx, var_ST(idx), [col(ii) ]);
             end
             % notations
-            yticks([1 2 3 4 5 6 7]);
+            yticks([1 2 3 4 5 6 7 8]);
             yticklabels(fields_t');
             xlabel('time pts');
             title('states though time');
         end
-        function taskJointPosition(obj) % need further changing. 
-            % plot 
-            figure();
-            axish(1) = subplot(2,1,1);
-            % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
-            plot(obj.time, obj.Data.Position.JointPosition');
-            legend('J1', 'J2', 'J3', 'J4');
-            axish(2) = subplot(2,1,2);
-            % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
-            plot(obj.Data.Position.JointVelocity');
-            legend('J1', 'J2', 'J3', 'J4');
-            % notation
-            %set(axish(1), 'Ylim', [-0.02 0.02]);
-            ylabel(axish(1), 'joints positions');
-            %set(axish(2), 'Ylim', [-0.3 0.3]);
-            ylabel(axish(2), 'joints velocities');
-            xlabel(axish(2), 'time points');
-            
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % CHECK MESSAGE DATA AND HIGH SAMPLED DATA 
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        function fh = plotTaskJointPosition(obj)  
+            % plot the joint 4 position throughout this session
+            fh = figure(); hold on;
+            plot(obj.time, obj.Data.Position.JointPosition(4,:), 'b-o');
+            plot(obj.data.t, obj.data.jp(4,:), '.');
+            legend('msg', 'hi-sp');
+            xlabel('time (s)');
+            ylabel('pos (rad)');
+            title('Joint 4 position')
         end
-        function axh = taskJointPosition_relateve(obj) % Plot relative position. 
-            % plot 
-            figure();
-            axh(1) = subplot(2,1,1);
-            % plot([diff(obj.Data.Position.JointPosition,1,2)-obj.Data.Position.JointVelocity(:,2:end)]');
-            position_offset = obj.Data.Position.JointPosition(:,~isnan(obj.Data.Position.JointPosition(1,:)));
-            position_offset = repmat(position_offset(:,1),1,size(obj.Data.Position.JointPosition,2));
-            plot(obj.time, (obj.Data.Position.JointPosition - position_offset)');
-            legend('J1', 'J2', 'J3', 'J4');
-            axh(2) = subplot(2,1,2);
-            % plot([diff(obj.Data.Position.JointVelocity,1,2)-obj.Data.Position.JointTorque(:,2:end)]');
-            plot(obj.Data.Position.JointVelocity');
-            legend('J1', 'J2', 'J3', 'J4');
-            % notation
-            %set(axish(1), 'Ylim', [-0.02 0.02]);
-            ylabel(axh(1), 'joints positions');
-            %set(axish(2), 'Ylim', [-0.3 0.3]);
-            ylabel(axh(2), 'joints velocities');
-            xlabel(axh(2), 'time points');
-            
-        end
-        function axh = taskForceData(obj, axh)
-            if nargin<2
-                axh = figure();
-            else
-                figure(axh); hold on;
+        function fh = plotTaskJointPosition_all(obj) 
+            % plot 4 joints position
+            fh = figure();
+            for ji = 1:4
+                axh(ji) = subplot(4,1,ji); hold on; grid on;
+                plot(obj.time, obj.Data.Position.JointPosition(ji,:), 'b-o');
+                plot(obj.data.t, obj.data.jp(ji,:), '.');
+                if ji == 1
+                    legend('msg', 'hi-sp');
+                end
+                xlabel('time (s)');
+                ylabel('pos (rad)');
+                title(['Joint ' num2str(ji) ' position'])
             end
-            % force = obj.Data.Force.Sensor(1:3,:); 
-            force = obj.force;
-            plot(obj.time, force');
-            ylabel('force (N)');
-            xlabel('time');
-            legend('x', 'y', 'z'); % remember to alter the axis 
-            title('Force data');
+            linkaxes(axh, 'x');
         end
-        function axh = taskForceDataMag(obj, axh)
-            if nargin<2
-                axh = figure();
-            else
-                figure(axh); hold on;
-            end
-            % force = obj.Data.Force.Sensor(1:3,:); 
-            force = obj.force;
-            forceMag = sqrt(force(1,:).^2 + force(2,:).^2);
-            plot(obj.time, forceMag');
-            ylabel('force (N)');
-            xlabel('time');
-            legend('x', 'y', 'z'); % remember to alter the axis 
-            title('Force data');
-        end
-        function axh = taskForceDatah(obj, axh)
-            if nargin<2
-                axh = figure();
-            else
-                figure(axh); hold on;
-            end
-            % force = obj.Data.Force.Sensor(1:3,:); 
-            force = obj.force_h;
-            plot(obj.force_t, force', '.');
-            ylabel('force (N)');
-            xlabel('time');
-            legend('x', 'y', 'z'); % remember to alter the axis 
-            title('Force data high sample');
-        end
-        function taskEndpointPosition_relative(obj)
-            figure();
-            position = obj.Data.Position.Actual'; 
-            % Use first element as offset
-            % position_offset = position(:,~isnan(position(1,:)));
-            position_offset = obj.hand_pos_offset;
-            position_offset = repmat(position_offset(:,1),1,size(position,2));
-            plot(obj.time, (position - position_offset)');  
-            ylabel('relative endpoint positions');
-            xlabel('time points');
-            legend('x', 'y', 'z');
-            title('relative endpoint positions');
-        end
-        function axh = plotTaskEndpointPosition(obj)
-            axh = figure();
-            position = obj.Data.Position.Actual'; 
-            plot(obj.time, (position)');  
-            ylabel('endpoint positions');
-            xlabel('time points');
-            legend('x', 'y', 'z');
-            title('relative endpoint positions');
+        function fh = plotTaskEndpointPosition(obj)
+             % plot the y-axis position throughout this session
+            fh = figure(); hold on;
+            plot(obj.time, obj.Data.Position.Actual(:,2), 'b-o');
+            plot(obj.data.t, obj.data.x(2,:), '.');
+            legend('msg', 'hi-sp');
+            xlabel('time (s)');
+            ylabel('pos (m)');
+            title('y axis position')
         end 
-        function axh = plotTaskEndpointPositionh(obj, axh)
-            if nargin < 2
-                axh = figure();
-            else 
-                figure(axh); hold on;
-            end
-            position = obj.wamp_h'; 
-            plot(obj.wam_t, (position)', '.');  
-            ylabel('endpoint positions');
-            xlabel('time points');
-            legend('x', 'y', 'z');
-            title('relative endpoint positions');
+        function fh = plotTaskEndpointPosition_all(obj)
+             % plot the xyz-axis position throughout this session
+             fh = figure();
+             axis_name = 'xyz';
+             for ai = 1:3 % xyz
+                 axh(ai)=subplot(3,1,ai);hold on;grid on;
+                 plot(obj.time, obj.Data.Position.Actual(:,ai), 'b-o');
+                 plot(obj.data.t, obj.data.x(ai,:), '.');
+                 if ai == 1
+                     legend('msg', 'hi-sp');
+                 end
+                 xlabel('time (s)');
+                 ylabel('pos (m)');
+                 title([ axis_name(ai) ' axis position']);
+             end
+             linkaxes(axh, 'x');
         end 
-        function axh = plotTaskEndpointForceh(obj, axh)
-            if nargin < 2
-                axh = figure();
-            else 
-                figure(axh); hold on;
-            end
-            %position = obj.wamp_h'; 
+        function fh = plotTaskEndpointVelocity(obj)
+             % plot the y-axis velocity throughout this session
+            fh = figure(); hold on;
+            plot(obj.time, obj.Data.Velocity.Actual(2,:), 'b-o');
+            plot(obj.data.t, obj.data.v(2,:), '.');
+            legend('msg', 'hi-sp');
+            xlabel('time (s)');
+            ylabel('vel (m/s)');
+            title('y axis velocity')
+        end 
+        function fh = plotTaskEndpointVelocity_all(obj)
+             % plot the xyz-axis velocity throughout this session
+             fh = figure();
+             axis_name = 'xyz';
+             for ai = 1:3 % xyz
+                 axh(ai)=subplot(3,1,ai);hold on;grid on;
+                 plot(obj.time, obj.Data.Velocity.Actual(ai,:), 'b-o');
+                 plot(obj.data.t, obj.data.v(ai,:), '.');
+                 if ai == 1
+                     legend('msg', 'hi-sp');
+                 end
+                 xlabel('time (s)');
+                 ylabel('vel (m)');
+                 title([ axis_name(ai) ' axis velocity']);
+             end
+             linkaxes(axh, 'x');
+        end 
+        function fh = plotTaskEndpointForce(obj)
+             % plot the y-axis force throughout this session
+            fh = figure(); 
+            
+            axh(1) = subplot(2,1,1); hold on;
+            plot(obj.time, obj.force(2,:), 'b-o');
+            plot(obj.data.t, obj.data.f(2,:), '.');
+            legend('msg', 'hi-sp');
+            xlabel('time (s)');
+            ylabel('force (N)');
+            title('y axis force')
+            
+            axh(2) = subplot(2,1,2); hold on;
+            plot(obj.time, sqrt(obj.force(1,:).^2+...
+                                obj.force(2,:).^2+...
+                                obj.force(3,:).^2), 'b-o');
+            plot(obj.data.t, sqrt(obj.data.f(1,:).^2+...
+                                obj.data.f(2,:).^2+...
+                                obj.data.f(3,:).^2), '.');
+            xlabel('time (s)');
+            ylabel('force (N)');
+            title('normalized force')
+            
+            linkaxes(axh, 'x');
+                            
+        end 
+        function fh = plotTaskEndpointForce_all(obj)
+             % plot the xyz-axis force throughout this session
+             fh = figure();
+             axis_name = 'xyz';
+             for ai = 1:3 % xyz
+                 axh(ai)=subplot(3,1,ai);hold on;grid on;
+                 plot(obj.time, obj.force(ai,:), 'b-o');
+                 plot(obj.data.t, obj.data.f(ai,:), '.');
+                 if ai == 1
+                     legend('msg', 'hi-sp');
+                 end
+                 xlabel('time (s)');
+                  ylabel('force (N)');
+                 title([ axis_name(ai) ' axis force']);
+             end
+             linkaxes(axh, 'x');
+        end 
 
-            plot(obj.force_t, smooth((obj.force_h(2,:)),1)');  
-            ylabel('endpoint positions');
-            xlabel('time points');
-            legend('x', 'y', 'z');
-            title('relative endpoint positions');
-        end 
         function axh = plotTaskjointTorqeh(obj, axh)
             if nargin < 2
                 axh = figure();
@@ -2062,16 +1007,16 @@ classdef (HandleCompatible)SessionScan < handle
             end
             %position = obj.wamp_h'; 
             axh1 = subplot(4,1,1);
-            plot(obj.wam.time, smooth((obj.wam.jt(:,1)),1)');  
+            plot(obj.wam.time, smooth((obj.data.tq(1,:)),1));  
             ylabel('J1'); grid on;
             axh2 = subplot(4,1,2);
-            plot(obj.wam.time, smooth((obj.wam.jt(:,2)),2)'); 
+            plot(obj.wam.time, smooth((obj.data.tq(2,:)),2)); 
             ylabel('J2'); grid on;
             axh3 = subplot(4,1,3);
-            plot(obj.wam.time, smooth((obj.wam.jt(:,3)),3)');  
+            plot(obj.wam.time, smooth((obj.data.tq(3,:)),3));  
             ylabel('J3'); grid on;
             axh4 = subplot(4,1,4);
-            plot(obj.wam.time, smooth((obj.wam.jt(:,4)),4)');  
+            plot(obj.wam.time, smooth((obj.data.tq(4,:)),4));  
             ylabel('J4'); grid on;
             linkaxes([axh1 axh2 axh3 axh4], 'xy');
             xlabel('time points');
@@ -2090,28 +1035,12 @@ classdef (HandleCompatible)SessionScan < handle
             end
             for trial_i = 1:length(obj.trials)
                 t = obj.trials(trial_i).time_orn(1);
-                line([t t], [-20 20]);
-                text(t, 5, ['trial' num2str(trial_i)]);
+                line([t t], [-1 1]);
+                text(t, 7, ['trial' num2str(trial_i)]);
             end
+            
+            legend off;
         end
-        function axh = plotTaskJointPositionh(obj, axh)
-            if nargin < 2
-                axh = figure();
-            else 
-                figure(axh); hold on;
-            end
-            position = obj.wam.jp'; 
-            %position = obj.wam.jt'; 
-            for sbpi = 1:4
-                subplot(4,1,sbpi);
-                plot(obj.wam_t, (position(sbpi,:))', '.');
-                title(['J' num2str(sbpi)]);
-            end
-            ylabel('endpoint positions');
-            xlabel('time points');
-            %legend('x', 'y', 'z');
-            title('relative endpoint positions');
-        end 
         function axh = taskEPP_FToverlap_ns(obj) % overlapping endpoint position and FT in one axis, non-scale
             figure(); hold on;
             position = obj.Data.Position.Actual'; 
@@ -2145,83 +1074,10 @@ classdef (HandleCompatible)SessionScan < handle
             title('norm Positions and Forces');
             
         end
-        function axh = addmark_STMOV(obj, axh) % add lines showing mov state. 
-            % not good for now, as I do not align it good with time.
-            % how to addline without add the legend???
-            mov_mask = obj.Data.TaskStateMasks.Move;
-            mov_diff = [0 diff(mov_mask)]; 
-            mov_idx = find((mov_diff == 1) & (mov_mask == 1));
-            % plot bars in the axh
-            for axh_i = 1:length(axh)
-                ylim_range = get(axh(axh_i), 'ylim');
-                v= ver('MATLAB'); 
-                for ii = 1:length(mov_idx)
-                    if str2double(v.Version) <= 9.0 % less than matlab 2018
-                        line(axh(axh_i), [mov_idx(ii) mov_idx(ii)], [ylim_range(1) ylim_range(2)]);
-                    else
-                        xline(axh(axh_i), mov_idx(ii));
-                    end
-                end
-            end
-        end
-        
-        %%% plot overlapped release curves
-        function axh = plotTrialfyPosition(obj, axh)
-            if nargin < 2
-                axh = figure();
-            else
-                figure(axh);
-            end
-            hold on;
-            trials = obj.trials;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).time, trials(trial_i).position);
-            end
-            xlabel('time');
-            ylabel('position');
-            title('all trials position');
-        end
-        function axh = plotTrialfyForce(obj, axh)
-            if nargin < 2
-                axh = figure();
-            else
-                figure(axh);
-            end
-            hold on;
-            trials = obj.trials;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).time, trials(trial_i).force);
-            end
-            xlabel('time');
-            ylabel('force');
-            title('all trials force');
-        end
-        function axh = plotTrialfyForce_xy(obj, axh)
-            if nargin < 2
-                axh = figure();
-            else
-                figure(axh);
-            end
-            
-            hold on;
-            trials = obj.trials;
-            subplot(2,1,1); hold on;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).time, trials(trial_i).force(1,:));
-            end
-            xlim([-1 1]);
-            xlabel('time');
-            ylabel('force x');
-            title('force xy (m)');
-            subplot(2,1,2); hold on;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).time, trials(trial_i).force(2,:));
-            end
-            xlim([-1 1]);
-            title('force y');
-            xlabel('time');
-            ylabel('position y (m)');
-        end
+
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % PLOT TRIALFY DATA ON SPECIFY ALIGNED EVENTS 
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function axh = plotTrialfyPositionh(obj, axh)
 
             if nargin < 2
@@ -2232,37 +1088,39 @@ classdef (HandleCompatible)SessionScan < handle
             hold on;
             trials = obj.trials;
             for trial_i = 1:length(trials)
-                plot(trials(trial_i).position_t, trials(trial_i).position_h);
+                plot(trials(trial_i).data.t_shift, trials(trial_i).data.x(2,:));
             end
             xlabel('time');
             ylabel('position');
             title('all trials position');
         end
-        function axh = plotTrialfyPositionh_xy(obj, axh)
+        function axh = plotTrialfyPositionh_all(obj, axh)
 
             if nargin < 2
                 axh = figure();
             else
                 figure(axh);
             end
+            axh_arr = 'xyz';
             trials = obj.trials;
-
-            subplot(2,1,1); hold on;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).position_t, trials(trial_i).position_h(1,:));
+            for axi = 1:3
+                subplot(3,1,axi); hold on;
+                for trial_i = 1:length(trials)
+                    plot(trials(trial_i).data.t_shift, trials(trial_i).data.x(axi,:));
+                end
+                xlim([-1 1]);
+                xlabel('time');
+                ylabel('position (m)');
+                title(['position ' axh_arr(axi)]);
+                %             subplot(2,1,2); hold on;
+                %             for trial_i = 1:length(trials)
+                %                 plot(trials(trial_i).data.t_shift, trials(trial_i).data.x(2,:));
+                %             end
+                %             xlim([-1 1]);
+                %             title('position y');
+                %             xlabel('time');
+                %             ylabel('position y (m)');
             end
-            xlim([-1 1]);
-            xlabel('time');
-            ylabel('position');
-            title('position x (m)');
-            subplot(2,1,2); hold on;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).position_t, trials(trial_i).position_h(2,:));
-            end
-            xlim([-1 1]);
-            title('position y');
-            xlabel('time');
-            ylabel('position y (m)');
             % title('all trials position');
         end
         function axh = plotTrialfyForceh(obj, axh)
@@ -2274,13 +1132,15 @@ classdef (HandleCompatible)SessionScan < handle
             hold on;
             trials = obj.trials;
             for trial_i = 1:length(trials)
-                plot(trials(trial_i).force_t, trials(trial_i).force_h);
+                plot(trials(trial_i).data.t_shift, trials(trial_i).data.f(2,:));
             end
-            xlabel('time');
-            ylabel('force');
+            xlim([-1 1]);
+            xlabel('time (s)');
+            ylabel('force (N)');
             title('all trials force raw');
         end
-        function axh = plotTrialfyForceh_xy(obj, axh)
+        function axh = plotTrialfyForceh_all(obj, axh)
+            % ...TODO: should change into xyz
             if nargin < 2
                 axh = figure();
             else
@@ -2288,2022 +1148,27 @@ classdef (HandleCompatible)SessionScan < handle
             end
             hold on;
             trials = obj.trials;
-            subplot(2,1,1); hold on;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).force_t, trials(trial_i).force_h(1,:));
+            axh_names = 'xyz';
+            for axi = 1:3
+                axh(axi) = subplot(3,1,axi); hold on;
+                for trial_i = 1:length(trials)
+                    plot(trials(trial_i).data.t_shift, trials(trial_i).data.f(axi,:));
+                end
+                xlabel('time');
+                ylabel('force (N)');
+                title(['force ' axh_names(axi)]);
+                
             end
-            xlabel('time');
-            ylabel('force x (N)');
-            title('force x ');
+%             xlim([-1 1]);
+%             subplot(2,1,2); hold on;
+%             for trial_i = 1:length(trials)
+%                 plot(trials(trial_i).data.t_shift, trials(trial_i).data.f(2,:));
+%             end
+%             xlabel('time');
+%             ylabel('force y (N)');
+%             title('force y ');
+            linkaxes(axh, 'x');
             xlim([-1 1]);
-            subplot(2,1,2); hold on;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).force_t, trials(trial_i).force_h(2,:));
-            end
-            xlabel('time');
-            ylabel('force y (N)');
-            title('force y ');
-            xlim([-1 1]);
-        end
-        function axhf = plotMeantrialForce(obj, axhf, color_arr)
-            % plot the meaned trial Force according to the task condition
-             % plot the meaned trial Velocity according to the task condition
-            % if did not calculate the mean and var, calculate
-            if isempty(axhf)
-                axhf = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axhf, 'matlab.ui.Figure')
-                axhf = figure(axhf); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axhf, 'matlab.graphics.axis.Axes')
-                subplot(axhf); hold on;
-                flag_stak = 1;
-            else
-                axhf = figure(); hold on;
-                flag_stak = 0;
-            end
-            % conditions:
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            if obj.ssnum == 2459 % 
-                all_tarL = setdiff(all_tarL, [0.01]);
-            end
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            %axhf = figure();
-            l_h = [];
-            labels = {};
-            label_i = 0;
-            for fTH_i = 1:length(all_fTH)
-                for tarL_i = 1:length(all_tarL)
-                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    col_i = color_arr;
-                    hold on;
-
-                    %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) ...
-                        & [obj.trials.tarL]==all_tarL(tarL_i)...
-                        & [obj.trials.outcome]==1; 
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
-                    force_mean = mean(resample_f(:,:,xyi)); %only y direction
-                    force_std = std(resample_f(:,:,xyi));  
-                    % mean line
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
-                    % 1std shade
-                    force_up = force_mean + force_std;
-                    force_dn = force_mean - force_std;
-                    [axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
-                end
-            end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) ' dir force (N)']);
-            xlim([-0.5 0.4]);
-            title('Force signal');
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            legend(l_h, labels);
-        end
-        function axhp = plotMeantrialForcePert(obj, axhp, col_i)
-            % plot the meaned trial Force according to the task condition
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            if ~exist('axhp', 'var')
-                axhp = figure();
-            else
-                % for figure
-                if strcmp(axhp.Type, 'figure')
-                    axhp = figure(axhp);
-                    hold on;
-                elseif strcmp(axhp.Type, 'axes')
-                % for axis
-                    axhp = subplot(axhp);
-                    hold on;
-                else
-                    disp('Uknown handle type, return!');
-                    return;
-                end
-            end
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            
-            xy_char = 'xy';
-            %axhf = figure();
-            l_h = [];
-            labels = {};
-            label_i = 0;
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            for fTH_i = 1:length(all_fTH)
-                for tarL_i = 1:length(all_tarL)
-                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-
-                    %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) ...
-                        & [obj.trials.tarL]==all_tarL(tarL_i)...
-                        & [obj.trials.outcome]==1 ...
-                        & [obj.trials.ifpert]==1; 
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
-                    % substract the <0 average value
-                    time_idx = resample_t < 0;
-                    for trial_i = 1:size(resample_f, 1)
-                        resample_f(trial_i,:,xyi) = resample_f(trial_i,:,xyi); %- mean(resample_f(trial_i,time_idx,xyi));
-                    end
-                    force_mean = mean(resample_f(:,:,xyi)); %only y direction
-                    force_std = std(resample_f(:,:,xyi));  
-                    % mean line
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
-                    % 1std shade
-                    force_up = force_mean + force_std;
-                    force_dn = force_mean - force_std;
-                    [axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
-                end
-            end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) ' dir force (N)']);
-            xlim([-0.05 0.95]);
-            title('Force signal');
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            legend(l_h, labels);
-        end
-        function axhp = plotMeantrialPos(obj, axhp, col_i)
-            % plot the meaned trial Position according to the task condition
-            % if did not calculate the mean and var, calculate
-            if ~exist('axhp', 'var')
-                axhp = figure();
-            else
-                % for figure
-                if strcmp(axhp.Type, 'figure')
-                    axhp = figure(axhp);
-                    hold on;
-                elseif strcmp(axhp.Type, 'axes')
-                % for axis
-                    axhp = subplot(axhp);
-                    hold on;
-                else
-                    disp('Uknown handle type, return!');
-                    return;
-                end
-            end
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            if obj.ssnum == 2459
-                all_tarL = setdiff(all_tarL, [0.01]);
-            end
-            
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            % axhp = figure(); % when plot in a single figure
-            l_h = [];
-            labels = {};
-            label_i = 0;
-            for fTH_i = 1:length(all_fTH)
-                for tarL_i = 1:length(all_tarL)
-                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    pos_mean = mean(resample_p(:,:,xyi), 1, 'omitnan') - obj.endpoint0(xyi); %only y direction
-                    pos_std = std(resample_p(:,:,xyi), 1, 'omitnan');  
-                    % mean line
-                    l_h = [l_h plot(resample_t, pos_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
-                    % 1std shade
-                    pos_up = pos_mean + pos_std/2;
-                    pos_dn = pos_mean - pos_std/2;
-                    [axh, msg] = jbfill(resample_t, pos_up, pos_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
-                end
-            end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) 'dir position (m)']);
-            xlim([-0.2 0.5]);
-            title('Position signal');
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            legend(l_h, labels);
-        end
-        function axhp = plotMeantrialPosPert(obj, axhp, col_i)
-            % plot the meaned trial Position according to the task condition
-            % if did not calculate the mean and var, calculate
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            if obj.ssnum == 2459 % 
-                all_tarL = setdiff(all_tarL, [0.01]);
-            end
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            if ~exist('axhp', 'var')
-                axhp = figure();
-            else
-                % for figure
-                if strcmp(axhp.Type, 'figure')
-                    axhp = figure(axhp);
-                    hold on;
-                elseif strcmp(axhp.Type, 'axes')
-                % for axis
-                    axhp = subplot(axhp);
-                    hold on;
-                else
-                    disp('Uknown handle type, return!');
-                    return;
-                end
-            end
-            % plot color
-            if ~exist('col_i', 'var')
-                col_i = 1;
-            end
-            l_h = [];
-            labels = {};
-            label_i = 0;  
-            % align for the perturbation time
-            for trial_i = 1:length(obj.trials)
-                if (obj.trials(trial_i).ifpert)
-                    obj.trials(trial_i) = alignPertInit(obj.trials(trial_i), obj);
-                end
-            end
-            % get the mean
-            for fTH_i = 1:length(all_fTH)
-                for tarL_i = 1:length(all_tarL)
-                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i) & [obj.trials.ifpert];
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    % substract average before pert
-                    resample_t_0idx = find(resample_t == 0);
-                    if resample_t_0idx >= 50 
-                        resample_t_idx = (resample_t_0idx - 49):resample_t_0idx;
-                    else 
-                        resample_t_idx = 1:resample_t_0idx;
-                    end
-                    % process each trial to subtract the average
-                    for trial_i = 1:size(resample_p(:,:,xyi),1)
-                        data = resample_p(trial_i,resample_t_idx,xyi);
-                        resample_p(trial_i, :, xyi) = resample_p(trial_i, :, xyi) - mean(data);
-                    end
-                    % pos_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
-                    pos_mean = mean(resample_p(:,:,xyi), 'omitnan'); %only y direction
-                    pos_std = std(resample_p(:,:,xyi), 'omitnan');  
-                    % mean line
-                    l_h = [l_h plot(resample_t, pos_mean, 'LineWidth', 3, 'Color', obj.col_vec(col_i,:))];
-                    % 1std shade
-                    force_up = pos_mean + pos_std;
-                    force_dn = pos_mean - pos_std;
-                    [axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
-                end
-            end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) 'dir position (m)']);
-            xlim([-0.1 0.7]);
-            title('Position signal');
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            legend(l_h, labels);
-        end
-        function axhv = plotMeantrialVel(obj, axhv, color_arr)
-            % plot the meaned trial Velocity according to the task condition
-            % if did not calculate the mean and var, calculate
-            if isempty(axhv)
-                axhv = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axhv, 'matlab.ui.Figure')
-                axhv = figure(axhv); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axhv, 'matlab.graphics.axis.Axes')
-                subplot(axhv); hold on;
-                flag_stak = 1;
-            else
-                axhv = figure(); hold on;
-                flag_stak = 0;
-            end
-            
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            
-            % exceptations: 
-            if obj.ssnum == 2459
-                all_tarL = setdiff(all_tarL, [0.01]);
-            end
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot velocity
-            %axhv = figure();
-            l_h = [];
-            labels = {};
-            label_i = 0;
-            for fTH_i = 1:length(all_fTH)
-                for tarL_i = 1:length(all_tarL)
-                    %col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    col_i = color_arr;
-                    hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTH(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
-                    vel_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
-                    vel_std = std(resample_v(:,:,xyi), 'omitnan');  
-                    % mean line
-                    try
-                        col_tmp = obj.col_vec(col_i,:);
-                    catch
-                        col_tmp = obj.col_vec(mod(col_i, size(obj.col_vec, 1)),:);
-                    end
-                    l_h = [l_h plot(resample_t, vel_mean, 'LineWidth', 3, 'Color', col_tmp)];
-                    % 1std shade
-                    vel_up = vel_mean + vel_std;
-                    vel_dn = vel_mean - vel_std;
-                    [~, ~] = jbfill(resample_t, vel_up, vel_dn, col_tmp, col_tmp, 1, 0.3);
-                end
-            end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
-            xlim([-0.2 0.5]);
-            title('Velocity signal');
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            legend(l_h, labels);
-        end
-        function axhf = plotMeantrialForce_sameCond(obj)
-            % plot the meaned trial Force according to the task condition
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % axhf = figure();
-            for tarL_i = 1:length(all_tarL)
-                axhf(tarL_i) = figure(tarL_i); hold on;
-                l_h = [];
-                labels = {};
-                label_i = 0;
-                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
-                all_fTh = unique([trials_all.fTh]); % condition specific all targets.
-                for fTH_i = 1:length(all_fTh)
-                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-
-                    %trials_idx = [obj.trials.fTh]==all_fTH(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) ...
-                        & [obj.trials.tarL]==all_tarL(tarL_i)...
-                        & [obj.trials.outcome]==1; 
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, resample_f] = trialDataResampleFT(obj, trials_idx);
-                    force_mean = mean(resample_f(:,:,xyi)); %only y direction
-                    force_std = std(resample_f(:,:,xyi));  
-                    % mean line
-                    try
-                        col_tmp = obj.col_vec(col_i,:);
-                    catch
-                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
-                    end
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
-                    % 1std shade
-                    %force_up = force_mean + force_std/2;
-                    %force_dn = force_mean - force_std/2;
-                    %[axhf, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
-                end
-                legend(l_h, labels);
-                xlabel('time aligned at MOV signal');
-                ylabel([xy_char(xyi) ' dir force (N)']);
-                xlim([-0.5 0.4]);
-                title('Force signal');
-            end
-
-        end
-        function axhp = plotMeantrialPos_sameCond(obj)
-            % plot the meaned trial Position according to the task condition
-            % if did not calculate the mean and var, calculate
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot position
-            for tarL_i = 1:length(all_tarL)
-                axhp(tarL_i) = figure();
-                l_h = [];
-                labels = {};
-                label_i = 0;
-                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
-                all_fTh = unique([trials_all.fTh]); % condition specific all targets.
-                for fTH_i = 1:length(all_fTh)
-                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, resample_p, ~] = trialDataAlignWAM(obj, trials_idx);
-                    force_mean = mean(resample_p(:,:,xyi), 'omitnan') - obj.endpoint0(xyi); %only y direction
-                    force_std = std(resample_p(:,:,xyi), 'omitnan');  
-                    % mean line
-                    try
-                        col_tmp = obj.col_vec(col_i,:);
-                    catch
-                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
-                    end
-                    l_h = [l_h plot(resample_t, force_mean, 'LineWidth', 3, 'Color', col_tmp)];
-                    % 1std shade
-                    %force_up = force_mean + force_std/2;
-                    %force_dn = force_mean - force_std/2;
-                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, obj.col_vec(col_i,:), obj.col_vec(col_i,:), 1, 0.3);
-                end
-                legend(l_h, labels);
-                xlabel('time aligned at MOV signal');
-                ylabel([xy_char(xyi) 'dir position (m)']);
-                xlim([-0.2 0.5]);
-                title('Position signal');
-            end
-            
-        end
-        function axhv = plotMeantrialVel_sameCond(obj, invert)
-            % plot the meaned trial Velocity according to the task condition
-            % if did not calculate the mean and var, calculate
-            % 'invert == -1' will flirt over the trial curve
-            if ~exist('invert', 'var') 
-                invert = 1;
-            end
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot velocity
-            
-            for tarL_i = 1:length(all_tarL)
-                axhv(tarL_i) = figure();
-                l_h = [];
-                labels = {};
-                label_i = 0;
-                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
-                all_fTh = unique([trials_all.fTh]);
-                for fTH_i = 1:length(all_fTh)
-                    col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
-                    vel_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
-                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
-                    % mean line
-                    try
-                        col_tmp = obj.col_vec(col_i,:);
-                    catch
-                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
-                    end
-                    l_h = [l_h plot(resample_t, invert*vel_mean, 'LineWidth', 3, 'Color', col_tmp)];
-                    % 1std shade
-                    %force_up = force_mean + force_std/2;
-                    %force_dn = force_mean - force_std/2;
-                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
-                end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
-            xlim([-0.2 0.5]);
-            title('Velocity signal');
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            legend(l_h, labels);
-            end
-        end
-        function axhv = plotMeantrialVel_sameCond_overlap(obj, invert, axhv, col_i)
-            % plot the meaned trial Velocity according to the task condition
-            % if did not calculate the mean and var, calculate
-            % 'invert == -1' will flirt over the trial curve
-            % Required each session tobe only one directional target.
-            if ~exist('invert', 'var') 
-                invert = 1;
-            end
-            if ~exist('axhv', 'var')
-                axhv_flag = -1;
-            elseif ~isstruct(axhv)
-                axhv_flag = -1;
-            else
-                axhv_flag = 1;
-            end
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            all_tarR = unique([obj.trials.tarR]);
-            all_tarR = all_tarR(~isnan(all_tarR));
-            % assume this session only have x- or y- trials
-            if isempty(setdiff(all_tarR, [0,4])) %only y direction
-                xyi = 1;
-            elseif isempty(setdiff(all_tarR, [2, 6]))
-                xyi = 2;
-            end
-            xy_char = 'xy';
-            % plot velocity
-            % check if axhv is the same length with all_tarL. 
-            %   if so, plot on the axhv. If not, plot on new figures 
-            if axhv_flag == -1 %| length(axhv.axih)~=length(all_tarL)
-                pltopt = 'new'; 
-                axhv = [];
-                axhv.figh = figure();
-            else
-                pltopt = 'ovl'; % overlap
-                axhv.figh = figure(axhv.figh);
-            end
-            for tarL_i = 1:length(all_tarL)
-                if strcmp(pltopt, 'new')
-                    axhv.axih(tarL_i) = subplot(length(all_tarL), 1, tarL_i);
-                elseif strcmp(pltopt, 'ovl')
-                    axhv.axih(tarL_i) = subplot(axhv.axih(tarL_i));
-                end
-                l_h = [];
-                labels = {};
-                label_i = 0;
-                trials_all = obj.trials([obj.trials.tarL] == all_tarL(tarL_i));
-                all_fTh = unique([trials_all.fTh]);
-                for fTH_i = 1:length(all_fTh)
-                    % col_i = (fTH_i-1)*length(all_tarL) + tarL_i;
-                    hold on;
-                    trials_idx = [obj.trials.fTh]==all_fTh(fTH_i) & [obj.trials.tarL]==all_tarL(tarL_i);
-                    label_i = label_i + 1;
-                    labels{label_i} = [num2str(all_fTh(fTH_i)), 'N, ', num2str(all_tarL(tarL_i)*100) 'cm'];
-                    [resample_t, ~, resample_v] = trialDataAlignWAM(obj, trials_idx);
-                    vel_mean = mean(resample_v(:,:,xyi), 'omitnan'); %only y direction
-                    force_std = std(resample_v(:,:,xyi), 'omitnan');  
-                    % mean line
-                    try
-                        col_tmp = obj.col_vec(col_i,:);
-                    catch
-                        col_tmp = obj.col_vec(mod(col_i-1, size(obj.col_vec, 1))+1,:);
-                    end
-                    l_h = [l_h plot(resample_t, invert*vel_mean, 'LineWidth', 3, 'Color', col_tmp)];
-                    % 1std shade
-                    %force_up = force_mean + force_std/2;
-                    %force_dn = force_mean - force_std/2;
-                    %[axh, msg] = jbfill(resample_t, force_up, force_dn, col_tmp, col_tmp, 1, 0.3);
-                end
-            xlabel('time aligned at MOV signal');
-            ylabel([xy_char(xyi) 'dir velocity (m/s)']);
-            xlim([-0.2 0.5]);
-            title(['3, 12, 21N at ' num2str(all_tarL(tarL_i)*100) 'cm']);
-            %legend(l_h, {'10N5cm', '10N10cm', '20N5cm', '20N10cm'});
-            %legend(l_h, labels);
-            end
-        end
-        
-        function [axhf, axhp, axhv] = plotSameTrial(obj)
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            outcome = [obj.trials.outcome];
-            % fTH now only have 2 vals
-            % tarL now only have 2 vals
-            axhf = figure(); % force figure
-            set(axhf, 'Visible', 'off');
-            axhp = figure(); % position figure
-            set(axhp, 'Visible', 'off');
-            axhv = figure(); % velocity figure
-            set(axhv, 'Visible', 'off');
-            for fTH_i = 1:length(all_fTH)
-                fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
-                for tarL_i = 1:length(all_tarL)
-                    fprintf('target: %0.2f', all_tarL(tarL_i));
-                    trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
-                    trial_num = sum(trials_idx);
-                    trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==1); %succeed
-                    %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
-                    col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
-                    if col_i>=7
-                        col_i = mod(col_i-1,8)+1;
-                    end
-                    for trial_i = find(trialsS_idx)
-                        % plot force
-                        % data
-                        try
-                            force = obj.trials(trial_i).force_h;
-                            time = obj.trials(trial_i).force_t;
-                        catch
-                            force = obj.trials(trial_i).force;
-                            time = obj.trials(trial_i).time;
-                        end
-                        % figure
-                        set(0, 'CurrentFigure', axhf);
-                        % x, y seperately
-                        subplot(2,1,1); hold on; plot(time, force(1,:), 'Color', obj.col_vec(col_i,:));
-                        subplot(2,1,2); hold on; plot(time, force(2,:), 'COlor', obj.col_vec(col_i,:));
-                        % plot position
-                        % data
-                        try
-                            position = obj.trials(trial_i).position_h;
-                            time = obj.trials(trial_i).position_t;
-                        catch
-                            position = obj.trials(trial_i).position;
-                            time = obj.trials(trial_i).time;
-                        end
-                        set(0, 'CurrentFigure', axhp);
-                        % x, y seperately
-                        subplot(2,1,1); hold on; plot(time, position(1,:), 'Color', obj.col_vec(col_i,:));
-                        subplot(2,1,2); hold on; plot(time, position(2,:), 'Color', obj.col_vec(col_i,:));
-                        try
-                            velocity = obj.trials(trial_i).velocity_h;
-                            time = obj.trials(trial_i).position_t;
-                        catch
-                            velocity = obj.trials(trial_i).velocity;
-                            time = obj.trials(trial_i).time;
-                        end
-                        set(0, 'CurrentFigure', axhv);
-                        subplot(2,1,1); hold on; plot(time, velocity(1,:), 'Color', obj.col_vec(col_i,:));
-                        subplot(2,1,2); hold on; plot(time, velocity(2,:), 'Color', obj.col_vec(col_i,:));
-                    end
-                end
-            end
-            
-            xrangeF = [-0.5, 0.5];
-            figure(axhf); 
-            subplot(2,1,1);
-            title('force data x');
-            xlim(xrangeF);
-            subplot(2,1,2);
-            title('force data y');
-            xlim(xrangeF);
-            
-            xrangeP = [-0.2, 0.8];
-            figure(axhp);
-            subplot(2,1,1);
-            title('robot position x');
-            xlim(xrangeP);
-            subplot(2,1,2);
-            title('robot position y');
-            xlim(xrangeP);
-            
-            xrangeV = [-0.2, 0.8];
-            figure(axhv);
-            subplot(2,1,1);
-            title('robot velocity x');
-            xlim(xrangeV);
-            subplot(2,1,2);
-            title('robot velocity y');
-            xlim(xrangeV);
-            
-            set(axhf, 'Visible', 'on');
-            set(axhp, 'Visible', 'on');
-            set(axhv, 'Visible', 'on');
-        end
-        function [axhf, axhp, axhv] = plotSameTrial_y(obj)
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            outcome = [obj.trials.outcome];
-            % fTH now only have 2 vals
-            % tarL now only have 2 vals
-            axhf = figure(); % force figure
-            set(axhf, 'Visible', 'off');
-            axhp = figure(); % position figure
-            set(axhp, 'Visible', 'off');
-            axhv = figure(); % velocity figure
-            set(axhv, 'Visible', 'off');
-            for fTH_i = 1:length(all_fTH)
-                fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
-                for tarL_i = 1:length(all_tarL)
-                    fprintf('target: %0.2f', all_tarL(tarL_i));
-                    trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
-                    trial_num = sum(trials_idx);
-                    trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==1); %succeed
-                    %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
-                    col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
-                    if col_i>=7
-                        col_i = mod(col_i,8);
-                    end
-                    for trial_i = find(trialsS_idx)
-                        % plot force
-                        % data
-                        try
-                            force = obj.trials(trial_i).force_h;
-                            time = obj.trials(trial_i).force_t;
-                        catch
-                            force = obj.trials(trial_i).force;
-                            time = obj.trials(trial_i).time;
-                        end
-                        % figure
-                        set(0, 'CurrentFigure', axhf);
-                        % x, y seperately
-                        hold on; plot(time, force(2,:), '.', 'COlor', obj.col_vec(col_i,:));
-                        % plot position
-                        % data
-                        try
-                            position = obj.trials(trial_i).position_h;
-                            time = obj.trials(trial_i).position_t;
-                        catch
-                            position = obj.trials(trial_i).position;
-                            time = obj.trials(trial_i).time;
-                        end
-                        set(0, 'CurrentFigure', axhp);
-                        % x, y seperately
-                        hold on; plot(time, position(2,:), '.', 'Color', obj.col_vec(col_i,:));
-                        try
-                            velocity = obj.trials(trial_i).velocity_h;
-                            time = obj.trials(trial_i).position_t;
-                        catch
-                            velocity = obj.trials(trial_i).velocity;
-                            time = obj.trials(trial_i).time;
-                        end
-                        set(0, 'CurrentFigure', axhv);
-                        hold on; plot(time, velocity(2,:), '.', 'Color', obj.col_vec(col_i,:));
-                    end
-                    figure(axhf); title('Force');
-                    figure(axhp); title('Position');
-                    figure(axhv); title('Velocity');
-                end
-            end
-            
-            xrangeF = [-0.2, 0.4];
-            figure(axhf); 
-            title('force data y');
-            xlim(xrangeF);
-            
-            xrangeP = [-0.2, 0.4];
-            figure(axhp);
-            title('robot position y');
-            xlim(xrangeP);
-            
-            xrangeV = [-0.2, 0.4];
-            figure(axhv);
-            title('robot velocity y');
-            xlim(xrangeV);
-            
-            set(axhf, 'Visible', 'on');
-            set(axhp, 'Visible', 'on');
-            set(axhv, 'Visible', 'on');
-        end
-        function [axhf, axhp, axhv] = plotSameTrial_failure(obj)
-            all_fTH = unique([obj.trials.fTh]);
-            all_fTH = all_fTH(~isnan(all_fTH));
-            all_tarL = unique([obj.trials.tarL]);
-            all_tarL = all_tarL(~isnan(all_tarL));
-            outcome = [obj.trials.outcome];
-            % fTH now only have 2 vals
-            % tarL now only have 2 vals
-            axhf = figure(); % force figure
-            set(axhf, 'Visible', 'off');
-            axhp = figure(); % position figure
-            set(axhp, 'Visible', 'off');
-            axhv = figure(); % velocity figure
-            set(axhv, 'Visible', 'off');
-            for fTH_i = 1:length(all_fTH)
-                fprintf('\n plotting fTH:%2.1f  ', all_fTH(fTH_i));
-                for tarL_i = 1:length(all_tarL)
-                    fprintf('target: %0.2f', all_tarL(tarL_i));
-                    trials_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)));
-                    trial_num = sum(trials_idx);
-                    trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) & outcome==0); %failed
-                    %trialsS_idx = (([obj.trials.fTh]==all_fTH(fTH_i)) & ([obj.trials.tarL]==all_tarL(tarL_i)) ); %all trials
-                    col_i = (fTH_i-1)*length(all_fTH) + tarL_i;
-                    if col_i>=7
-                        col_i = mod(col_i,8);
-                    end
-                    for trial_i = find(trialsS_idx)
-                        % plot force
-                        % data
-                        try
-                            force = obj.trials(trial_i).force_h;
-                            time = obj.trials(trial_i).force_t;
-                        catch
-                            force = obj.trials(trial_i).force;
-                            time = obj.trials(trial_i).time;
-                        end
-                        % figure
-                        set(0, 'CurrentFigure', axhf);
-                        % x, y seperately
-                        subplot(2,1,1); hold on; plot(time, force(1,:), 'Color', obj.col_vec(col_i,:));
-                        subplot(2,1,2); hold on; plot(time, force(2,:), 'COlor', obj.col_vec(col_i,:));
-                        % plot position
-                        % data
-                        try
-                            position = obj.trials(trial_i).position_h;
-                            time = obj.trials(trial_i).position_t;
-                        catch
-                            position = obj.trials(trial_i).position;
-                            time = obj.trials(trial_i).time;
-                        end
-                        set(0, 'CurrentFigure', axhp);
-                        % x, y seperately
-                        subplot(2,1,1); hold on; plot(time, position(1,:), 'Color', obj.col_vec(col_i,:));
-                        subplot(2,1,2); hold on; plot(time, position(2,:), 'Color', obj.col_vec(col_i,:));
-                        try
-                            velocity = obj.trials(trial_i).velocity_h;
-                            time = obj.trials(trial_i).position_t;
-                        catch
-                            velocity = obj.trials(trial_i).velocity;
-                            time = obj.trials(trial_i).time;
-                        end
-                        set(0, 'CurrentFigure', axhv);
-                        subplot(2,1,1); hold on; plot(time, velocity(1,:), 'Color', obj.col_vec(col_i,:));
-                        subplot(2,1,2); hold on; plot(time, velocity(2,:), 'Color', obj.col_vec(col_i,:));
-                    end
-                end
-            end
-            
-            xrangeF = [-0.5, 0.5];
-            figure(axhf); 
-            subplot(2,1,1);
-            title('force data x');
-            xlim(xrangeF);
-            subplot(2,1,2);
-            title('force data y');
-            xlim(xrangeF);
-            
-            xrangeP = [-0.2, 0.8];
-            figure(axhp);
-            subplot(2,1,1);
-            title('robot position x');
-            xlim(xrangeP);
-            subplot(2,1,2);
-            title('robot position y');
-            xlim(xrangeP);
-            
-            xrangeV = [-0.2, 0.8];
-            figure(axhv);
-            subplot(2,1,1);
-            title('robot velocity x');
-            xlim(xrangeV);
-            subplot(2,1,2);
-            title('robot velocity y');
-            xlim(xrangeV);
-            
-            set(axhf, 'Visible', 'on');
-            set(axhp, 'Visible', 'on');
-            set(axhv, 'Visible', 'on');
-        end
-        function axh = plotEndPointvsX0(obj)
-            combos = unique([obj.trials.comboTT]);
-            combos = combos(~isnan(combos));
-            axh = figure(); hold on;
-            hist_h = zeros(1, length(combos));
-            for i = 1:length(combos)
-                combo_i = combos(i);
-                trials_idx = ([obj.trials.comboTT] == combo_i);
-                x0 = [obj.trials(trials_idx).pred_x0];
-                hist_h(i) = histogram(x0);
-            end
-            tarL_all = [];
-            fTH_all  = [];
-            for combo_i = combos
-                trials_idx = ([obj.trials.comboTT] == combo_i);
-                tarL = unique([obj.trials(trials_idx).tarL]);
-                tarL_all = [tarL_all tarL];
-                fTh = unique([obj.trials(trials_idx).fTh]);
-                fTH_all = [fTH_all fTh];
-            end
-            legend(hist_h, [num2str(tarL_all(1)) 'm, ' num2str(fTH_all(1)) 'N'], ...
-                [num2str(tarL_all(2)) 'm, ' num2str(fTH_all(2)) 'N'], ...
-                [num2str(tarL_all(3)) 'm, ' num2str(fTH_all(3)) 'N'], ...
-                [num2str(tarL_all(4)) 'm, ' num2str(fTH_all(4)) 'N']);
-            title(['Session' num2str(obj.ssnum) 'x0 prediction with different task setting']);
-            ylabel('count');
-            xlabel('x0 prediction');
-        end
-        function axh = plotPredStiffness_LinDev_hist(obj)
-            combos = unique([obj.trials.comboTT]);
-            combos = combos(~isnan(combos));
-            axh = figure(); hold on;
-            hist_h = zeros(1, length(combos));
-            for i = 1:length(combos)
-                combo_i = combos(i);
-                trials_idx = ([obj.trials.comboTT] == combo_i);
-                pred_K = [obj.trials(trials_idx).pred_K];
-                hist_h(i) = histogram(pred_K);
-            end
-            tarL_all = [];
-            fTH_all  = [];
-            for combo_i = combos
-                trials_idx = ([obj.trials.comboTT] == combo_i &...
-                    [obj.trials.outcome] == 1);
-                tarL = unique([obj.trials(trials_idx).tarL]);
-                tarL_all = [tarL_all tarL];
-                fTh = unique([obj.trials(trials_idx).fTh]);
-                fTH_all = [fTH_all fTh];
-            end
-            legend(hist_h, [num2str(tarL_all(1)) 'm, ' num2str(fTH_all(1)) 'N'], ...
-                [num2str(tarL_all(2)) 'm, ' num2str(fTH_all(2)) 'N'], ...
-                [num2str(tarL_all(3)) 'm, ' num2str(fTH_all(3)) 'N'], ...
-                [num2str(tarL_all(4)) 'm, ' num2str(fTH_all(4)) 'N']);
-            title(['Session' num2str(obj.ssnum) ' K prediction with different task setting']);
-            ylabel('count');
-            xlabel('K prediction');
-        end
-        function axh = plotPredStiffness_LinDev_box(obj)
-            combos = unique([obj.trials.comboTT]);
-            combos = combos(~isnan(combos));
-            axh = figure(); hold on;
-            combo_all = [];
-            predK_all = [];
-            for i = 1:length(combos)
-                combo_i = combos(i);
-                trials_idx = ([obj.trials.comboTT] == combo_i);
-                pred_K = [obj.trials(trials_idx).pred_K];
-                combo_all = [combo_all repmat(combo_i, 1, length(pred_K))];
-                predK_all = [predK_all pred_K];
-            end
-            tarL_all = [];
-            fTH_all  = [];
-            boxchart(combo_all, predK_all);
-            for combo_i = combos
-                trials_idx = ([obj.trials.comboTT] == combo_i &...
-                    [obj.trials.outcome] == 1);
-                tarL = unique([obj.trials(trials_idx).tarL]);
-                tarL_all = [tarL_all tarL];
-                fTh = unique([obj.trials(trials_idx).fTh]);
-                fTH_all = [fTH_all fTh];
-            end
-            xticks([combos]);
-            xticklabels({[num2str(tarL_all(1)) 'm' num2str(fTH_all(1)) 'N'],...
-                [num2str(tarL_all(2)) 'm' num2str(fTH_all(2)) 'N'],...
-                [num2str(tarL_all(3)) 'm' num2str(fTH_all(3)) 'N'],...
-                [num2str(tarL_all(4)) 'm' num2str(fTH_all(4)) 'N']});
-            title(['Session' num2str(obj.ssnum) ' K prediction with different task setting']);
-            ylabel('Stiffness N/m');
-            xlabel('task settings');
-        end
-        function axh = plotPredX0_LinDev_box(obj)
-            combos = unique([obj.trials.comboTT]);
-            combos = combos(~isnan(combos));
-            axh = figure(); hold on;
-            combo_all = [];
-            predX0_all = [];
-            for i = 1:length(combos)
-                combo_i = combos(i);
-                trials_idx = ([obj.trials.comboTT] == combo_i);
-                pred_X0 = [obj.trials(trials_idx).pred_x0];
-                combo_all = [combo_all repmat(combo_i, 1, length(pred_X0))];
-                predX0_all = [predX0_all pred_X0];
-            end
-            tarL_all = [];
-            fTH_all  = [];
-            boxchart(combo_all, predX0_all);
-            for combo_i = combos
-                trials_idx = ([obj.trials.comboTT] == combo_i &...
-                    [obj.trials.outcome] == 1);
-                tarL = unique([obj.trials(trials_idx).tarL]);
-                tarL_all = [tarL_all tarL];
-                fTh = unique([obj.trials(trials_idx).fTh]);
-                fTH_all = [fTH_all fTh];
-            end
-            ylim([0 0.2]);
-            xticks([combos]);
-            xticklabels({[num2str(tarL_all(1)) 'm' num2str(fTH_all(1)) 'N'],...
-                [num2str(tarL_all(2)) 'm' num2str(fTH_all(2)) 'N'],...
-                [num2str(tarL_all(3)) 'm' num2str(fTH_all(3)) 'N'],...
-                [num2str(tarL_all(4)) 'm' num2str(fTH_all(4)) 'N']});
-            title(['Session' num2str(obj.ssnum) ' x0 prediction with different task setting']);
-            ylabel('Eq m');
-            xlabel('task settings');
-        end
-        function axh = plotForceVecBeforeRelease(obj, axh, rot)
-            if nargin == 1
-                axh = figure();
-            elseif nargin == 2
-                rot = 0; % rotation from the robot to the subject 
-            end
-            % data
-            sucessful_idx = find([obj.trials.outcome]);
-            forceVectors = zeros(3, length(sucessful_idx));
-            for trial_i = 1:length(sucessful_idx)
-                forceVectors(:,trial_i) = ...
-                    obj.trials(sucessful_idx(trial_i)).getforceVecBeforeRelease();
-            end
-            forceVectors = [[cos(rot), -sin(rot); sin(rot), cos(rot)] * ...
-                forceVectors(1:2,:); ...
-                forceVectors(3,:)]; % rotation;
-            
-            % plot
-            figure(axh);
-            for trial_i = 1:length(sucessful_idx)
-                line([0 forceVectors(1, trial_i)], [0 forceVectors(2, trial_i)], ...
-                    'lineWidth', 3, 'color', 'b');
-            end
-            xlabel('x component'); 
-            ylabel('y component');
-            title('force vector before release');
-        end
-        %%% plot overlapped pert responses
-        function axh = plotStepPertResponse_raw(obj, axh, color_arr)
-            % axh = plotStepPertResponse_raw % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-             
-            % check input 
-            if ~exist('axh', 'var')
-                axh = 0;
-            end
-            if ~exist('color_arr', 'var')
-                color_arr = [0 0 0];
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            %trials_pert = find([obj.trials(:).ifpert]);
-            %trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            trials_pert = obj.getPerturbedTrialIdx();
-            % plot
-            
-            % figure properties
-            
-            % for each trial
-            for trial_i = trials_pert
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).position_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                %if (isempty(obj.trials(trial_i).pert_t_bgn))
-                %    time0 = pert_t_last;
-                %end
-                resp_p = obj.trials(trial_i).position_h(2,:);
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                position_offset = 0.482;
-                %position_offset = mean(obj.trials(trial_i).position_h(2,...
-                %    find(time>time0-0.1 & time<time0)));
-                resp_p_net= resp_p - position_offset; %obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                else
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                end
-                pert_t_last = time0;
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('endpoint position (m)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-                ylabel('endpoint position (m)');
-                xlabel('time'); 
-                title(['session' num2str(obj.ssnum) ' perturbation']);
-            end
-            
-        end
-        function axh = plotStepPertResponse_rawV(obj, axh, color_arr)
-            % axh = plotStepPertResponse_rawV % plot the raw velocity response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-             
-            % check input 
-            if isempty(axh)
-                axh = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            
-            % plot
-            
-            % figure properties
-            
-            % for each trial
-            for trial_i = trials_pert
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).position_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                if (isempty(obj.trials(trial_i).pert_t_bgn))
-                    time0 = pert_t_last;
-                end
-                resp_p = obj.trials(trial_i).position_h(2,:);
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                position_offset = mean(obj.trials(trial_i).position_h(2,...
-                    find(time>time0-0.1 & time<time0)));
-                resp_p_net= resp_p;% - position_offset; %obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time-time0, resp_v, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                else
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time-time0, resp_v);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                end
-                pert_t_last = time0;
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('endpoint velocity (m/s)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-                ylabel('endpoint velocity (m/s)');
-                xlabel('time'); 
-                title(['session' num2str(obj.ssnum) ' perturbation']);
-            end
-            
-        end
-        function axh = plotStepPertResponse_rawF(obj, axh, color_arr)
-            % axh = plotStepPertResponse_rawF % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-             
-            % check input 
-            if ~exist('axh', 'var')
-                axh = 0;
-            end
-            if ~exist('color_arr', 'var')
-                color_arr = [0 0 0];
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            % plot
-            
-            % figure properties
-            
-            % for each trial
-            for trial_i = trials_pert
-                if trial_i == 1
-                    continue;
-                end
-                % make the time aligned for the perturbation
-                %time = obj.trials(trial_i).position_t;
-                time = obj.trials(trial_i).force_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                %resp_p = obj.trials(trial_i).position_h(2,:);
-                %resp_v = obj.trials(trial_i).velocity_h(2,:);
-                %resp_f = obj.trials(trial_i).force_h(2,:);
-                resp_f = obj.trials(trial_i).force_h(2,:);
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time-time0, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                else
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time-time0, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                end
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('force (N)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-                ylabel('force (N)');
-                xlabel('time');
-                title(['session' num2str(obj.ssnum) ' perturbation']);
-            end
-            
-        end       
-        function axh = plotReleaseResponse_rawF(obj, axh, color_arr)
-            % axh = plotReleaseResponse_rawF % plot the raw response of
-            % ballistic release, in terms of force. of all trials in this session 
-            % Assuming all trials are at the same task condition
-            % It requires the same stiffness so that response magnitudes are
-            % the same.
-             
-            % check input 
-            if isempty(axh)
-                axh = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            %obj = updatePertEachTrial(obj);
-            %trials_pert = find([obj.trials(:).ifpert]);
-            trials_all = find([obj.trials(:).outcome]); % outcome not 0
-            % plot
-            
-            % figure properties
-            
-            % for each trial
-            for trial_i = trials_all
-                if trial_i == 1
-                    continue;
-                end
-                % make the time aligned for the perturbation
-                %time = obj.trials(trial_i).position_t;
-                time = obj.trials(trial_i).force_t;
-                %time0 = obj.trials(trial_i).pert_t_bgn;
-                %resp_p = obj.trials(trial_i).position_h(2,:);
-                %resp_v = obj.trials(trial_i).velocity_h(2,:);
-                %resp_f = obj.trials(trial_i).force_h(2,:);
-                resp_f = obj.trials(trial_i).force_h(2,:);
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                else
-                    %plot(time-time0, resp_p, 'color', color_arr);
-                    plot(time, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                end
-            end
-            if flag_stak == 0
-                xlim([-0.1, 1]);
-                ylabel('force (N)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.1, 1]);
-                %ylim([-0.015, 0.015]);
-                ylabel('force (N)');
-                xlabel('time');
-                title(['session' num2str(obj.ssnum) ' perturbation']);
-            end
-            
-        end
-        function axh = plotReleaseResponse_rawP(obj, axh, color_arr)
-            % axh = plotReleaseResponse_rawP % plot the raw response of
-            % ballistic release, in terms of position of all trials in this session 
-            % Assuming all trials are at the same task condition
-            % It requires the same stiffness so that response magnitudes are
-            % the same.
-             
-            % check input 
-            if isempty(axh)
-                axh = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            %obj = updatePertEachTrial(obj);
-            %trials_pert = find([obj.trials(:).ifpert]);
-            trials_all = find([obj.trials(:).outcome]); % outcome not 0
-            % plot
-            
-            % figure properties
-            
-            % for each trial
-            for trial_i = trials_all
-                if trial_i == 1
-                    continue;
-                end
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).position_t;
-                %time = obj.trials(trial_i).force_t;
-                %time0 = obj.trials(trial_i).pert_t_bgn;
-                resp_p = obj.trials(trial_i).position_h(2,:);
-                %resp_v = obj.trials(trial_i).velocity_h(2,:);
-                %resp_f = obj.trials(trial_i).force_h(2,:);
-                %resp_f = obj.trials(trial_i).force_h(2,:);
-                position_offset = 0.482;
-                resp_p_net= resp_p - position_offset; %obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    %plot(time, resp_p, 'color', color_arr);
-                    %plot(time, resp_f, 'color', color_arr);
-                    plot(time, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                else
-                    %\plot(time, resp_p, 'color', color_arr);
-                    %plot(time, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                end
-            end
-            if flag_stak == 0
-                xlim([-0.1, 1]);
-                ylabel('position (m)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.1, 1]);
-                %ylim([-0.015, 0.015]);
-                ylabel('position (m)');
-                xlabel('time');
-                title(['session' num2str(obj.ssnum) ' perturbation']);
-            end
-            
-        end
-        function axh = plotReleaseResponse_rawV(obj, axh, color_arr)
-            % axh = plotReleaseResponse_rawV % plot the raw response of
-            % ballistic release, in terms of velocity of all trials in this session 
-            % Assuming all trials are at the same task condition
-            % It requires the same stiffness so that response magnitudes are
-            % the same.
-             
-            % check input 
-            if isempty(axh)
-                axh = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            %obj = updatePertEachTrial(obj);
-            %trials_pert = find([obj.trials(:).ifpert]);
-            trials_all = find([obj.trials(:).outcome]); % outcome not 0
-            % plot
-            
-            % figure properties
-            
-            % for each trial
-            for trial_i = trials_all
-                if trial_i == 1
-                    continue;
-                end
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).position_t;
-                %time = obj.trials(trial_i).force_t;
-                %time0 = obj.trials(trial_i).pert_t_bgn;
-                %resp_p = obj.trials(trial_i).position_h(2,:);
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                %resp_f = obj.trials(trial_i).force_h(2,:);
-                %resp_f = obj.trials(trial_i).force_h(2,:);
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    %plot(time, resp_p, 'color', color_arr);
-                    %plot(time, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    plot(time, resp_v, 'color', color_arr); %velocity
-                else
-                    %\plot(time, resp_p, 'color', color_arr);
-                    %plot(time, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    plot(time, resp_v, 'color', color_arr);
-                end
-            end
-            if flag_stak == 0
-                xlim([-0.1, 1]);
-                ylabel('position (m)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.1, 1]);
-                %ylim([-0.015, 0.015]);
-                ylabel('position (m)');
-                xlabel('time');
-                title(['session' num2str(obj.ssnum) ' perturbation']);
-            end
-            
-        end
-        function [axh, val, lnh] = plotStepPertResponse_raw_subavg(obj, axh, color_arr)
-            % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-            %   axh: the axis handle, for future plot. 
-            %   val: the value (avg) of peak, val{1} positive, val{2}
-            %           negative
-            %   lnh: the line handle, for the futrue legend on
-             
-            % check input 
-            if isempty(axh)
-                axh = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            trials_fin  = find([obj.trials(:).outcome] == 1);
-            pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
-            pert_pltavg_neg = []; 
-            % for each trial
-            trials_list = intersect(trials_pert, trials_fin);
-            for trial_i = trials_list %trials_pert
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).position_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                resp_p = obj.trials(trial_i).position_h(2,:); % resting position
-                if min(time-time0) < -0.1
-                    time_idx = (time-time0) > -0.1 & (time-time0) < 0;
-                else
-                    [~, time_idx] = min(abs(time - time0));
-                end
-                resp_p0= mean(obj.trials(trial_i).position_h(2,time_idx));
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                
-                time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
-                pert_pleateu_avg = mean(obj.trials(trial_i).position_h(2,time_pleateu_idx)) - resp_p0;
-                if pert_pleateu_avg > 0
-                    pert_pltavg_pos = [pert_pltavg_pos, pert_pleateu_avg];
-                else
-                    pert_pltavg_neg = [pert_pltavg_neg, pert_pleateu_avg];
-                end
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    plot(time-time0, resp_p-resp_p0, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_p-resp_p0, 'color', color_arr);
-                    end
-                else
-                    plot(time-time0, resp_p-resp_p0, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_p-resp_p0, 'color', color_arr);
-                    end
-                end
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('endpoint position (m)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-            end
-            
-            % send out the peak values
-            
-            val{1} = pert_pltavg_pos;
-            val{2} = pert_pltavg_neg;
-        end
-        function [axh, val, lnh] = plotStepPertResponse_raw_pertfce(obj, axh, color_arr)
-            % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-            %   axh: the axis handle, for future plot. 
-            %   val: the value (avg) of peak, val{1} positive, val{2}
-            %           negative
-            %   lnh: the line handle, for the futrue legend on
-             
-            % check input 
-            if ~exist('axh','var')
-                axh = 0;
-            end
-            if ~exist('color_arr', 'var')
-                color_arr = [0 0 0];
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            trials_fin  = find([obj.trials(:).outcome] == 1);
-            pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
-            pert_pltavg_neg = []; 
-            % for each trial
-            trials_list = intersect(trials_pert, trials_fin);
-            for trial_i = trials_list %trials_pert
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).position_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                if (isempty(time0))
-                    time0 = pert_t_last;
-                end
-                resp_fp = obj.trials(trial_i).pertfce_h(2,:); % resting position
-                if min(time-time0) < -0.1
-                    time_idx = (time-time0) > -0.1 & (time-time0) < 0;
-                else
-                    [~, time_idx] = min(abs(time - time0));
-                end
-                resp_p0= mean(obj.trials(trial_i).position_h(2,time_idx));
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                
-                time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
-                pert_pleateu_avg = mean(obj.trials(trial_i).position_h(2,time_pleateu_idx)) - resp_p0;
-                if pert_pleateu_avg > 0
-                    pert_pltavg_pos = [pert_pltavg_pos, pert_pleateu_avg];
-                else
-                    pert_pltavg_neg = [pert_pltavg_neg, pert_pleateu_avg];
-                end
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    plot(time-time0, resp_fp, 'Color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_fp, 'color', color_arr);
-                    end
-                else
-                    plot(time-time0, resp_fp, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_fp, 'color', color_arr);
-                    end
-                end
-                pert_t_last = time0;
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('perturbation force (N)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-            end
-            
-            % send out the peak values
-            
-            val{1} = pert_pltavg_pos;
-            val{2} = pert_pltavg_neg;
-        end
-        function [axh, val, lnh] = plotStepPertResponse_rawFce(obj, axh, color_arr, low_pass_freq)
-            % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-            %   axh: the axis handle, for future plot. 
-            %   val: the value (avg) of peak, val{1} positive, val{2}
-            %           negative
-            %   lnh: the line handle, for the futrue legend on
-             
-            % check input 
-            if isempty(axh)
-                axh = 0;
-            end
-            if isempty(color_arr)
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = 0;
-            else
-                ifcolor = 1;
-            end
-            if ~exist('low_pass_freq', 'var')
-                ifLowpass = false;
-            else
-                ifLowpass = true;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            trials_fin  = find([obj.trials(:).outcome] == 1);
-            pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
-            pert_pltavg_neg = []; 
-            % for each trial
-            trials_list = intersect(trials_pert, trials_fin);
-            for trial_i = trials_list %trials_pert
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).force_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                if (isempty(obj.trials(trial_i).pert_t_bgn))
-                    continue;
-                end
-                resp_f = obj.trials(trial_i).force_h(2,:); % resting position
-                time_idx = (time-time0) > -0.1 & (time-time0) < 0;
-                resp_f0= mean(obj.trials(trial_i).force_h(2,time_idx)); % may need change
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                freq = 1/mean(diff(time));
-                if (ifLowpass)
-                    resp_f = smooth(resp_f, floor(freq/low_pass_freq));
-                end
-                
-                time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
-                pert_pleateu_avg = mean(obj.trials(trial_i).force_h(2,time_pleateu_idx)) - resp_f0;
-                if pert_pleateu_avg > 0
-                    pert_pltavg_pos = [pert_pltavg_pos, pert_pleateu_avg];
-                else
-                    pert_pltavg_neg = [pert_pltavg_neg, pert_pleateu_avg];
-                end
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    plot(time-time0, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_f, 'color', color_arr);
-                    end
-                else
-                    plot(time-time0, resp_f, 'color', color_arr);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_f, 'color', color_arr);
-                    end
-                end
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('endpoint position (m)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-            end
-            
-            % send out the peak values
-            
-            val{1} = pert_pltavg_pos;
-            val{2} = pert_pltavg_neg;
-        end
-        function [axh, val, lnh] = plotStepPertResponse_rawFce_subavg(obj, axh, color_arr, low_pass_freq)
-            % [axh, val, lnh] = plotStepPertResponse_raw % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-            %   axh: the axis handle, for future plot. 
-            %   val: the value (avg) of peak, val{1} positive, val{2}
-            %           negative
-            %   lnh: the line handle, for the futrue legend on
-             
-            % check input 
-            if ~exist('axh', 'var')
-                axh = 0;
-            end
-            if ~exist('color_arr','var')
-                color_arr = 0;
-            end
-            if length(color_arr) ~= 3
-                ifcolor = [0 0 0];
-            else
-                ifcolor = 1;
-            end
-            if ~exist('low_pass_freq', 'var')
-                ifLowpass = false;
-            else
-                ifLowpass = true;
-            end
-            if isa(axh, 'matlab.ui.Figure')
-                axh = figure(axh); hold on; % stack
-                flag_stak = 1; 
-            elseif isa(axh, 'matlab.graphics.axis.Axes')
-                subplot(axh); hold on;
-                flag_stak = 1;
-            else
-                axh = figure(); hold on;
-                flag_stak = 0;
-            end
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = find([obj.trials(:).ifpert]);
-            trials_pert = setdiff(trials_pert, 1); % remove first trial as unstable
-            trials_fin  = find([obj.trials(:).outcome] == 1);
-            pert_pltavg_pos = []; % put values here, pltavg: pleateau avg
-            pert_pltavg_neg = []; 
-            % for each trial
-            trials_list = intersect(trials_pert, trials_fin);
-            for trial_i = trials_list %trials_pert
-                % make the time aligned for the perturbation
-                time = obj.trials(trial_i).force_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                if (isempty(obj.trials(trial_i).pert_t_bgn))
-                    time0 = pert_t_last;
-                end
-                resp_f = obj.trials(trial_i).force_h(2,:); % resting position
-                time_idx = (time-time0) > -0.1 & (time-time0) < 0;
-                resp_f0= mean(obj.trials(trial_i).force_h(2,time_idx)); % may need change
-                resp_v = obj.trials(trial_i).velocity_h(2,:);
-                freq = 1/mean(diff(time));
-                if (ifLowpass)
-                    resp_f = smooth(resp_f, floor(freq/low_pass_freq));
-                end
-                
-                time_pleateu_idx = time-time0>0.2 & time-time0 < 0.3;
-                pert_pleateu_avg = mean(obj.trials(trial_i).force_h(2,time_pleateu_idx)) - resp_f0;
-                if pert_pleateu_avg > 0
-                    pert_pltavg_pos = [pert_pltavg_pos, pert_pleateu_avg];
-                else
-                    pert_pltavg_neg = [pert_pltavg_neg, pert_pleateu_avg];
-                end
-                %resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                if ifcolor == 1
-                    plot(time-time0, resp_f-resp_f0, 'color', color_arr);
-                    %plot(time-time0, resp_p_net, 'color', color_arr);
-                    %plot(time-time0, resp_v, 'color', color_arr); %velocity
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_f-resp_f0, 'color', color_arr);
-                    end
-                else
-                    plot(time-time0, resp_f-resp_f0);
-                    %plot(time-time0, resp_p_net);
-                    %plot(time-time0, resp_v, 'color', color_arr);
-                    if trial_i == trials_list(1)
-                        lnh = plot(time-time0, resp_f-resp_f0);
-                    end
-                end
-                pert_t_last = time0;
-            end
-            if flag_stak == 0
-                xlim([-0.2, 0.8]);
-                ylabel('sensored force (N)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            else
-                xlim([-0.2, 0.6]);
-                %ylim([-0.015, 0.015]);
-            end
-            
-            % send out the peak values
-            
-            val{1} = pert_pltavg_pos;
-            val{2} = pert_pltavg_neg;
-        end
-        function axh = plotStepPertResponse_raw_inv(obj)
-            % axh = plotStepPertResponse_raw_inv % plot the raw response of
-            % step perturbation, of all trials in this session 
-            % Invert the negative perturbation. 
-            % Assuming all trials are at the same task condition (e.g.
-            % requires the same stiffness so that response magnitudes are
-            % the same.
-            
-            % check input 
-            % ...
-            % list all trials that being perturbed
-            obj = updatePertEachTrial(obj);
-            trials_pert = obj.getPerturbedTrialIdx();
-            % plot
-            axh = figure(); hold on;
-            % figure properties
-            %color = ['rg']; %r- front; g-back
-            % for each trial
-            for trial_i = trials_pert
-                % make the time aligned for the perturbation
-                time_tmp = obj.trials(trial_i).position_t;
-                time0 = obj.trials(trial_i).pert_t_bgn;
-                pertidx = find(time_tmp == time0);
-                resp_p = obj.trials(trial_i).position_h(2,:);
-                resp_p_net= resp_p - obj.trials(trial_i).position_offset;
-                pert_sign = sign(obj.trials(trial_i).pertfce_h(pertidx+1));
-                if pert_sign == 1
-                    color_i = 'r';
-                else
-                    color_i = 'g';
-                end
-                %plot each trial's perturbation response
-                %plot(time-time0, resp_p);
-                
-                plot(time_tmp-time0, pert_sign*resp_p_net, 'color', color_i);
-            end
-
-                xlim([-0.2, 0.6]);
-                ylabel('endpoint position (m)');
-                xlabel('time');
-                title(['step pert response for session' num2str(obj.ssnum)]);
-            
         end
         
         % exception figures for specific sessions:
@@ -4532,6 +1397,9 @@ classdef (HandleCompatible)SessionScan < handle
         
         %% update time from the blackrock hardware recording 
         function [obj flag] = updateTimeBlackRock(obj)
+            % THIS FUNCTION IS FOR ALIGNED THE MESSAGE TIME 
+            % For the WAM, replace the BURT_STATUS message time to the blackrock time
+            % For the FT, replace the PFEM_TIME to the blackrock time 
             %clear; close all; clc;
             ss_num = obj.ssnum;
             fname_sync = sprintf('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/KingKongTSync.%05d.mat', ss_num);
@@ -4551,8 +1419,10 @@ classdef (HandleCompatible)SessionScan < handle
             d = load(fname_sync);
 
             try
+                %%% Use the saved synchronize data;
                 dataTs = d.data;
-            catch % saved temp data here
+            catch
+                %%%% Data save failure in the TSync, use the saved temp data;
                 i = 1;
                 d.data.eventsL = [];
                 d.data.eventsT = [];
@@ -4582,22 +1452,14 @@ classdef (HandleCompatible)SessionScan < handle
             MID_WAM = 62;   % ROBOT
             mid_type = [MID_FT, MID_WAM];
             
-            
-            %%%%% 1. read times from blackrock and check it value (in ifplot)
-            %%%%%%%%%%%%%%%%%%%% only for ss3030
-            %eventsL = dataTs.eventsT;
-            %eventsT  = dataTs.eventsL;
+            %%%%%%%%%%%%%%%%% DATA READING PART %%%%%%%%%%%%%%%%%%%%
+            %%%%% 1. read times from blackrock and check it value (ifplot)
             %%%%%%%%%%%%%%%%%%%%
             eventsL = dataTs.eventsL;   % events_label, 
             eventsT = dataTs.eventsT;   % events_time;
             if (isfield(dataTs, 'eventsTrials')) % trial list
                 eventTrials= dataTs.eventsTrials;
             end
-            
-%             timeoffset = eventsT(1); %not do this...
-%             if obj.time(end) > timeoffset % not-accurate 
-%                 obj.time = obj.time - timeoffset; % should only execute once
-%             end
             
             % pulse from the blackrock
             events_type = unique(eventsL);
@@ -4606,7 +1468,8 @@ classdef (HandleCompatible)SessionScan < handle
                 bk_trials{etype} = eventTrials(eventsL == etype); % after ss3090
             end
             
-            % etype1-FT, etype2-ROBOT
+            %   etype:  1-FT, 
+            %   etype:  2-ROBOT
             ifplot = 0;
             if (ifplot)
                 clf;
@@ -4633,6 +1496,7 @@ classdef (HandleCompatible)SessionScan < handle
             % message time for each computer
             time_leading = dataMsT.tleading;
             time_lasting = dataMsT.tlasting;
+            % correspond the pulse time to each trial number
             if (isfield(dataMsT, 'trial_no'))
                 times_trialno= dataMsT.trial_no; % after ss3110
             else 
@@ -4657,7 +1521,7 @@ classdef (HandleCompatible)SessionScan < handle
                 t_means{mtype_idx}  = (tleading{mtype_idx}+tlasting{mtype_idx})/2;
                 t_error{mtype_idx}  =-(tleading{mtype_idx}-tlasting{mtype_idx});
                 if (exist('times_trialno', 'var'))
-                    t_msg_trialidx{mtype_idx} = times_trialno(msg_mid == mid_type(mtype_idx)); % after ss3110
+                    t_msg_trialidx{mtype_idx} = times_trialno(msg_mid == mid_type(mtype_idx)); 
                 end
             end
             
@@ -4703,13 +1567,11 @@ classdef (HandleCompatible)SessionScan < handle
             % use the average between 't_leading' and 't_lasting'
             t_interest = t_means;
             
-            % if length(t_interest{1}) == 1 + length(bk_time[1})
             % - Think this condition as the last one did not record in BK.
-            % truncate the t_interest
-            if (exist('t_msg_trialidx', 'var') && exist('bk_trials', 'var')) % after ss3110
+            if (exist('t_msg_trialidx', 'var') && exist('bk_trials', 'var'))
                 % 1. find the intersect of trials
-                [trial_its, idx_msg1, idx_bk1] = intersect(t_msg_trialidx{1}, bk_trials{1}); % FT 
-                [trial_its, idx_msg2, idx_bk2] = intersect(t_msg_trialidx{2}, bk_trials{2}); % FT 
+                [trial_its, idx_msg1, idx_bk1] = intersect(t_msg_trialidx{1}, bk_trials{1}); % FT
+                [trial_its, idx_msg2, idx_bk2] = intersect(t_msg_trialidx{2}, bk_trials{2}); % FT
                 % assuem every FT sync signal has a WAM sync signal
                 
                 % 2. change to-aligned data into certain trials
@@ -4720,13 +1582,13 @@ classdef (HandleCompatible)SessionScan < handle
                 
                 
             else % old way to deal with the two message do not have the same length problem
-            if (length(t_interest{1}) == 1 + length(bk_time{1}))
-                disp('Message and pulse size inconsistance, may cause error');
-                
-                t_interest{1} = t_interest{1}(1:end-1);
-                t_interest{2} = t_interest{2}(1:end-1);
-            end
-            end
+                if (length(t_interest{1}) == 1 + length(bk_time{1}))
+                    disp('ERROR(MAYBE): Message and pulse size inconsistance, in SessionScan::updateTimeBlackRock()');
+                    
+                    t_interest{1} = t_interest{1}(1:end-1);
+                    t_interest{2} = t_interest{2}(1:end-1);
+                end
+             end
             
             ifplot = 1;
             if (ifplot)
@@ -4740,9 +1602,10 @@ classdef (HandleCompatible)SessionScan < handle
             end
             % intropolate each data time to the bk_time;
             
+            %%%%%%%%%%%%%% TIME EXPORT PART %%%%%%%%%%%%%%%%
             %%% 1. the FT time
             try
-            obj.force_t = interp1(t_interest{1}, bk_time{1}, obj.ft.elapse, 'linear', 'extrap');
+            obj.force_t = interp1(t_interest{1}, bk_time{1}, obj.ft.elapse, 'linear', 'extrap'); 
             catch 
                 if (ismember(obj.ssnum, [3197 3198]))
                     obj.force_t = interp1(t_interest{2}, bk_time{2}, obj.ft.elapse, 'linear', 'extrap'); 
@@ -4750,6 +1613,7 @@ classdef (HandleCompatible)SessionScan < handle
                     % debug...
                 end
             end
+            
             ifplot = 1;
             if (ifplot)
                 clf; 
@@ -4770,10 +1634,13 @@ classdef (HandleCompatible)SessionScan < handle
             end
             clf; 
             ernie_timeh = interp1(wam_time, ernie_time, obj.wam.time, 'linear', 'extrap');
-            obj.wam_t  = interp1(t_interest{2}, bk_time{2}, ernie_timeh, 'linear', 'extrap');
+            obj.wam_t  = interp1(t_interest{2}, bk_time{2}, ernie_timeh, 'linear', 'extrap'); 
+            if (size(obj.wam_t,1) > size(obj.wam_t,2)) % a thin matrix
+                obj.wam_t = obj.wam_t';
+            end
             ifplot = 1;
             if(ifplot)
-                clf; 
+                clf;
                 axh(1) = subplot(2,2,1);
                 hold on;
                 plot(ernie_time, wam_time, 'b*');
