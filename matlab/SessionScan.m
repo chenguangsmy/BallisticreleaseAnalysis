@@ -99,7 +99,9 @@ classdef (HandleCompatible)SessionScan < handle
             
             fname0 = ([file_dir_formmed '/' file_name]);
             fname1 = ([file_dir_int '/' file_name]);
+
             flag_progress = 0;      % progress display
+
             try 
                 load(fname, 'Data');
             catch 
@@ -131,6 +133,7 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.emg = SessionScanEMG(obj.ssnum);
             catch
 %                 disp('no EMG data here! ')
+
             end
             
             try 
@@ -139,7 +142,9 @@ classdef (HandleCompatible)SessionScan < handle
                 end
                 obj.opt = SessionScanOPT(obj.ssnum);
             catch 
+
 %                 disp('no OPT data here! '); 
+
             end
                 
             % other data

@@ -1257,6 +1257,7 @@ classdef TrialScan
             dat.ox = [ox; oy; oz];
         end
         
+
         % deal with errors (that back to ts3)
         if (~isempty(find(dat.ts==3 & [diff([1 dat.ts]) == -1], 1 )))
             ts = dat.ts;
@@ -1268,6 +1269,7 @@ classdef TrialScan
             idx_forcein  = idx_forcein(1);
             %dat.Fp(2,idx_forcein:idx_forcefail) = 0;
             dat.Fp(1:2,idx_forcein:idx_forceadv) = 0;
+
         end
         
 %         % check the plot
@@ -1322,6 +1324,7 @@ classdef TrialScan
 %             subplot(2,1,2);
 %             plot(dat.t, dat.x(2,:));
               clf;
+
 %               time = dat.t;
               t = obj.data.t_shift(idx);
               axh(1) = subplot(4,1,1);
@@ -1345,7 +1348,6 @@ classdef TrialScan
               
               linkaxes(axh, 'x');
               xlim([-2 1]);
-              
               
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');
