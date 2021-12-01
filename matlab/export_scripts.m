@@ -527,11 +527,10 @@ clear; clc; close all;
 %ss_num = [3581 3580 3584 3434];
 
 % MICHEAL WITH 20N force level. 
-ss_num = [%  3629 3630 3631 3632
+
+ss_num = [  3629 3630 3631 3632
             3617 3615 3616 3618
-          %  3627 3624 3626 3628
-                                ];
- 
+            3627 3624 3626 3628];
 % ADAM WITH 3 FORCE LEVELS;
 % ss_num = [  3621    3620    3622    3596]; 
 
@@ -540,35 +539,32 @@ ss_num = [%  3629 3630 3631 3632
 %             3588    3590    3589    3595
 %             3592    3591    3593    3594];
 data = cell(1, 4, 3, 3, 15, 3);
-F = [15 20 25];
-d = [2.5 5 7.5];
+
+idx_sf = 1; % only choose suceed trials 
 for fce_i = 1:size(ss_num,1)
     for tar_i = 1:3 % step perts
         ss_tmp = SessionScan(ss_num(fce_i, tar_i));
-        display(['F' num2str(F(fce_i)) 'N d' num2str(d(tar_i)) ...
-            'cm >>>>>>' num2str(sum([ss_tmp.trials.outcome] == 1)) ' trials' ... 
-            'out of ' num2str(length([ss_tmp.trials])) ', rate' ...
-            num2str(sum([ss_tmp.trials.outcome] == 1)/length([ss_tmp.trials]))]);
+        ss_tmp.displayBlockCondition();
         celltmp = ss_tmp.export_as_formatted(1);
-%         if (tar_i == 1)
-            celltmp1 = ss_tmp.export_as_formatted_5_failedTrials(1);
-%         end
-        trials_num = size(celltmp,1);
+        
+        trials_num = size(celltmp,3);
+
         if trials_num>15
-            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+            data(1,1,fce_i,tar_i,:,:) = celltmp(idx_sf,1,1:15,:);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(idx_sf,1,:,:);
         end
     end
 
     ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    ss_tmp.displayBlockCondition();
     celltmp = ss_tmp.export_as_formatted(1);
     for tar_i = 1:3 % as a session has 3 length
-        trials_num = size(celltmp,2);
+        trials_num = size(celltmp,3);
         if trials_num>15
-            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(idx_sf,tar_i,1:15,3);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(idx_sf,tar_i,:,3);
         end
     end
 end
@@ -872,9 +868,9 @@ save('data/processedData/ss3089_3094.mat', 'data')
 % wanted format:
 % data = cell(2, 3); % size(tsigma) - by - size(magnitude)
 %%%%%%%%%%%%%%%% Where Kr=100N/m %%%%%%%%%%%%%%%%%
-ss_num = [3110 3111 3115; 3108 3113 3114]; % Kr=100; the combination of ±2N sigma = 0.16s 
-% ss_num = [3116 3119 3120; 3117 3118 3122]; % Kr=100; the combination of ±2N sigma = 0.04s 
-% ss_num = [3124 3125 3128; 3123 3126 3127]; % Kr=100; the combination of ±4N sigma = 0.04s
+ss_num = [3110 3111 3115; 3108 3113 3114]; % Kr=100; the combination of Â±2N sigma = 0.16s 
+% ss_num = [3116 3119 3120; 3117 3118 3122]; % Kr=100; the combination of Â±2N sigma = 0.04s 
+% ss_num = [3124 3125 3128; 3123 3126 3127]; % Kr=100; the combination of Â±4N sigma = 0.04s
 
 mag_list = [-2 2];
 %mag_list = [-4 4];
@@ -911,13 +907,13 @@ save('data/processedData/ss3108_3114.mat', 'data')
 
 %% export the parameter scanned data. 
 % The subject cg was performing all these data on Oct 17 2021. 
-ss_num1 = [3147 3150 3151; 3148 3149 3154]; % Kr=300; the combination of ±2N sigma = 0.04s
-ss_num2 = [3142 3143 3146; 3141 3144 3145]; % Kr=300; the combination of ±2N sigma = 0.16s
-ss_num3 = [3129 3132 3133; 3130 3131 3134]; % Kr=300; the combination of ±4N sigma = 0.04s
-ss_num4 = [3136 3137 3140; 3135 3138 3139]; % Kr=300; the combination of ±4N sigma = 0.16s
-ss_num5 = [3156 3157 3160; 3155 3158 3159]; % Kr=300; the combination of ±6N sigma = 0.04s
-ss_num6 = [3163 3166 3167; 3164 3165 3168]; % Kr=300; the combination of ±6N sigma = 0.16s
-% Kr=300; the combination of ±8N sigma = 0.02s
+ss_num1 = [3147 3150 3151; 3148 3149 3154]; % Kr=300; the combination of Â±2N sigma = 0.04s
+ss_num2 = [3142 3143 3146; 3141 3144 3145]; % Kr=300; the combination of Â±2N sigma = 0.16s
+ss_num3 = [3129 3132 3133; 3130 3131 3134]; % Kr=300; the combination of Â±4N sigma = 0.04s
+ss_num4 = [3136 3137 3140; 3135 3138 3139]; % Kr=300; the combination of Â±4N sigma = 0.16s
+ss_num5 = [3156 3157 3160; 3155 3158 3159]; % Kr=300; the combination of Â±6N sigma = 0.04s
+ss_num6 = [3163 3166 3167; 3164 3165 3168]; % Kr=300; the combination of Â±6N sigma = 0.16s
+% Kr=300; the combination of Â±8N sigma = 0.02s
 
 ss_num_mat = {  ss_num1     ss_num3     ss_num5;
                 ss_num2     ss_num4     ss_num6}';
@@ -959,16 +955,16 @@ save('data/processedData/PertParamSelection_gaussian_cg.mat', 'Data')
 
 %% export the parameter scanned data, with more parameter selection
 % The subject cg was performing all these data on Oct 17 2021 + Nov 10 2021 
-ss_num1 = [3147 3150 3151; 3148 3149 3154]; % Kr=300; the combination of ±2N sigma = 0.04s
-ss_num2 = [3142 3143 3146; 3141 3144 3145]; % Kr=300; the combination of ±2N sigma = 0.16s
-ss_num3 = [3129 3132 3133; 3130 3131 3134]; % Kr=300; the combination of ±4N sigma = 0.04s
-ss_num4 = [3136 3137 3140; 3135 3138 3139]; % Kr=300; the combination of ±4N sigma = 0.16s
-ss_num5 = [3156 3157 3160; 3155 3158 3159]; % Kr=300; the combination of ±6N sigma = 0.04s
-ss_num6 = [3163 3166 3167; 3164 3165 3168]; % Kr=300; the combination of ±6N sigma = 0.16s
-ss_num7 = [3445 3447 3448; 3451 3450 3449]; % Kr=300; the combination of ±8N sigma = 0.04s
-ss_num8 = [3458 3459 3460; 3463 3462 3461]; % Kr=300; the combination of ±8N sigma = 0.02s
+ss_num1 = [3147 3150 3151; 3148 3149 3154]; % Kr=300; the combination of Â±2N sigma = 0.04s
+ss_num2 = [3142 3143 3146; 3141 3144 3145]; % Kr=300; the combination of Â±2N sigma = 0.16s
+ss_num3 = [3129 3132 3133; 3130 3131 3134]; % Kr=300; the combination of Â±4N sigma = 0.04s
+ss_num4 = [3136 3137 3140; 3135 3138 3139]; % Kr=300; the combination of Â±4N sigma = 0.16s
+ss_num5 = [3156 3157 3160; 3155 3158 3159]; % Kr=300; the combination of Â±6N sigma = 0.04s
+ss_num6 = [3163 3166 3167; 3164 3165 3168]; % Kr=300; the combination of Â±6N sigma = 0.16s
+ss_num7 = [3445 3447 3448; 3451 3450 3449]; % Kr=300; the combination of Â±8N sigma = 0.04s
+ss_num8 = [3458 3459 3460; 3463 3462 3461]; % Kr=300; the combination of Â±8N sigma = 0.02s
 ss_num_blk = [];
-% Kr=300; the combination of ±8N sigma = 0.02s
+% Kr=300; the combination of Â±8N sigma = 0.02s
 
 ss_num_mat = {  ss_num_blk  ss_num_blk  ss_num_blk  ss_num8;        % ... sigma = 0.02s
                 ss_num1     ss_num3     ss_num5     ss_num7;        % ... sigma = 0.04s 
@@ -1023,9 +1019,9 @@ save('data/processedData/PertParamSelection_gaussian_cg_4by3.mat', 'Data')
 %ss_num = [3180 3182 3184]; 
 % | ss_num  | descriptions                              | 
 % | ------- | ----------------------------------------- |
-% | 3192    | peak±4N,±6N, sigma = 0.04s Ks = 160N/m    |
-% | 3191    | peak±4N,±6N, sigma = 0.04s Ks = 320N/m    |
-% | 3189    | peak±4N,±6N, sigma = 0.04s Ks = 640N/m    |
+% | 3192    | peakÂ±4N,Â±6N, sigma = 0.04s Ks = 160N/m    |
+% | 3191    | peakÂ±4N,Â±6N, sigma = 0.04s Ks = 320N/m    |
+% | 3189    | peakÂ±4N,Â±6N, sigma = 0.04s Ks = 640N/m    |
 % | 3201    | no spring hooked                          |
 
 % Data-type: pert_mag * pert_duration * spring_stiffness * pert_pos/neg
