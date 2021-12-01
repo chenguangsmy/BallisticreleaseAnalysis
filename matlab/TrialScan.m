@@ -1290,6 +1290,7 @@ classdef TrialScan
         idx_forcein = find(ts==4);                             % in force zone (4)
         idx_forcein  = idx_forcein(1); 
         %dat.Fp(2,idx_forcein:idx_forcefail) = 0;
+        dat.Fp(1,idx_forcein:idx_forceadv) = 0;
         dat.Fp(2,idx_forcein:idx_forceadv) = 0;
         end
         
@@ -1345,22 +1346,26 @@ classdef TrialScan
 %             subplot(2,1,2);
 %             plot(dat.t, dat.x(2,:));
               clf;
-              axh(1) = subplot(3,1,1);
-              title([' trial' num2str(obj.tNo)]);
+              axh(1) = subplot(4,1,1);
               plot(dat.t, dat.Fp);
+              title(['trial' num2str(obj.tNo)]);
               grid on;
               ylabel(['Fp' ]);
-              axh(2) = subplot(3,1,2);
+              axh(2) = subplot(4,1,2);
               plot(dat.t, dat.x(2,:));
               ylabel('position - y');
               grid on;
-              axh(3) = subplot(3,1,3);  hold on;
+              axh(3) = subplot(4,1,3);
+              plot(dat.t, dat.v(2,:));
+              ylabel('velocity - y');
+              grid on;
+              axh(4) = subplot(4,1,4);  hold on;
               plot(dat.t, dat.f(2,:), 'b.');
               hold on;
               plot(obj.force_t, obj.force_h(2,:), 'r'); 
               linkaxes(axh, 'x');
               grid on;
-              
+             
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');
 %             subplot(2,1,2);

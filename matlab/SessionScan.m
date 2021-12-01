@@ -121,7 +121,7 @@ classdef (HandleCompatible)SessionScan < handle
             %file_dir = ['data/'];
             fname0 = ([file_dir '/' file_name]);
             fname1 = ([file_dir_int '/' file_name]);
-            flag_progress = 1;      % show something to make me less anxious
+            flag_progress = 0;      % show something to make me less anxious
             try 
                 load(fname, 'Data');
             catch 
@@ -151,7 +151,9 @@ classdef (HandleCompatible)SessionScan < handle
                 end
                 obj.emg = SessionScanEMG(obj.ssnum);
             catch
-                disp('no EMG data here! ')
+                if (flag_progress)
+                    disp('no EMG data here! ')
+                end
             end
             
             try 
@@ -160,7 +162,9 @@ classdef (HandleCompatible)SessionScan < handle
                 end
                 obj.opt = SessionScanOPT(obj.ssnum);
             catch 
-                disp('no OPT data here! '); 
+                if (flag_progress)
+                    disp('no OPT data here! ');
+                end
             end
                 
             % other data
@@ -245,9 +249,11 @@ classdef (HandleCompatible)SessionScan < handle
             percent_prev = 0;
             for trial_i = 1:length(trials_all)
                 trial_percent = floor(trial_i/length(trials_all) * 20)*5;
-                if ~(trial_percent == percent_prev) % avoid showing a lot.
-                    fprintf('  %02d%%...', trial_percent);
-                    percent_prev = trial_percent;
+                if (flag_progress)
+                    if ~(trial_percent == percent_prev) % avoid showing a lot.
+                        fprintf('  %02d%%...', trial_percent);
+                        percent_prev = trial_percent;
+                    end
                 end
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
