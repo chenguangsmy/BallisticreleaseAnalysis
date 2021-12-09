@@ -169,11 +169,59 @@ classdef SessionScanFT
 end
 
 function Data = dealRDTError(Data)
+    ifplot = 0;
+    % sometime the FT has non-uniqe values, this is an error
     FT = [Data.FT]';
     [FTunq, idx_raw, idx_clean] = unique(FT);
     if (length(FTunq) < length(FT))
-        disp('WARNING: FT time skew detected, abort data point!');
+        fprintf('WARNING: FT time skew detected, abort %d data point!', ...
+            length(FT) - length(FTunq));
     end
     idx_valid = idx_raw;
     Data = Data(idx_valid, :);
+    
+    % RDT non-unique is also an error
+    RDT = [Data.RDT]';
+    [RDTunq, idx_raw, idx_clean] = unique(RDT);
+    if (length(RDTunq) < length(RDT))
+        fprintf('WARNING: RDT time skew detected, abort %d data point!', ...
+            length(RDT) - length(RDTunq));
+    end
+    idx_valid = idx_raw;
+    Data = Data(idx_valid, :);
+    
+    % some times the elapse(time) has non-monotonic increasing, this is the
+    % computer error.
+    elapse = [Data.elapse]';
+    elapse_diff = [0 diff(elapse) ];
+    decrease_idx = elapse_diff<0;
+    if (sum(elapse_diff<0)~=0)
+        fprintf('WARNING: elapse time skew detected, abort %d data point!', ...
+            sum(elapse_diff<0));
+    end
+    idx_valid = 0;    
+    if (ifplot)
+        axh(1) = subplot(2,1,1);
+        plot([0, elapse_diff], '.');
+        axh(2) = subplot(2,1,2);
+        plot(elapse, '.');
+        linkaxes(axh, 'x');
+    end
+    idx_valid = setdiff(1:size(elapse,2), find(decrease_idx)+1);
+    Data = Data(idx_valid, :);
+    % check again!
+    elapse = [Data.elapse]';
+    elapse_diff = [0 diff(elapse) ];
+    decrease_idx = elapse_diff<0;
+    if (sum(elapse_diff<0)~=0)
+        fprintf('WARNING: elapse time skew detected, abort %d data point!', ...
+            sum(elapse_diff<0));
+    end
+    if (ifplot)
+        axh(1) = subplot(2,1,1);
+        plot([0, elapse_diff], 'r.');
+        axh(2) = subplot(2,1,2);
+        plot(elapse, 'r.');
+        linkaxes(axh, 'x');
+    end
 end

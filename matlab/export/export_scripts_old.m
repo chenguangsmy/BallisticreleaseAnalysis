@@ -460,7 +460,7 @@ for dir_i = 1:size(ss_num,1)%1:size(ss_num,1)
     end
 end
 %save('data/processedData/ss3353_3417.mat', 'data')
-save('data/processedData/ss3486_3534.mat', 'data')
+% save('data/processedData/ss3486_3534.mat', 'data')
 %save('data/processedData/ss3345.mat', 'data')
 
 % % check the data
@@ -470,6 +470,7 @@ save('data/processedData/ss3486_3534.mat', 'data')
 % linkaxes(axh, 'x');
 
 %% export a data from formatted requirements 
+%%%%%%%%%%%%%%%%%%%%%%%%% MAIN PART OF THE CODE HERE! %%%%%%%%%%%%%%%%%%%%%
 % Date: 2021-11-10 SUBJECT HIMANSHU TRYS THESE EXPERIMENTS, 
 % With the same force level, 3 distance, and with different task settings.
 % TASK SETTING  1. Allow overshoot and stop earlier; 
@@ -507,7 +508,7 @@ save('data/processedData/ss3486_3534.mat', 'data')
 
 clear; clc; close all;
 % % HIMANSHU
-% ss_num = [  3433    3432	3431	3434;
+% ss_num = [  3433  3432	3431	3434;
 %             3438	3437 	3436	3440];
 % HONGWEI
 % ss_num = [3478 3476 3477 3479];
@@ -526,15 +527,21 @@ clear; clc; close all;
 %ss_num = [3581 3580 3582 3434];
 %ss_num = [3581 3580 3584 3434];
 
-% MICHEAL WITH 20N force level. 
+% % MICHAEL WITH 20N force level. 
+% 
+% ss_num = [  3629    3630    3661    3632
+%             3650    3648    3665    3651
+%             3627    3664    3662    3628];
 
-ss_num = [  3629 3630 3631 3632
-            3617 3615 3616 3618
-            3627 3624 3626 3628];
-
-
-% ADAM WITH 3 FORCE LEVELS;
-% ss_num = [  3621    3620    3622    3596]; 
+% %ADAM WITH 3 FORCE LEVELS;
+% ss_num = [  3621    3620    3622    3667
+%             3637    3635    3636    3638
+%             3668    3670    3669    3672]; 
+        
+% MARCO WITH 3 FORCE LEVELS: 
+ss_num = [  3643    3641    3642    3644
+            3647    3645    3646    3654
+            3656    3655    3657    3658];
 
 % CHENGUANG TRY BACKWARD FULLY EXTENDED
 % ss_num = [  3587    3586    3585    3596
@@ -545,6 +552,7 @@ data = cell(1, 4, 3, 3, 15, 3);
 idx_sf = 1; % only choose suceed trials 
 for fce_i = 1:size(ss_num,1)
     for tar_i = 1:3 % step perts
+        fprintf('ss: %d', ss_num(fce_i, tar_i));
         ss_tmp = SessionScan(ss_num(fce_i, tar_i));
         ss_tmp.displayBlockCondition();
         celltmp = ss_tmp.export_as_formatted(1);
@@ -559,27 +567,29 @@ for fce_i = 1:size(ss_num,1)
     end
 
     ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    fprintf('ss: %d', ss_num(fce_i, 4));
     ss_tmp.displayBlockCondition();
     celltmp = ss_tmp.export_as_formatted(1);
     for tar_i = 1:3 % as a session has 3 length
         trials_num = size(celltmp,3);
-        if trials_num>15
-            data(1,1,fce_i,tar_i,1:15,3) = celltmp(idx_sf,tar_i,1:15,3);
-        else
-            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(idx_sf,tar_i,:,3);
-        end
+        data(1,1,fce_i,tar_i,1:5,3) = celltmp(idx_sf,tar_i,1:5,3);
+%         if trials_num>15
+%             data(1,1,fce_i,tar_i,1:15,3) = celltmp(idx_sf,tar_i,1:15,3);
+%         else
+%             data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(idx_sf,tar_i,:,3);
+%         end
     end
 end
 %save('data/processedData/ss3431_3440.mat', 'data')
 %save('data/processedData/ss3476_3479.mat', 'data')
 %save('data/processedData/ss3486_3495.mat', 'data')
-% save('data/processedData/ss3491_3503.mat', 'data')    % HIMANSHU'S NEW TASK CONDITION
 %save('data/processedData/ss3491_3493.mat', 'data')
 %save('data/processedData/ss3580_3582.mat', 'data')
 %save('data/processedData/ss3585_3596.mat', 'data')
-
-save('data/processedData/ss3615_3618.mat', 'data')      % MICHEAL TRY "TOLERANT" TASK CONDITION
-%save('data/processedData/ss3620_3629.mat', 'data')       % ADAM TRY "TOLERANT" TASK CONDITION
+% save('data/processedData/ss3491_3503.mat', 'data')    % HIMANSHU'S NEW TASK CONDITION
+% save('data/processedData/ss3615_3618.mat', 'data')      % MICHAEL TRY "TOLERANT" TASK CONDITION
+% save('data/processedData/ss3620_3629.mat', 'data')       % ADAM TRY "TOLERANT" TASK CONDITION
+save('data/processedData/ss3641_3644.mat', 'data')       % MARCO TRY "TOLERANT" TASK CONDITION
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -668,6 +678,25 @@ data = data1;
 %save('data/processedData/prelimData_3subj.mat', 'data')
 %save('data/processedData/prelimData_3subj_restict.mat', 'data')
 save('data/processedData/prelimData_4subj_fine.mat', 'data')
+
+%% tidy up 6 subjects' data in our data
+clear;
+fnames = {
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3486_3534.mat'; % Chenguang testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3486_3534.mat'; % James testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3491_3503.mat'; % Himanshu testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3615_3618.mat'; % Micheal testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3620_3629.mat'; % Adam testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3641_3644.mat'; % Marco testing
+    };
+data1 = cell(6, 4, 3, 3, 15, 3);
+for idx_subj = 1:6
+    clear data;
+    load(fnames{idx_subj});
+    data1(idx_subj,:,:,:,:,:) = data(1,:,:,:,:,:);
+end
+data = data1;
+save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine.mat', 'data', '-v7.3')
 
 %% tidy up Himanshu's data as a comparation 
 clear; 

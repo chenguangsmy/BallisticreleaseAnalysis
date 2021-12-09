@@ -39,6 +39,12 @@ classdef SessionScanWam
             %fname = '20210127aft00.csv';
             fname = sprintf('KingKongWAM%05d.csv', ss_num);
             filename = [fdir '/' fname];
+            if ~exist(filename, 'file')
+                % try to convert from binary file...
+                fnametmp = sprintf('KingKongWAM%05d.bin', ss_num);
+                filenametmp = [fdir '/' fnametmp];
+                exportWambin2csv(filenametmp,filename)
+            end
             Data = readmatrix(filename);
 %             obj.Data = Data;    % consider remove this due to memory taking?
             %if (size(Data,2) ~= 24)

@@ -13,6 +13,7 @@ classdef TrialScan
         bgn_t   % time for high_sample
         edn_t 
         outcome
+        outcomeo  % outcome from offline judge
 %         comboNo % get from intermediate data
 %         comboTT % combo of task targets
         states
@@ -831,6 +832,66 @@ classdef TrialScan
 %                     obj.tNo, obj.pred_K, obj.pred_D, obj.pred_A, obj.pred_J, obj.pred_S, obj.pred_x0 );
 %             end
 %         end
+        function obj = judgeOffline(obj)
+            % OBJ = JUDGEOFFLINE(OBJ)
+            % The robot and judge model's lagging makes the judgement does
+            % not work well. In this function, I'll offline judge the
+            % position and the velocity to re-define the obj.outcome 
+            
+            % 1. offline judge parameters define
+            time_scale = [0.4 0.6];
+            pos_dist = 0.01;        % ±1cm
+            vel_dist = 0.05;       % 5mm/s ??? is it 5cm or 5mm?
+            TS_MOV = 5;
+            pos_offset = 0.48;
+            idx = obj.data.t_shift > time_scale(1) & obj.data.t_shift < time_scale(2);
+            
+            % 2. judge begin
+                % kick the unfinished trials
+            if isempty(obj.data.ts==TS_MOV)
+                obj.outcomeo = 0; 
+                return;
+            end
+                % kick the not enough long trials
+            if sum(idx) < 100
+                obj.outcomeo = 0; 
+                return;
+            end
+            
+            if unique(obj.data.ts(idx)==8)
+                obj.outcomeo = 0; 
+                return;
+            end
+                
+            
+                % begin judge
+            
+            jd(1) = prod(abs(obj.data.x(2,idx) - pos_offset -obj.tarL) < pos_dist);
+            jd(2) = prod(abs(obj.data.v(2,idx)- 0 ) < vel_dist);
+            obj.outcomeo = jd(1) * jd(2); % should I use &&?
+            
+            ifplot = 1;
+            if(ifplot)
+                clf;
+                axh(1) = subplot(2,1,1); hold on;
+                plot(obj.data.t_shift, obj.data.x(2,:));
+                line(time_scale, (pos_offset+obj.tarL+pos_dist)*[1 1], 'color', 'r');
+                line(time_scale, (pos_offset+obj.tarL-pos_dist)*[1 1], 'color', 'r');
+                title(['trial ' num2str(obj.tNo) 'outcome ' num2str(obj.outcome)]);
+                ylabel('position (m)');
+                grid on;
+                
+                axh(2) = subplot(2,1,2); hold on;
+                plot(obj.data.t_shift, obj.data.v(2,:));
+                line(time_scale, (0+0+vel_dist)*[1 1], 'color', 'r');
+                line(time_scale, (0+0-vel_dist)*[1 1], 'color', 'r');
+                ylabel('velocity (m/s)');
+                grid on;
+                
+                linkaxes(axh, 'x');
+                xlim([0 0.7]);
+            end
+        end
         function obj = predictMass(obj, ifplot)
             % This function use the force immediate before and after the
             % release to estimate the mass of the subject side. The mass is
@@ -1307,6 +1368,7 @@ classdef TrialScan
         %end
         
         %ifplot = 1;
+        outcome_name = 'sf';
         if (ifplot)
 %             subplot(2,1,1); 
 %             plot(obj.position_t, obj.position_h(2,:));
@@ -1329,15 +1391,21 @@ classdef TrialScan
               axh(1) = subplot(4,1,1);
               plot(t, dat.Fp);
 %               plot(t, dat.mvst);
-              title([' trial' num2str(obj.tNo)]);
+              title(['trial' num2str(obj.tNo) ' :' outcome_name(2-obj.outcome)]);
               grid on;
               ylabel('Fp (N)' );
-              axh(2) = subplot(4,1,2);
+              axh(2) = subplot(4,1,2); hold on;
               plot(t, dat.x(2,:));
+              line([0.4 1.0], (0.48+obj.tarL+0.01)*[1 1], 'color', 'r');
+              line([0.5 1.0], (0.48+obj.tarL-0.01)*[1 1], 'color', 'r');
+              line([0.4 1.0], (0.48+obj.tarL+0.005)*[1 1], 'color', 'g');
+              line([0.5 1.0], (0.48+obj.tarL-0.005)*[1 1], 'color', 'g');
               ylabel('position (m)');
               grid on;
-              axh(3) = subplot(4,1,3);
+              axh(3) = subplot(4,1,3); hold on;
               plot(t, dat.v(2,:));
+              line([0.5 1.0], [0.05 0.05], 'color', 'r');
+              line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
               ylabel('velocity (m/s)');
               grid on;
               axh(4) = subplot(4,1,4);  hold on;
@@ -1346,9 +1414,7 @@ classdef TrialScan
               ylabel('Force (N)')
               
               linkaxes(axh, 'x');
-              xlim([-2 1]);
-              
-              
+%              xlim([-2 0.7]);
 
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');

@@ -50,7 +50,7 @@ classdef (HandleCompatible)SessionScan < handle
     
     methods
         %%% process
-        function obj = SessionScan(ss_num, badTrials) %(inputArg1,inputArg2)
+        function obj = SessionScan(ss_num) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
             obj.ssnum = ss_num;
             %   Detailed explanation goes here
@@ -73,7 +73,7 @@ classdef (HandleCompatible)SessionScan < handle
                 ft_synctime1 = data1.Data.QL.Data.TIME_SYNC.tleading(msgidx); % also, choose MID to do this
                 ft_synctime2 = data1.Data.QL.Data.TIME_SYNC.tlasting(msgidx);
                 ft_synctime = mean([ft_synctime1 ft_synctime2]);
-                ifplot = 1;
+                ifplot = 0;
                 if (ifplot)
                     clf;
                     subplot(2,1,1); 
@@ -237,6 +237,7 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
+                obj.trials(trial_i) = judgeOffline(obj.trials(trial_i));
                 %obj.trials(trial_i) = alignPertInit(obj.trials(trial_i));
                 if (flag_progress)
                     if (trial_i == length(trials_all)) % last trial
@@ -244,13 +245,26 @@ classdef (HandleCompatible)SessionScan < handle
                     end
                 end
             end
-            if (nargin>1) %specify bad trials
-                for trial_i = badTrials
+            
+            [s,f] = readManualSetsf(obj.ssnum);
+            if (~isempty(s)) %specify good trials
+                disp('Manual set trials suceed: ');
+                for trial_i = s
+                    fprintf('%d ', trial_i);
+                    obj.trials(trial_i).outcome = 1;
+                end
+            end
+            if (~isempty(f)) %specify bad trials
+                disp('Manual set trials failed: ');
+                for trial_i = f
+                    fprintf('%d ', trial_i);
                     obj.trials(trial_i).outcome = 0;
                 end
-            else
-                obj.trials(1).outcome = 0; % 1st trials are bad for force align.
             end
+            
+            
+            obj.trials(1).outcome = 0; % 1st trials are bad for force align.
+            
             %
             % plots:
             %   whole session plot
@@ -603,7 +617,7 @@ classdef (HandleCompatible)SessionScan < handle
 %                         trial_list = setdiff(trial_list,1);
                         for t_i = 1:length(trial_list)
                             t_tmp = obj.trials(trial_list(t_i));
-                            cellsmat{sf,tl_i,t_i,3} = t_tmp.export_as_formatted;
+                            cellsmat{sf,tl_i,t_i,3} = t_tmp.export_as_formatted(ifplot);
                         end
                     end
                 end
@@ -634,62 +648,62 @@ classdef (HandleCompatible)SessionScan < handle
 %                         trial_list = setdiff(trial_list,[1]);
                         for t_i = 1:length(trial_list)
                             t_tmp = obj.trials(trial_list(t_i));
-                            cellsmat{sf,1,t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                            cellsmat{sf,1,t_i,p_i} = t_tmp.export_as_formatted(ifplot);  % each trial
                             xlim([-5 -4])
-                            ifplot = true;
-                            if (ifplot)
-                                subplot(2,1,1);
-                                plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.x(2,:));
-                                subplot(2,1,2);
-                                plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.f(2,:));
-                            end
+                            %ifplot = true;
+%                             if (ifplot)
+%                                 subplot(2,1,1);
+%                                 plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.x(2,:));
+%                                 subplot(2,1,2);
+%                                 plot(cellsmat{sf,1,t_i, p_i}.t, cellsmat{sf,1,t_i, p_i}.f(2,:));
+%                             end
                         end
                     end
                 end
             end
             
             % plot out the time skew
-            ifplot = 0; %-test
+%             ifplot = 0; %-test
             
-            if (ifplot) 
-                plt_offset = 2e-3/10;
-                for p_i = 1:3
-                    subplot(1,3,p_i); hold on;
-                    switch p_i
-                        case 1
-                            title('no pert');
-                        case 2
-                            title('pulse pert');
-                        case 3
-                            title('stoc pert');
-                    end
-                    if (p_i ~= 3)
-                        for t_i = 1:length(t_idx{p_i})
-                            if(isempty(cellsmat{1,t_i, p_i}))
-                                continue;
-                            end
-                            dt = diff(cellsmat{1,t_i,p_i}.t);
-                            dt = [dt(1) dt];
-                            plot(t_i*plt_offset + dt);
-                        end
-                    else
-                        if isempty(t_idx{p_i}) 
-                            continue
-                        end
-                        tiofst = 0; % plot offset
-                        for tl_i = 1:size(cellsmat, 2)
-                            for t_i = 1:length(cellsmat(1,tl_i,:,p_i))
-                                if ~isempty(cellsmat{1,tl_i,t_i,p_i})
-                                dt = diff(cellsmat{1,tl_i,t_i,p_i}.t);
-                                dt = [dt(1) dt];
-                                tiofst = tiofst+1;
-                                plot(tiofst*plt_offset + dt);
-                                end
-                            end
-                        end
-                    end
-                end
-            end
+%             if (ifplot) 
+%                 plt_offset = 2e-3/10;
+%                 for p_i = 1:3
+%                     subplot(1,3,p_i); hold on;
+%                     switch p_i
+%                         case 1
+%                             title('no pert');
+%                         case 2
+%                             title('pulse pert');
+%                         case 3
+%                             title('stoc pert');
+%                     end
+%                     if (p_i ~= 3)
+%                         for t_i = 1:length(t_idx{p_i})
+%                             if(isempty(cellsmat{1,t_i, p_i}))
+%                                 continue;
+%                             end
+%                             dt = diff(cellsmat{1,t_i,p_i}.t);
+%                             dt = [dt(1) dt];
+%                             plot(t_i*plt_offset + dt);
+%                         end
+%                     else
+%                         if isempty(t_idx{p_i}) 
+%                             continue
+%                         end
+%                         tiofst = 0; % plot offset
+%                         for tl_i = 1:size(cellsmat, 2)
+%                             for t_i = 1:length(cellsmat(1,tl_i,:,p_i))
+%                                 if ~isempty(cellsmat{1,tl_i,t_i,p_i})
+%                                 dt = diff(cellsmat{1,tl_i,t_i,p_i}.t);
+%                                 dt = [dt(1) dt];
+%                                 tiofst = tiofst+1;
+%                                 plot(tiofst*plt_offset + dt);
+%                                 end
+%                             end
+%                         end
+%                     end
+%                 end
+%             end
         end
         function [cellsmat] = export_as_formatted_hybridss(obj, ifplot)
             % hybrids can have pulse, stoc and no pulse pert
@@ -1123,14 +1137,17 @@ classdef (HandleCompatible)SessionScan < handle
             end
             % title('all trials position');
         end
-        function axh = plotTrialfyForceh(obj, axh)
+        function axh = plotTrialfyForceh(obj, axh, tidx)
             if nargin < 2
                 axh = figure();
             else
                 figure(axh);
             end
+            if ~exist('tidx','var')
+                tidx = ones(size(obj.trials));
+            end
             hold on;
-            trials = obj.trials;
+            trials = obj.trials(tidx);
             for trial_i = 1:length(trials)
                 plot(trials(trial_i).data.t_shift, trials(trial_i).data.f(2,:));
             end
@@ -1664,7 +1681,51 @@ classdef (HandleCompatible)SessionScan < handle
     end
 
 end
+function [s,f] = readManualSetsf(ssnum)
 
+    %  for manual sucessful trials; 
+    filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/NotTrack/config/manualSetTrials.conf';
+    fid = fopen(filename);
+    %C = textscan(fid, '%s', 'delimiter',sprintf('\n')); 
+    C = textscan(fid, '%s\n','CommentStyle','#'); 
+    fclose(fid);
+    for li = 1:size(C{1}, 1)
+        str = C{1}{li};
+        freadtmp = textscan(str,'%d,');
+        ss_num = freadtmp{1}(1);
+        if ss_num ~= ssnum
+            continue;
+        end
+        trials_num = freadtmp{1}(2:end);
+    end
+    if exist('trials_num', 'var')
+        s = double(trials_num)';
+        clear trials_num;
+    else 
+        s = [];
+    end
+    
+    %  for manual failure trials;
+    filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/NotTrack/config/manualSetTrialf.conf';
+    fid = fopen(filename);
+    C = textscan(fid, '%s\n','CommentStyle','#'); 
+    fclose(fid);
+    for li = 1:size(C{1}, 1)
+        str = C{1}{li};
+        freadtmp = textscan(str,'%d,');
+        ss_num = freadtmp{1}(1);
+        if ss_num ~= ssnum
+            continue;
+        end
+        trials_num = freadtmp{1}(2:end);
+    end
+    if exist('trials_num', 'var')
+        f = double(trials_num)';
+    else 
+        f = [];
+    end
+    
+end
 function [steadyValue, duration] = findSteadyValue(intMat, durat, ifplot)
     % steadyValue = findSteadyValue(interestMat)
     % for a interestMatrix (intMat) with m-by-n values (which m serves as
