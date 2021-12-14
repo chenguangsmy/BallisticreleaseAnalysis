@@ -768,4 +768,104 @@ x0r = force_list(1) / stiffness0;
     xr0 = fce/stiffness0;
     simout{1}(1)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_GaussianPerte.slx',...
             'FixedStep','0.002');  
+        
+%% simulate with a half gaussian step perturbation 
+% gaussian wave 
+freq = 500;
+dur = 8;
+pert_t = 1;
+mu = 0.5;
+sigma = 0.04;
+mag_int = 2.5;
+t = 0:(1/freq):1;
+pert = (mag_int/(sigma*sqrt(2*pi)))*exp(-(t-mu).^2/(2*sigma^2));
+plot(pert); 
+% [~,ia] = max(pert);
+% spert(ia:end) = max(pert);
 
+
+% generate time sequence
+t_all = 0:(1/freq):dur;
+datavals = zeros(size(t_all));
+pert_stt_idx = find(t_all == pert_t);
+pert_edn_idx = pert_stt_idx + length(pert) - 1;
+datavals(pert_stt_idx:pert_edn_idx) = pert;
+stim_ts = timeseries(datavals(1:end-1),t_all(1:end-1));
+
+% generate perturbed data
+force_list = [16];
+% spring_list = [ 320 ]; % N/m
+% damping_list = [10:10:50]; % Ns/m
+damping_list = [10.0000   14.1421   17.3205   20.0000   22.3607]; % critical damping
+spring_list = [ 160 320 480 640 800]; % N/m
+% damping_list = 10;
+mass_list = 1.6; % cause the mass of the robot end+FT is 1.6kg
+k0 = 300;
+colors = colormap('lines');
+stiffness0 = 300; % robot stiffness
+x0r = force_list(1) / stiffness0;
+for i = 1:5
+
+    m1 = 1/2 * mass_list(1); % fixed portion of maxx 
+    m2 = 1/2 * mass_list(1);
+    
+    fce = force_list(1);
+    dist = fce/spring_list(i);
+    x0 = dist;
+    stiffness = spring_list(i);
+   % damping = 20;
+    damping = damping_list(i);
+    xr0 = fce/stiffness0;
+    simout{1}(i)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_GaussianPerte.slx',...
+            'FixedStep','0.002');  
+end
+%% % plot the gaussian perturbation
+figure();
+for ploti = 1:5
+%    axhf(ploti) = figure(ploti); hold on;
+    
+    %simtmp = simout{ploti};       %simulation results
+    simtmp = simout{1}(ploti);       %simulation results
+    
+    axh(1) = subplot(3,1,1); title('force');    hold on;
+    axh(2) = subplot(3,1,2); title('position'); hold on;
+    axh(3) = subplot(3,1,3); title('dF / dx');  hold on;
+    % in one plot
+    for i = 1
+        pos = simtmp(i).pos.Data;
+        postime= simtmp(i).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simtmp(i).vel.Data;
+        time = simtmp(i).vel.Time - 4; % 1 for pert, 4 for release
+        fce = simtmp(i).fce.Data;
+        timeF= simtmp(i).fce.Time;
+        
+        plot(axh(1), time, fce, 'color', colors(i,:));
+        legend_arr{i} = ['M_r/(M_s+M_r)=' num2str(mass_list(i)) ];
+        plot(axh(2), time, pos, 'color', colors(i,:));
+        
+        %df_dx = (fce - force_list) ./ (pos - pos0);
+        %plot(axh(3), time, df_dx, 'color', colors(i,:));
+        plot(axh(3), time, vel, 'color', colors(i,:));
+    end
+    linkaxes(axh, 'x');
+    %legend(legend_arr);
+    subplot(axh(1));
+    ylim([14, 22]); % force
+    xlim([-3.5, -1]);
+    %yticks([-3:5]*4);
+    ylabel('censored force (N)')
+    %xlabel('time at movement (s)');
+    title('Force');
+    set(gca, 'Ygrid', 'on');
+    subplot(axh(2));
+    ylim([-14, 6]*1e-3);
+    ylabel('censored position (m)');
+    subplot(axh(3));
+    %xlim([-3.01 -2.99]);
+    %ylim([-600, 0]);
+    %ylabel('\DeltaF / \Delta x (N/m)');
+    ylabel('vel (m/s)');
+
+end

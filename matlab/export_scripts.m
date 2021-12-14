@@ -387,29 +387,51 @@ save('data/processedData/ss3465_3468.mat', 'data')
 clear; close all; clc; 
 ss_num = zeros(3, 3, 4);
 data = cell(1, 4, 3, 3, 15, 3);
-%front
+% % % %%% Chenguang tested with the arm sling off...
+% % % %front
+% % % ss_num(1,:,:) =...
+% % %         [   3354        3355        3353        3415
+% % %             3359        3356        3358        3416
+% % %             3361        3363        3364        3417 ];
+% % % %back
+% % % ss_num(2,:,:) =...
+% % %          [  3372        3373        3371        3382     
+% % %             3376        3374        3375        3413     
+% % %             3377        3378        3379        3414 ];
+% % % 
+% % % % left
+% % % ss_num(3,:,:) =...
+% % %          [  3400        3401        3399        3408      
+% % %             3404        3402        3403        3409      
+% % %             3405        3406        3407        3410 ];
+% % % %right
+% % % ss_num(4,:,:) =...
+% % %            [3385        3386        3384        3395     
+% % %             3390        3387        3388        3411     
+% % %             3391        3393        3394        3412 ];
+%%% Chenguang tested with the arm sling on... 
 ss_num(1,:,:) =...
-        [   3354        3355        3353        3415
-            3359        3356        3358        3416
-            3361        3363        3364        3417 ];
+        [   3487   	3486  	3488    3552
+            3495   	3494  	3489    3550
+            3507   	3506  	3505    3551];
 %back
 ss_num(2,:,:) =...
-         [  3372        3373        3371        3382     
-            3376        3374        3375        3413     
-            3377        3378        3379        3414 ];
+         [ 	3510     3509    3508   3553       
+            3513     3512    3511   3554       
+            3514     3516    3515   3555];
 
 % left
 ss_num(3,:,:) =...
-         [  3400        3401        3399        3408      
-            3404        3402        3403        3409      
-            3405        3406        3407        3410 ];
+         [	3518     3517    3519   3556       
+            3522     3521    3520   3557       
+            3523     3525    3535   3558];
 %right
 ss_num(4,:,:) =...
-           [3385        3386        3384        3395     
-            3390        3387        3388        3411     
-            3391        3393        3394        3412 ];
+         [  3527     3526    3528   3559       
+            3531     3530    3529   3562       
+            3532     3534    3533   3563];
 
-for dir_i = 1:size(ss_num,1)
+for dir_i = 1:size(ss_num,1)%1:size(ss_num,1)
     for fce_i = 1:size(ss_num,2) 
         for tar_i = 1:3 % step perts
             ss_tmp = SessionScan(ss_num(dir_i, fce_i, tar_i));
@@ -438,13 +460,14 @@ for dir_i = 1:size(ss_num,1)
     end
 end
 %save('data/processedData/ss3353_3417.mat', 'data')
+save('data/processedData/ss3486_3534.mat', 'data')
 %save('data/processedData/ss3345.mat', 'data')
 
-% check the data
-trial_i = 1
-axh(1) = subplot(2,1,1);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.f);
-axh(2) = subplot(2,1,2);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.ts);
-linkaxes(axh, 'x');
+% % check the data
+% trial_i = 1
+% axh(1) = subplot(2,1,1);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.f);
+% axh(2) = subplot(2,1,2);  plot(data{1,1,1,trial_i,1}.t, data{1,1,1,trial_i,1}.ts);
+% linkaxes(axh, 'x');
 
 %% export a data from formatted requirements 
 % Date: 2021-11-10 SUBJECT HIMANSHU TRYS THESE EXPERIMENTS, 
@@ -482,24 +505,125 @@ linkaxes(axh, 'x');
 % |15N       | 3480     | 3481     | 3482     | ----     |
 % note: ss3480 hase just not enough trials
 
-clear;
+clear; clc; close all;
 % % HIMANSHU
 % ss_num = [  3433    3432	3431	3434;
 %             3438	3437 	3436	3440];
 % HONGWEI
 % ss_num = [3478 3476 3477 3479];
 % Chenguang with harder condition 
-ss_num = [3487 3486 3488 3415
-          3495 3494 3489 3416];
+%ss_num = [3487 3486 3488 3415
+%          3495 3494 3489 3416];
 
 % % HIMANSHU AT HARDER CONDITION, REALLY GOOD LOOKING DATA 
 % ss_num = [3492 3491 3493 3434];
+% % HIMANSHU AT HARDER CONDITION, 3 FORCE LEVELS!!!
+% ss_num = [  3499   3498  3500  3597
+%             3492   3491  3497  3599
+%             3502   3501  3503  3600];
+
+% DELIN
+%ss_num = [3581 3580 3582 3434];
+%ss_num = [3581 3580 3584 3434];
+
+% MICHEAL WITH 20N force level. 
+
+ss_num = [  3629 3630 3631 3632
+            3617 3615 3616 3618
+            3627 3624 3626 3628];
+
+
+% ADAM WITH 3 FORCE LEVELS;
+% ss_num = [  3621    3620    3622    3596]; 
+
+% CHENGUANG TRY BACKWARD FULLY EXTENDED
+% ss_num = [  3587    3586    3585    3596
+%             3588    3590    3589    3595
+%             3592    3591    3593    3594];
 data = cell(1, 4, 3, 3, 15, 3);
+
+idx_sf = 1; % only choose suceed trials 
+for fce_i = 1:size(ss_num,1)
+    for tar_i = 1:3 % step perts
+        ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+        ss_tmp.displayBlockCondition();
+        celltmp = ss_tmp.export_as_formatted(1);
+        
+        trials_num = size(celltmp,3);
+
+        if trials_num>15
+            data(1,1,fce_i,tar_i,:,:) = celltmp(idx_sf,1,1:15,:);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(idx_sf,1,:,:);
+        end
+    end
+
+    ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    ss_tmp.displayBlockCondition();
+    celltmp = ss_tmp.export_as_formatted(1);
+    for tar_i = 1:3 % as a session has 3 length
+        trials_num = size(celltmp,3);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(idx_sf,tar_i,1:15,3);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(idx_sf,tar_i,:,3);
+        end
+    end
+end
+%save('data/processedData/ss3431_3440.mat', 'data')
+%save('data/processedData/ss3476_3479.mat', 'data')
+%save('data/processedData/ss3486_3495.mat', 'data')
+% save('data/processedData/ss3491_3503.mat', 'data')    % HIMANSHU'S NEW TASK CONDITION
+%save('data/processedData/ss3491_3493.mat', 'data')
+%save('data/processedData/ss3580_3582.mat', 'data')
+%save('data/processedData/ss3585_3596.mat', 'data')
+
+save('data/processedData/ss3615_3618.mat', 'data')      % MICHEAL TRY "TOLERANT" TASK CONDITION
+%save('data/processedData/ss3620_3629.mat', 'data')       % ADAM TRY "TOLERANT" TASK CONDITION
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% try Andy's idea on no release only pulse 
+clear; clc; close all;
+
+% % CHENGUANG TRIED AT NO RELEASE CONDITIONS. EACH TRIAL HAS 15 TRIALS EACH
+% THAT: 1. NO PERTURB; 2. PERT+RELEASE; 3. NO RELEASE
+
+% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
+% | --------| --------  | -------- | -------- | -------- |
+% |15N      | 3604      | 3612     | 3613     |   -      |
+% |20N      | 3607      | 3606     | 3608     |   -      |
+% |25N      | 3611      | 3610     | 3609     |   -      |
+
+ss_num = [  3604        3612        3613          3600
+            3607        3606        3608          3600
+            3611        3610        3609          3600];
+
+data = cell(1, 4, 3, 3, 15, 4);     % 1. subj
+                                    % 2. directions
+                                    % 3. Force levels
+                                    % 4. Distance levels
+                                    % 5. Trial count
+                                    % 6. Task conditions:   1. no pulse
+                                    %                       2. have pulse
+                                    %                       3. stoc
+                                    %                       4. release
 
 for fce_i = 1:size(ss_num,1)
     for tar_i = 1:3 % step perts
         ss_tmp = SessionScan(ss_num(fce_i, tar_i));
-        celltmp = ss_tmp.export_as_formatted(1);
+        celltmp = ss_tmp.export_as_formatted_5(1);
+            if (fce_i == 3 && tar_i == 1) 
+                celltmp = ss_tmp.export_as_formatted_5_failedTrials(1);
+            end
+        % the release are not so important, and these two sessions have
+        % XM.module issue (that do not try next trial).
+        if sum(ss_tmp.ssnum == [3603 3602 3612 3613])
+            celltmp(15,1) = celltmp(1,1);
+            if sum(ss_tmp.ssnum == [3602 3613])
+                celltmp(14,1) = celltmp(1,1);
+            end
+        end
         
         trials_num = size(celltmp,1);
         if trials_num>15
@@ -520,10 +644,8 @@ for fce_i = 1:size(ss_num,1)
         end
     end
 end
-%save('data/processedData/ss3431_3440.mat', 'data')
-%save('data/processedData/ss3476_3479.mat', 'data')
-save('data/processedData/ss3486_3495.mat', 'data')
-%save('data/processedData/ss3491_3493.mat', 'data')
+save('data/processedData/ss3602_3611_adp.mat', 'data');
+
 %% also tidy up himanshu's data in our data 
 % subj: Chenguang, James, Himanshu
 clear; 
@@ -546,6 +668,89 @@ data = data1;
 %save('data/processedData/prelimData_3subj.mat', 'data')
 %save('data/processedData/prelimData_3subj_restict.mat', 'data')
 save('data/processedData/prelimData_4subj_fine.mat', 'data')
+
+%% tidy up Himanshu's data as a comparation 
+clear; 
+data1 = cell(3, 4, 3, 3, 15, 3);
+load('data/processedData/ss3431_3440.mat', 'data');     % Himanshu
+data1(1,:,1,:,:,:) = data(1,:,1,:,:,:);     % the data have too much submovements
+data1(2,:,1,:,:,:) = data(1,:,2,:,:,:);     % limit submovemnets by displacement
+load('data/processedData/ss3491_3493.mat', 'data');     % Himanshu with change condition
+data1(3,:,1,:,:,:) = data(1,:,1,:,:,:);     % limit submovements by velocity
+clear data; 
+
+data = data1;
+%save('data/processedData/prelimData_3subj.mat', 'data')
+%save('data/processedData/prelimData_3subj_restict.mat', 'data')
+save('data/processedData/prelimData_subjHA_compare.mat', 'data')
+
+%% Chenguang test with the step perturbation (long-step )
+
+ss_num = [  3566 3565 3564  3434
+            3567 3569 3568  3434
+            3573 3572 3574  3434];
+data = cell(1, 4, 3, 3, 15, 3);
+
+for fce_i = 1:size(ss_num,1)
+    for tar_i = 1:3 % step perts
+        ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+        celltmp = ss_tmp.export_as_formatted_4(1);
+        
+        trials_num = size(celltmp,1);
+        celltmp1 = celltmp(:,[1,4,3]);
+        celltmp = celltmp1;
+        if trials_num>15
+            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+    end
+
+    ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    celltmp = ss_tmp.export_as_formatted(1);
+    for tar_i = 1:3 % as a session has 3 length
+        trials_num = size(celltmp,2);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+        end
+    end
+end
+save('data/processedData/ss3564_3569.mat', 'data')
+
+%% Chenguang test backward mvoement with big perturbation
+ss_num = [  3577 3579 3578 3434];
+data = cell(1, 4, 3, 3, 15, 3);
+
+for fce_i = 1:size(ss_num,1)
+    for tar_i = 1:3 % step perts
+        ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+        celltmp = ss_tmp.export_as_formatted_4(1);
+        
+        trials_num = size(celltmp,1);
+        celltmp1 = celltmp(:,[1,4,3]);
+        celltmp = celltmp1;
+        if trials_num>15
+            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+    end
+
+    ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
+    celltmp = ss_tmp.export_as_formatted(1);
+    for tar_i = 1:3 % as a session has 3 length
+        trials_num = size(celltmp,2);
+        if trials_num>15
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+        else
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+        end
+    end
+end
+save('data/processedData/ss3575_3578.mat', 'data')
+
 
 %% %%%% 3. Subject/Springs with multiple perturb parameters %%%%%%%%%%
 
@@ -956,6 +1161,18 @@ end
 %Data(2,1,1,:,:,3) = Data(1,1,1,:,:,3);
 save('data/processedData/SpringGaussian_8N_format.mat', 'Data')
 %save('data/processedData/SpringGaussian3.mat', 'Data')
+
+%% export data with only 3N stoc pert
+Data = cell(1, 1, 1, 1, 15, 3);
+ss_num = [  3504]; 
+mags_idx = [ 0 ];
+
+ss_tmp = SessionScan(ss_num(1));
+celltmp = ss_tmp.export_as_formatted_hybridss(1);
+Data(1, 1, 1, 1, 1:9,3) = celltmp(1:9, 3);
+save('data/processedData/SpringStoc_3N.mat', 'Data')
+%save('data/processedData/SpringGaussian3.mat', 'Data')
+
 
 
 %% plot to check release 
