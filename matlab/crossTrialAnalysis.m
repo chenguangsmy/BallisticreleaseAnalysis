@@ -321,7 +321,7 @@ classdef crossTrialAnalysis < handle
 %                     figure('Position',[771 305 560 420]);
 %                     
 %                     ax1 = subplot(4,1,1);
-%                     plot(t_old,x_old,'color',colorVec{1});hold on;
+%                     plot(t_old,x_old,'color',colorVec{1},'linewidth',2);hold on;
 %                     plot(t_plot,x,'linewidth',3,'color',colorVec{2}); hold on;
 %                     plot(t_plot,x_hat,'.','markersize',10,'color',colorVec{3});
 %                     title(['k_{hat} = ',num2str(k_hat),...
@@ -331,17 +331,20 @@ classdef crossTrialAnalysis < handle
 %                     set(gca,'fontsize',16);
 %                     
 %                     ax2 = subplot(4,1,2);
-%                     plot(t_old,x_dot_old,'color',colorVec{1}); hold on;
+%                     plot(t_old,x_dot_old,'color',colorVec{1},'linewidth',2); hold on;
 %                     plot(t_plot,x_dot,'linewidth',3,'color',colorVec{2}); hold on;
 %                     plot(t_plot,x_dot_hat,'.','markersize',10,'color',colorVec{3});
 %                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
 %                     title(f_target);
 %                     set(gca,'fontsize',16);
 % 
-%                     ax3 = subplot(4,1,3); plot(t_old,x_ddot_old,'color',colorVec{1});hold on;
+%                     ax3 = subplot(4,1,3); plot(t_old,x_ddot_old,'color',colorVec{1},'linewidth',2);hold on;
 %                     plot(t_old(locFound),x_ddot_old(locFound),'ok');hold on;
+%                     xlabel('Time (s)'); ylabel('Acceleration (m/s^2)'); set(gca,'fontsize',16);
+% 
 %                     
-%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old,'color',colorVec{1});
+%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old,'color',colorVec{1},'linewidth',2);
+%                     xlabel('Time (s)'); ylabel('Force Preturbation (N)'); set(gca,'fontsize',16);
 %                     linkaxes([ax1,ax2,ax3,ax4],'x'); xlim([t_old(dexPulseStart), t_old(dexEndState4)]);
 
 
@@ -568,7 +571,7 @@ classdef crossTrialAnalysis < handle
 %             ax1 = subplot(3,1,1,'XScale','log','YScale','log');
 %             set(gca,'fontWeight','bold','fontSize',12); hold on;
 %             plot(TF_freq,Z11_mag(:,1),'LineWidth',2); grid on; box on;
-%             plot(TF_freq,MAG); 
+% %             plot(TF_freq,MAG); 
 %             axis([xLowerLim xUpperLim yLowerLim11 yUpperLim11]);
 %             plot(TF_freq(dexK),Z11_mag(dexK,1),'.','markersize',20);
 %             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14);
@@ -578,7 +581,7 @@ classdef crossTrialAnalysis < handle
 %             ax2 = subplot(3,1,2,'XScale','log');
 %             set(gca,'fontWeight','bold','fontSize',12); hold on;
 %             plot(TF_freq,Z11_phi(:,1),'LineWidth',2); grid on; box on;
-%             plot(TF_freq,PHASE);
+% %             plot(TF_freq,PHASE);
 %             axis([xLowerLim xUpperLim 0 180]);
 %             xlabel('frequency(Hz)','fontWeight','bold','fontSize',14); ylabel('phase (deg)','fontWeight','bold','fontSize',14);
 %             
