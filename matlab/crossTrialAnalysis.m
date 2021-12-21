@@ -5,19 +5,16 @@ classdef crossTrialAnalysis < handle
    
     properties
         
-        k_hat_pulse
-        k_hat_stocastic
-        k_hat_release
+        trial_norm
+        trial_catch
+        trial_stocastic   
         sfrq
         k_r
         x_r
         m
         x_handelStart 
         x0_hat_pulse
-        k_hat_pulse_VAF
-        k_hat_release_VAF
-        OC_hat_stocastic
-        
+
     end
     
     methods
@@ -27,6 +24,7 @@ classdef crossTrialAnalysis < handle
             this.k_r = 300;
             this.x_handelStart =  0.481;
             this.x_r = this.x_handelStart-f_target/this.k_r;
+
             
             if(strcmp(subjectType,'human'))
                 this.m = 2.15;
@@ -41,36 +39,68 @@ classdef crossTrialAnalysis < handle
 %             this.plot_force();
             
             % Estimate stiffnesses
-            this.get_k_hat_pulse(data,f_target,subjectType);
-            this.get_k_hat_stocastic(data);
-            this.get_k_hat_release(data);
+            this.trial_norm = this.get_trial_norm(data,f_target,subjectType);
+            this.trial_catch = this.get_trial_catch(data,f_target,subjectType);
+            this.trial_stocastic = this.get_trial_stocastic(data,f_target,subjectType);
             
         end
         
-        function [] = get_k_hat_pulse(this,data,f_target,subjectType)
+        %% Call general functions to create data structures
+
+        
+        function [trial_norm] = get_trial_norm(this,data,f_target,subjectType)
+            
+            % get_trial_norm createst a data strucutre with an estimate of pulse
+            % and release
+        
+            trialType = 1;
+            [trial_norm.est_release] = this.get_k_hat_release(data,f_target,trialType);
+            
+            
+        end
+        
+        function [trial_catch] = get_trial_catch(this,data,f_target,subjectType)
+            
+            % get_est_trial createst a data strucutre with an estimate of pulse
+            % and release using data from the 
+            
+            trialType = 2;
+            [trial_catch.est_release] = this.get_k_hat_release(data,f_target,trialType);
+            [trial_catch.est_pulse] = this.get_k_hat_pulse(data,f_target,subjectType,trialType);
+            
+        end
+        
+        function [trial_stocastic] = get_trial_stocastic(this,data,f_target,subjectType)
+            
+            % get_est_trial createst a data strucutre with an estimate of
+            % from the stocastic method
+            
+            trialType = 3;
+            [trial_stocastic.est_release] = this.get_k_hat_release(data,f_target,trialType);
+            [trial_stocastic.est_stocastic] = get_k_hat_stocastic(this,data,trialType);
+            
+        end
+        
+        function [est_pulse] = get_k_hat_pulse(this,data,f_target,subjectType,trialType)
             
             % Exclude empty cells (FIX Later)
-            step_Pulse = 2;
             [N_trial] = size(data,1);
             count = 1;
             for trial = 2:N_trial-1
-                if(~isempty(data{trial,step_Pulse}))
-                    if( sum(data{trial,step_Pulse}.Fp(2,:)~=0) ~= 0 )
-                        if(sum(data{trial,step_Pulse}.Fp(2,1:30)) == 0) % find pulse to close to start
+                if(~isempty(data{trial,trialType}))
+                    if( sum(data{trial,trialType}.Fp(2,:)~=0) ~= 0 )
+                        if(sum(data{trial,trialType}.Fp(2,1:30)) == 0) % find pulse to close to start
                         dexTrialNonzero(count) = trial;
                                         count = count+1;
                         end
                     end
                 end
             end
-            
-            this.k_hat_pulse = NaN*ones(1,15);
-            this.x0_hat_pulse = NaN*ones(1,15);
 
             for i = 1:length(dexTrialNonzero)
                 clear tmpData
-                tmpData = data{dexTrialNonzero(i),step_Pulse};
-                [this.k_hat_pulse(i),this.x0_hat_pulse(i),this.k_hat_pulse_VAF(i)] = get_singleTrial_k_hat_pulse(this,tmpData.f(2,:),...
+                tmpData = data{dexTrialNonzero(i),trialType};
+                [est_pulse{i}] = get_singleTrial_k_hat_pulse(this,tmpData.f(2,:),...
                                                  tmpData.Fp(2,:),...
                                                  tmpData.x(2,:),...
                                                  tmpData.ts,...
@@ -79,29 +109,25 @@ classdef crossTrialAnalysis < handle
                         
         end
         
-        function [] = get_k_hat_stocastic(this,data)
+        function [est_stocastic] = get_k_hat_stocastic(this,data,trialType)
             
             % Exclude empty cells (FIX Later)
-            step_Stocastic = 3;
             [N_trial] = size(data,1);
             dexTrialNonzero = [];
             count = 1;
             for trial = 1:N_trial
-                if(~isempty(data{trial,step_Stocastic}))
+                if(~isempty(data{trial,trialType}))
                     dexTrialNonzero(count) = trial;
                 end
                 count = count+1;
             end
             
             if(~isempty(dexTrialNonzero))
-            
-                this.k_hat_stocastic = NaN*ones(1,9);
-                this.OC_hat_stocastic = NaN*ones(1,9);
 
                 for i = 1:length(dexTrialNonzero)
                     clear tmpData
-                    tmpData = data{dexTrialNonzero(i),step_Stocastic};
-                    [this.k_hat_stocastic(i),this.OC_hat_stocastic(i)] = get_singleTrial_k_hat_stocastic(this,tmpData.Fp(2,:),...
+                    tmpData = data{dexTrialNonzero(i),trialType};
+                    [est_stocastic{i}] = get_singleTrial_k_hat_stocastic(this,tmpData.Fp(2,:),...
                         tmpData.x(2,:),...
                         tmpData.ts);
                 end
@@ -110,16 +136,14 @@ classdef crossTrialAnalysis < handle
             
         end
         
-        function [] = get_k_hat_release(this,data)
+        function [est_release] = get_k_hat_release(this,data,f_target,trialType)
                
             % Exclude empty cells (FIX Later)
-            release = 1;
-            targetForce = 15;
             dexTrialNonzero = [];
             [N_trial] = size(data,1);
             count = 1;
             for trial = 2:N_trial % Exclude first trial
-                if(~isempty(data{trial,release}))
+                if(~isempty(data{trial,trialType}))
                     dexTrialNonzero(count) = trial;
                 end
                 count = count+1;
@@ -127,72 +151,25 @@ classdef crossTrialAnalysis < handle
             
             if(~isempty(dexTrialNonzero))
                 
-                this.k_hat_release = NaN*ones(1,15);
-                for i = 1:length(dexTrialNonzero)
+                count = 1;
+                for i = dexTrialNonzero
                     clear tmpData
-                    tmpData = data{dexTrialNonzero(i),release};
-                    [this.k_hat_release(i),this.k_hat_release_VAF(i)] = get_singleTrial_k_hat_release(this,tmpData.x(2,:),tmpData.ts,targetForce);
+                    tmpData = data{i,trialType};
+                    est_release{count} = this.get_singleTrial_k_hat_release(tmpData.x(2,:),tmpData.ts,f_target);
+                    count = count + 1;
                 end
                 
             end
             
         end
         
-        function [k_hat,x_h,VAF] = get_singleTrial_k_hat_pulse(this,f,Fp,x,ts,f_target,subjectType)
+        function [est_pulse] = get_singleTrial_k_hat_pulse(this,f,Fp,x,ts,f_target,subjectType)
             
             % Take average of last 15 measuremnts before the pulse ends
             t = 0:1/this.sfrq:(length(x)*(1/this.sfrq))-1/this.sfrq;
-%             dexPulseStart = min(find(Fp~=0));
-%             dexRange1 = [(dexPulseStart-15):dexPulseStart];
-%             
-%             dexPulseEnd = max(find(Fp~=0));
-%             dexRange2 = [(dexPulseEnd-15):dexPulseEnd];
-                        
-%                 f1 = mean(f(dexRange1));
-%                 f2 = mean(f(dexRange2));
-%                 
-%                 x1 = mean(x(dexRange1));
-%                 x2 = mean(x(dexRange2));
-%                 
-%                 k_hat = -(f2-f1)/(x2-x1);
-                
-                % Look at raw data
-%                             figure;
-%                             ax1 = subplot(4,1,1); plot(t,f); hold on;
-%                 %             plot(dexPulseStart,f1,'+',dexPulseEnd,f2,'*');
-%                 
-%                             ax2 = subplot(4,1,2); plot(t,x); hold on;
-%                 %             plot(dexPulseStart,x1,'+',dexPulseEnd,x2,'*');
-%                 
-%                             ax3 = subplot(4,1,3); plot(t,Fp);
-%                             ax4 = subplot(4,1,4); plot(t,ts);
-%                             linkaxes([ax1,ax2,ax3,ax4],'x');
 
-%                 figure; 
-%                 ax1 = subplot(2,1,1); plot(t(1800:2050),Fp(1800:2050),'linewidth',2.5);
-%                 xlabel('Time (s)'); ylabel('F_p (N)');
-%                 xlim([t(1800) t(2050)]); set(gca,'fontsize',18);
-%                 ax2 = subplot(2,1,2); plot(t(1800:2050),1000*(x(1800:2050)-x(1800)),'linewidth',2.5); hold on;
-%                 xlabel('Time (s)'); ylabel('x (mm)');xlim([t(1800) t(2050)]);set(gca,'fontsize',18);
-
-            % Double integrate force
-%             f_tmp = f(dexPulseStart:dexPulseEnd) - mean(f(dexPulseStart-500:dexPulseStart));
-%             f_int(1) = 0;
-%             for i = 1:length(f_tmp)
-%                 f_int(i+1) = f_int(i) + (1/this.sfrq)*(f_tmp(i));
-%             end
-%             
-%             f_int_int(1) = 0;
-%             for i = 1:length(f_tmp)
-%                 f_int_int(i+1) = f_int_int(i) + (1/this.sfrq)*(f_int(i));
-%             end
-            
-%             figure; 
-%             subplot(3,1,1); plot(f);
-%             subplot(3,1,2); plot(f_int);
-%             subplot(3,1,3); plot(f_int_int);
                 
-                %% Try new idea: estimate static and sliding friction value
+                % Estimate static and sliding friction value
                 
                 % New crop data to use only up till peak
                 dexPulseStart = min(find(Fp~=0))+30;
@@ -207,11 +184,6 @@ classdef crossTrialAnalysis < handle
                 x_dot(end+1) = x_dot(end);
                 x_ddot = this.sfrq*diff(x_dot);
                 x_ddot(end+1) = x_ddot(end);
-                
-%                 [pks,locs,w,p] = findpeaks((-sign(mean(Fp))) * x_dot(dexPulseStart:dexPulseEnd+extraDex));
-%                 locs = locs + dexPulseStart;
-%                 [tmp,dexRange_1] = min(x_dot(dexPulseStart:locs(find(max(w)==w))));
-%                 dexRange_1 = dexRange_1 + dexPulseStart;
                         
                 [pks,locs,w,p] = findpeaks(-x_ddot(dexPulseStart:dexEndState4));
                 locs = locs + dexPulseStart;
@@ -234,32 +206,13 @@ classdef crossTrialAnalysis < handle
 %                 ax4 = subplot(4,1,4); plot(Fp);
 %                 linkaxes([ax1,ax2,ax3,ax4],'x');xlim([dexPulseStart, dexEndState4]);
                 
-                
-                %                 if(strcmp(subjectType,'human'))
-%                     % (IMPORTANT) Cut with peak (for Humans)
-%                     dexRange = dexPulseStart:locs(find(max(w)==w));
-%                 elseif(strcmp(subjectType,'spring'))
-                    % (IMPORTANT) Remove friction part (for springs)
-%                     [tmp,dexMin] = min(x_dot(dexPulseStart:locs(find(max(w)==w))));
-%                     dexVpeak = locs(find(max(w)==w));
-% %                     dexVsecondMin = 
-%                     dexRange = (dexPulseStart+dexMin):dexVpeak;
-%                 else
-%                     error('Spesify subjectType');
-%                 end
-
-                % (IMPORTANT) Use entire pulse for humans
-%                 dexRange = dexPulseStart:dexPulseEnd;
-                
                 if(isempty(dexRange))
                     error('Cutting failed: Look for peak finding error');
                 end
 
 %                 figure; plot(x_dot(dexPulseStart:dexPulseEnd+extraDex)); hold on;
 %                 plot(x_dot(dexRange),'o');
-%                 
-%                 dexPulseStart = dexPulseStart + 25;
-%                 dexPulseEnd = dexPulseEnd - 10;
+
                 x_old = x;
                 x_dot_old = x_dot;
                 x_ddot_old = x_ddot;
@@ -353,6 +306,7 @@ classdef crossTrialAnalysis < handle
                      x_h = NaN;
                      B = NaN;
                      VAF = NaN;
+                     x_dot_hat = NaN;
                      
 %                     figure;
 %                     
@@ -394,7 +348,16 @@ classdef crossTrialAnalysis < handle
 %                     set(gca,'fontsize',16); grid on;
                 
 
-%                       disp('test');
+                est_pulse.k_hat = k_hat;
+                est_pulse.b_hat = B;
+                est_pulse.x_h = x_h;
+                est_pulse.x_dot = x_dot;
+                est_pulse.t = t_plot;
+                est_pulse.dexRange = dexRange;
+                est_pulse.x_dot_hat = x_dot_hat;
+                est_pulse.VAF = VAF;
+                
+%                 disp('test');
                 
             
         end
@@ -459,7 +422,7 @@ classdef crossTrialAnalysis < handle
             ceq = 0;   % Compute nonlinear equalities at x.
         end 
                
-        function [k_hat,OC_hat] = get_singleTrial_k_hat_stocastic(this,X1,Y1,ts)
+        function [est_stocastic] = get_singleTrial_k_hat_stocastic(this,X1,Y1,ts)
         
 %             figure; plot(X1);
 %             figure; plot(Y1);
@@ -600,17 +563,24 @@ classdef crossTrialAnalysis < handle
 %             title('Y11 PC','fontWeight','bold','fontSize',16);
 %             
 %             linkaxes([ax1,ax2,ax3],'x');
+
+            est_stocastic.k_hat = k_hat;
+            est_stocastic.OC_hat = OC_hat;
             
         end
         
-        function [k_hat,VAF] = get_singleTrial_k_hat_release(this,x,ts,targetForce)
+        function [est_release] = get_singleTrial_k_hat_release(this,x,ts,targetForce)
            
             % Cutting used prior to visit 11/3/21
 %             dexStart = min(find(ts== 4));
 %             dexEnd = max(find(ts == 5)) - 1; % Subtract 1 for diff
             
+            nSampDelay = 20; % Remove influence of ossylation in fitting
+
             dexStart = min(find(ts== 5)); % (FIX) add artifical lag
-            dexEnd = dexStart+300;%length(x)-1; 
+            
+            % Temporarly define dexEnd as a longer than required duration 
+            dexEnd =  max(find(ts== 6));%dexStart+300;%length(x)-1; 
 
             % Filter
             cf = 20; % cutoff freqnency
@@ -619,7 +589,16 @@ classdef crossTrialAnalysis < handle
             
             % velocity estimate multiplied by inverse target force is an
             % estimate of the impulse response function
-            h_hat = (1/targetForce)*this.sfrq*diff(x); 
+            h_hat = (1/targetForce)*this.sfrq*diff(x);
+            h_hat(end+1) = h_hat(end);
+            
+            % Find trial dependent dexEnd based on 4*(time2Peak)
+            [tmp,dex_max] = max(h_hat(dexStart:dexEnd));
+            dexEnd = dexStart + 4*(dex_max);
+            if(dexEnd>length(h_hat))
+                dexEnd = length(h_hat);
+            end
+            
 %             figure; plot(h_hat);
 
 %             figure;
@@ -627,14 +606,22 @@ classdef crossTrialAnalysis < handle
 %             ax2 = subplot(2,1,2); plot(ts(dexStart-50:dexEnd));
 %             linkaxes([ax1,ax2],'x');
             
-            [h_model, B, K] =  this.fitModel(h_hat(dexStart:dexEnd), dexEnd-dexStart);
+            [h_model, B, K] =  this.fitModel(h_hat(dexStart:dexEnd), dexEnd-dexStart,nSampDelay);
             
             [VAF] = get_VAF(this,h_hat(dexStart:dexEnd)',h_model);
 
-            k_hat = K;
+            
+            est_release.k_hat = K;
+            est_release.b_hat = B;
+            est_release.h_hat = h_hat;
+            est_release.ts = ts;
+            est_release.dexRange = [dexStart:dexEnd];
+            est_release.h_model = h_model;
+            est_release.VAF = VAF;
+
         end
         
-        function [h_model, B_opt, K_opt, VAFirf] =  fitModel(this, h_hat, L)
+        function [h_model, B_opt, K_opt, VAFirf] = fitModel(this, h_hat, L,nSampDelay)
             
             %% Part 2-2: 2nd order model approximation
             % Optimization to find the best I,B,K approximates (cost function may change..)
@@ -661,7 +648,7 @@ classdef crossTrialAnalysis < handle
             
             % Bounded Nonlinear Optimization
             options = optimset('MaxFunEvals', 1000, 'MaxIter', 1000, 'TolFun',0.01);
-            [x fval exitflags outputs] = fminsearchbnd(@(x)this.irfFitting_knownM(x,M0,h_hat,L),[B0 K0],LB,UB,options);
+            [x fval exitflags outputs] = fminsearchbnd(@(x)this.irfFitting_knownM(x,M0,h_hat,L,nSampDelay),[B0 K0],LB,UB,options);
 %             M_opt = x(1);
 %             B_opt = x(2);
 %             K_opt = x(3);
@@ -671,11 +658,15 @@ classdef crossTrialAnalysis < handle
             Y_model = tf(1,[M0,B_opt,K_opt]);
             h_model = impulse(Y_model,0:1/this.sfrq:L/this.sfrq);
             
+            N = length(h_hat);
+            
 %             figure;
-%             plot(h_hat,'o'); hold on;
-%             plot(h_model,'.');
+%             plot(1:N,h_hat,'.b','markersize',10); hold on;
+%             plot(nSampDelay:N,h_hat(nSampDelay:N),'ob'); hold on;
+%             plot(nSampDelay:N,h_model(nSampDelay:N),'.r','markersize',10);
 %             title(['k_{hat} = ',num2str(K_opt),...
 %                  ', B_{hat} = ',num2str(B_opt)]);
+%             legend('Total','Used in fit','h_{model}');
 %             
             % VAF IRF Calculation
 %             VAFirf = 100*(1-std(h_hat-h_model)^2/std(h_hat)^2);
@@ -683,12 +674,12 @@ classdef crossTrialAnalysis < handle
             
         end
         
-        function fval = irfFitting(this,x,h_hat,L)
+        function fval = irfFitting(this,x,h_hat,L,nSampDelay)
             Y_model = tf(1,[x(1),x(2),x(3)]);
             h_model = impulse(Y_model,0:1/this.sfrq:L/this.sfrq);
             
             fval=0;
-            for j=1:length(h_hat)
+            for j=nSampDelay:length(h_hat)
                         fval = fval + (h_hat(j)-h_model(j))^2;
                 
 %                         % Weighted cost function 2
@@ -702,12 +693,12 @@ classdef crossTrialAnalysis < handle
             fval = sqrt(fval/L);
         end
 
-        function fval = irfFitting_knownM(this,x,M0,h_hat,L)
+        function fval = irfFitting_knownM(this,x,M0,h_hat,L,nSampDelay)
             Y_model = tf(1,[M0,x(1),x(2)]);
             h_model = impulse(Y_model,0:1/this.sfrq:L/this.sfrq);
             
             fval=0;
-            for j=1:length(h_hat)
+            for j=nSampDelay:length(h_hat)
                         fval = fval + (h_hat(j)-h_model(j))^2;
             end
             fval = sqrt(fval/L);
