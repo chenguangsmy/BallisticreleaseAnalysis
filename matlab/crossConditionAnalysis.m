@@ -32,8 +32,9 @@ classdef crossConditionAnalysis < handle
             
             %Compute all stiffness estimates
             this.get_depMeasures(data,subjectType);
-            this.get_mainPlot(subjectType);
-            
+            for subNum = this.dexSubject
+                this.get_mainPlot(subjectType,subNum);
+            end
 %             this.plot_postionForce_pulse(data);
 %             this.plot_positionForce_stocastic(data);
 %             this.plot_postion_release(data);
@@ -87,34 +88,34 @@ classdef crossConditionAnalysis < handle
             
         end
         
-        function [] = get_mainPlot(this,subjectType)
+        function [] = get_mainPlot(this,subjectType,subNum)
             
             distVal = [2.5 5 7.5];
             %             direcVal = {'front','back','left','right'};
             direcVal = {'F = 15N','F = 20N','F = 25N'};
             
             % Look at Pulse Estimates
-            k_pulse_mean = nanmean(this.k_hat_pulse(:,:,:,1:end),4);
-            k_pulse_std = nanstd(this.k_hat_pulse(:,:,:,1:end),0,4);
-            x0_pulse_mean = nanmean(this.x0_hat_pulse(:,:,:,1:end),4);
-            x0_pulse_std = nanstd(this.x0_hat_pulse(:,:,:,1:end),0,4);
+            k_pulse_mean = nanmean(this.k_hat_pulse(subNum,:,:,1:end),4);
+            k_pulse_std = nanstd(this.k_hat_pulse(subNum,:,:,1:end),0,4);
+            x0_pulse_mean = nanmean(this.x0_hat_pulse(subNum,:,:,1:end),4);
+            x0_pulse_std = nanstd(this.x0_hat_pulse(subNum,:,:,1:end),0,4);
             
-            k_pulse_VAF_mean = nanmean(this.k_hat_pulse_VAF(:,:,:,1:end),4);
-            k_pulse_VAF_std = nanstd(this.k_hat_pulse_VAF(:,:,:,1:end),0,4);
+            k_pulse_VAF_mean = nanmean(this.k_hat_pulse_VAF(subNum,:,:,1:end),4);
+            k_pulse_VAF_std = nanstd(this.k_hat_pulse_VAF(subNum,:,:,1:end),0,4);
             
             this.k_nonNan = squeeze(sum(~isnan(this.k_hat_pulse),4));
             
-            k_release_mean = nanmean(this.k_hat_release(:,:,:,:),4);
-            k_release_std = nanstd(this.k_hat_release(:,:,:,:),0,4);
+            k_release_mean = nanmean(this.k_hat_release(subNum,:,:,:),4);
+            k_release_std = nanstd(this.k_hat_release(subNum,:,:,:),0,4);
             
-            k_release_VAF_mean = nanmean(this.k_hat_release_VAF(:,:,:,1:end),4);
-            k_release_VAF_std = nanstd(this.k_hat_release_VAF(:,:,:,1:end),0,4);
+            k_release_VAF_mean = nanmean(this.k_hat_release_VAF(subNum,:,:,1:end),4);
+            k_release_VAF_std = nanstd(this.k_hat_release_VAF(subNum,:,:,1:end),0,4);
             
-            k_stocastic_mean = nanmean(this.k_hat_stocastic(:,:,:,:),4);
-            k_stocastic_std = nanstd(this.k_hat_stocastic(:,:,:,:),0,4);
+            k_stocastic_mean = nanmean(this.k_hat_stocastic(subNum,:,:,:),4);
+            k_stocastic_std = nanstd(this.k_hat_stocastic(subNum,:,:,:),0,4);
             
-            OC_hat_stocastic_mean = nanmean(this.OC_hat_stocastic(:,:,:,:),4);
-            OC_hat_stocastic_std = nanstd(this.OC_hat_stocastic(:,:,:,:),0,4);
+            OC_hat_stocastic_mean = nanmean(this.OC_hat_stocastic(subNum,:,:,:),4);
+            OC_hat_stocastic_std = nanstd(this.OC_hat_stocastic(subNum,:,:,:),0,4);
             
             xRange = [1.5 8.5];
                         
@@ -209,13 +210,13 @@ classdef crossConditionAnalysis < handle
             axes(ax1); legend(direcVal,'location','south');
 
 
-            % Check learning
-            for i = this.dexDirection
-                figure;
-                for j = this.dexDistance
-                    plot(squeeze(this.k_hat_pulse(1,i,j,:)),'-o'); hold on;
-                end
-            end
+%             % Check learning
+%             for i = this.dexDirection
+%                 figure;
+%                 for j = this.dexDistance
+%                     plot(squeeze(this.k_hat_pulse(1,i,j,:)),'-o'); hold on;
+%                 end
+%             end
                         
             %% Spring Estimates
             elseif(strcmp(subjectType,'spring'))
@@ -227,26 +228,29 @@ classdef crossConditionAnalysis < handle
             ax3 = subplot(1,3,3); hold on;
             
             axes(ax1); title('Pulse');
-            ylabel('Stiffness (N/m)');ylim([0 1500]);
-            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            ylabel('Stiffness Estimate (N/m)');ylim([0 1500]);
+            xlabel('Stiffness (N/m)'); xticks([160, 320, 640]); xlim([0 800]);
             set(gca,'fontsize',16);grid on;
             
             axes(ax2); title('Release');
             ylim([0 1500]); % ylabel('Stiffness (N/m)'); 
-            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            xlabel('Stiffness (N/m)'); xticks([160, 320, 640]); xlim([0 800]);
             set(gca,'fontsize',16); grid on;
                        
             axes(ax3); title('Stocastic');
             ylim([0 1500]); %ylabel('Stiffness (N/m)');
-            xlabel('Distance'); xticks(distVal); xlim(xRange);
+            xlabel('Stiffness (N/m)'); xticks([160, 320, 640]); xlim([0 800]);
             set(gca,'fontsize',16);grid on;
 
             for i = this.dexDirection
-               axes(ax1); errorbar(distVal(this.dexDistance),squeeze(k_pulse_mean(1,i,:)),squeeze(k_pulse_std(1,i,:)),'linewidth',2.5); hold on;
-               axes(ax2); errorbar(distVal(this.dexDistance),squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
-               axes(ax3); errorbar(distVal(this.dexDistance),squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
-
+               axes(ax1); errorbar([160, 320, 640],squeeze(k_pulse_mean(1,i,:)),squeeze(k_pulse_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax2); errorbar([160, 320, 640],squeeze(k_release_mean(1,i,:)),squeeze(k_release_std(1,i,:)),'linewidth',2.5); hold on;
+               axes(ax3); errorbar([160, 320, 640],squeeze(k_stocastic_mean(1,i,:)),squeeze(k_stocastic_std(1,i,:)),'linewidth',2.5); hold on;
             end
+            axes(ax1);plot([0 800],[160, 320, 640].*ones(2,3),'--k','linewidth',2.5);
+            axes(ax2);plot([0 800],[160, 320, 640].*ones(2,3),'--k','linewidth',2.5);
+            axes(ax3);plot([0 800],[160, 320, 640].*ones(2,3),'--k','linewidth',2.5);
+
             axes(ax1); legend(direcVal);
 
             % X0 plot
@@ -256,7 +260,7 @@ classdef crossConditionAnalysis < handle
             ax3 = subplot(1,3,3); hold on;
             
             axes(ax1); title('Pulse');
-            ylabel('x_0 (m)');ylim([0 10]);
+            ylabel('x_0 (mm)');ylim([0 10]);
             xlabel('Distance'); xticks(distVal); xlim(xRange);
             set(gca,'fontsize',16);grid on;
             
@@ -311,17 +315,17 @@ classdef crossConditionAnalysis < handle
 
                 
                 
-                            %             x_s_known = 100*[0.0938, 0.0469, 0.0234,...
-            %                 0.1250, 0.0625, 0.0312 ,...
-            %                 0.1562, 0.0781, 0.0391];
-            %             k_plot_xs = [160,320,640,...
-            %                 160,320,640,...
-            %                 160,320,640];
-            %
-            %             plot(x_s_known,k_plot_xs,'.k','markerSize',30);
+%             x_s_known = 100*[0.0938, 0.0469, 0.0234,...
+%                 0.1250, 0.0625, 0.0312 ,...
+%                 0.1562, 0.0781, 0.0391];
+%             k_plot_xs = [160,320,640,...
+%                 160,320,640,...
+%                 160,320,640];
             
+%             plot(x_s_known,k_plot_xs,'.k','markerSize',30);
+%             
 %             if(strcmp(subjectType,'spring'))
-%                 plot([0; 10].*ones(2,4),[160, 320, 640, 0].*ones(2,4),'--k');
+%                 plot([0; 10].*ones(2,4),[160, 320, 640].*ones(2,4),'--k','linewidth',2.5);
 %             end
                 
             else
