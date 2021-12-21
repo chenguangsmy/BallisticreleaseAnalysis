@@ -6,15 +6,38 @@ classdef SessionScanEMG
         ss_num
         anin_idx = 1:8
         anin_idx_offset = 0
-        dat
+        dat             % intermediate
+        data            % full
         unit
         time
         brtime          % blackrock time
         freq
+        fname_raw
         
         CHANNELS_NUM = 128;
         AINPUTS_NUM  = 16;
         DATA_PER_SHORT = 10;
+        
+        emg_means = [...
+                    51.0777
+                    23.6027
+                    41.4865
+                    80.8630
+                    16.5060
+                    46.2156
+                    36.5228
+                    23.6265];
+        emg_stds = 1.0e+03 * [ ...
+                    1.7848
+                    3.1263
+                    0.3451
+                    1.2234
+                    4.0816
+                    1.3261
+                    0.8344
+                    1.2729];
+
+
     end
     
     methods
@@ -27,7 +50,8 @@ classdef SessionScanEMG
             %   Current setting is from the `intermediate` file
             %   header read from %DT sequence% described above.
             obj.ss_num = ss_num;
-            fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/intmediate';
+            fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate';
+%             fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
             fname = sprintf('KingKong.%05d.mat', ss_num);
             filename_intermediate = [fdir '/' fname];
             % ... read the intermediate file
@@ -43,6 +67,13 @@ classdef SessionScanEMG
             obj.brtime = obj.getBRtimefromIntermediate(time_msg);
             % get RTMA time (task time)
             obj.time   = obj.getRTMAtimeAligned(); % to write
+            fnameraw = sprintf('KingKongEMG.%05d.csv', ss_num);
+            fdiremg = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
+            obj.fname_raw = [fdiremg '/' fnameraw];
+            obj = obj.readRawData();
+            
+            % preprocess data
+            obj = obj.preprocessRawData();
         end
         
         function time_highsampled = getBRtimefromIntermediate(obj, time_msg)
@@ -87,10 +118,98 @@ classdef SessionScanEMG
             time = [];
         end
         
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
+        function obj = readRawData(obj)
+            %data = readRawData(obj)
+            %   Read raw data from the *.csv file
+            data_tmp = readtable(obj.fname_raw);
+            t_tmp = [data_tmp{:,1}]';
+            idx_tmp = 1:length(t_tmp); 
+            [a, ia, ic] = unique(t_tmp);
+            time_first_idx = find([0; diff(ic) == 1]);
+            time_first = t_tmp(time_first_idx); 
+            ifplot = 0;
+            if (ifplot)
+                clf; hold on;
+                plot(idx_tmp, t_tmp, 'b.');
+                plot(time_first_idx, time_first, 'ro');
+            end
+            t = interp1(time_first_idx, time_first, idx_tmp, 'linear', 'extrap')'; 
+            if (ifplot)
+                clf; hold on;
+                plot(idx_tmp, t_tmp, 'bo');
+                plot(idx_tmp, t, 'r.');
+                legend('origin', 'introp');
+            end
+            obj.data.t = t;
+            obj.freq = [unique(data_tmp{:,2})];
+            obj.data.emg = [data_tmp{:,3:10}'];
+        end
+        
+        function obj = preprocessRawData(obj)
+            emg = obj.data.emg;
+            emg_processed = zeros(size(emg));
+            emg_processed0= zeros(size(emg));
+            t = obj.data.t;
+            for chi = 1:8 % iterate through channels
+                % 1. do the 100Hz low pass filter
+                fs = 500; % data frequency
+                lpf1 = 100;
+                % emg1 = bandstop(emg(ch_i,:),[118.5 121.5],fs);
+                emg_stp1 = highpass(emg(chi,:), lpf1, fs);
+                % 2. mean-centered and scaled by standard deviation...
+                emg_stp2 = (emg_stp1 - obj.emg_means(chi)) / obj.emg_stds(chi);
+                % 3. squared, and do low-pass filter of 30Hz
+                lpf2 = 30;
+                emg_stp3 = lowpass(emg_stp2.^2, lpf2, fs);
+                % 3. squre root transform and *2
+                emg_stp4 = sqrt(emg_stp3)*2;                                                   % bad name, need chagne
+                
+                [emg_stp5, ~] = envelope(real(emg_stp4), 5, 'peak');
+                emg_processed0(chi,:)=emg_stp4;
+                emg_processed(chi,:) = emg_stp5;%emg_stp4;
+                
+            end
+            obj.data.emg = emg_processed;
+            ifplot = 1;
+            if (ifplot)
+                clf;
+                % plot
+
+                axh(2) = subplot(5,1,2); hold on;
+                plot(t,emg_processed0(1:2,:), '.'); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processed(1:2,:)); %title('EMG12'); %ylabel('N');
+                
+                axh(3) = subplot(5,1,3); hold on;
+                plot(t,emg_processed0(3:4,:), '.'); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processed(3:4,:)); %title('EMG34'); %ylabel('N');
+                
+                % hold on; plot(t,emg_processed(3,:));
+                % plot(t,emg_processed0(3,:)); %title('EMG34'); %ylabel('N');
+                
+                axh(4) = subplot(5,1,4); hold on;
+                plot(t,emg_processed0(5:6,:), '.'); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processed(5:6,:)); %title('EMG56'); %ylabel('N');
+                
+                axh(5) = subplot(5,1,5); hold on;
+                plot(t,emg_processed0(7:8,:), '.'); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processed(7:8,:)); %title('EMG78'); %ylabel('N');
+                
+                linkaxes(axh, 'x');
+                linkaxes(axh(2:end), 'y');
+                ylim(axh(5), [0, 10]);
+            end
+        end
+        
+        function fh = plotRawData(obj)
+            % fh = plotRawData(obj)
+            % plot the raw data in each subplot
+            fh = figure(); 
+            for i = 1:8
+                axh(i) = subplot(8,1,i); grid on
+                plot(obj.data.t, obj.data.emg(i,:), 'Marker' , '.');
+            end
+            linkaxes(axh, 'xy')
+            sgtitle('EMG data');
         end
     end
 end

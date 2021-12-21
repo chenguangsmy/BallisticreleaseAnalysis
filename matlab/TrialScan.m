@@ -102,6 +102,11 @@ classdef TrialScan
             obj.data.ts = sessionScanObj.data.ts(:,data_idx);
             obj.data.f  = sessionScanObj.data.f(:,data_idx);
             
+            %%% optional: when emg data exists 
+            if (isfield(sessionScanObj.data, 'emg'))
+                obj.data.emg = sessionScanObj.data.emg(:,data_idx);
+            end
+            
             %%%%%%%%%%%%%%%% deal with perturbation, etc %%%%%%%%%%%%%%%%%%
             if isfield(sessionScanObj.Data.TaskJudging, 'ifpert')
                 obj.ifpert  = ...
@@ -224,7 +229,10 @@ classdef TrialScan
             ifpert = ~sum(sum(abs(wam_cf)))==0;
             
             if (~isempty(wam_ts) && ~isempty(wam_cf))
-                pertsig = setdiff((unique(wam_ts(wam_cf(2,:)~=0))), 3);
+                pertsig = setdiff([(unique(wam_ts(wam_cf(1,:)~=0)))... % pert at x
+                                   (unique(wam_ts(wam_cf(2,:)~=0)))... % pert at y
+                                   (unique(wam_ts(wam_cf(3,:)~=0)))]... % pert at z
+                                   , 3); 
                 if (isempty(pertsig))
                     obj.ifpert = 0;
                     ifpert = 0;
@@ -870,7 +878,7 @@ classdef TrialScan
             jd(2) = prod(abs(obj.data.v(2,idx)- 0 ) < vel_dist);
             obj.outcomeo = jd(1) * jd(2); % should I use &&?
             
-            ifplot = 1;
+            ifplot = 0;
             if(ifplot)
                 clf;
                 axh(1) = subplot(2,1,1); hold on;
@@ -1285,6 +1293,9 @@ classdef TrialScan
         dat.Fp= obj.data.Fp(:,idx);
         dat.ts= obj.data.ts(:,idx);
         dat.tq= obj.data.tq(:,idx);
+        if isfield(obj.data, 'emg')
+            dat.emg=obj.data.emg(:,idx);
+        end
         %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
         %dat.v = obj.velocity_h(:,vidx);
         %dat.v = interp1(obj.position_t', obj.velocity_h', dat.t)';
@@ -1423,6 +1434,24 @@ classdef TrialScan
         end
         end
         
+        function obj = dealForceException(obj)
+            % obj = dealForceException(obj)
+            % for sessions that not collect reasonable force. 
+            % minus the force bias from the ts7
+            idx_ = obj.data.ts == 7 & ~isnan(obj.data.x(1,:));
+            
+            ifplot = 0;
+            if(ifplot)
+                plot(obj.data.t_shift, idx_);
+            end
+            
+            force_offset = mean(obj.data.f(:,idx_),2);
+            obj.data.f = obj.data.f - force_offset;
+            
+            if (ifplot)
+                plot(obj.data.t_shift, obj.data.f(2,:));
+            end
+        end
         %%% plot
 %         function axh = visualizeFrcVelDelay(obj)
 %             % axh = visualizeFrcVelDelay(obj)

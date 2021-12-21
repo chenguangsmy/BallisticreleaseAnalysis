@@ -177,82 +177,40 @@ save('data/processedData/ss3471_3474.mat', 'data')
 % data = cell(n_subject, n_dir, n_fce, n_trials, 3); 
 % whereas 3 means: 1) release; 2) step pert; 3) stoc pert;
 
-
-ss_num = [  3306 3307 3308 3317;
-            3309 3310 3311 3318;
-            3312 3313 3314 3319];
-
-for dir_i = 1:size(ss_num,1)
-    for fce_i = 1:3 % step perts
-        ss_tmp = SessionScan(ss_num(dir_i, fce_i));
-        celltmp = ss_tmp.export_as_formatted(1);
-        
-        trials_num = size(celltmp,1);
-        if trials_num>15
-            data(1,dir_i,fce_i,:,:) = celltmp(1:15,:);
-        else
-            data(1,dir_i,fce_i,1:trials_num,:) = celltmp(:,:);
-        end
-    end
-
-    ss_tmp = SessionScan(ss_num(dir_i, 4)); % stoc pert
-    celltmp = ss_tmp.export_as_formatted(1);
-    for fce_ii = 1:3 % as a session has 3 length
-        trials_num = size(celltmp,2);
-        if trials_num>15
-            data(1,dir_i,fce_ii,1:15,3) = celltmp(fce_ii,1:15,3);
-        else
-            data(1,dir_i,fce_ii,1:trials_num,3) = celltmp(fce_ii,:,3);
-        end
-    end
-end
-save('data/processedData/ss3307_3314.mat', 'data')
-
-%% export a data from formatted requirements:: Export James' data in 6D
-% Date: 2021-11-03 SUBJECT JAMES TOOKS THESE EXPERIMENTS, trying different
-% force level with 1 direction (the total last about 1h20min).
-% format like:
-% |sessions: | 2.5cm    | 5cm      | 7.5cm    | StocPert |
-% | -------- | -------- | -------- | -------- | -------- |
-% |15N       | 3306     | 3307     | 3308     | 3317     |
-% |20N       | 3309     | 3310     | 3311     | 3318     |
-% |25N       | 3312     | 3313     | 3314     | 3319     |
-% export data defines as: 
-% data = cell(n_subject, n_dir, n_fce, n_trials, 3); 
-% whereas 3 means: 1) release; 2) step pert; 3) stoc pert;
-
-data = cell(1, 4, 3, 3, 15, 3);
-ss_num = [  3306 3307 3308 3317;
-            3309 3310 3311 3318;
-            3312 3313 3314 3319];
-
+clear;
+ss_num = [      3306    3307    3308    3317;
+                3309    3310    3311    3318;
+                3312    3313    3314    3319];
+data = cell(1,4,3,3,15,3);
 for fce_i = 1:size(ss_num,1)
     for tar_i = 1:3 % step perts
         ss_tmp = SessionScan(ss_num(fce_i, tar_i));
         celltmp = ss_tmp.export_as_formatted(1);
         
-        trials_num = size(celltmp,1);
+        trials_num = size(celltmp,3);
         if trials_num>15
-            data(1,1,fce_i,tar_i,:,:) = celltmp(1:15,:);
+            data(1,1,fce_i,tar_i,:,:) = celltmp(1,1,1:15,:);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+            data(1,1,fce_i,tar_i,1:trials_num,:) = celltmp(1,1,:,:);
         end
     end
 
     ss_tmp = SessionScan(ss_num(fce_i, 4)); % stoc pert
     celltmp = ss_tmp.export_as_formatted(1);
     for tar_i = 1:3 % as a session has 3 length
-        trials_num = size(celltmp,2);
+        trials_num = size(celltmp,3);
         if trials_num>15
-            data(1,1,fce_i,tar_i,1:15,3) = celltmp(tar_i,1:15,3);
+            data(1,1,fce_i,tar_i,1:15,3) = celltmp(1,tar_i,1:15,3);
         else
-            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(tar_i,:,3);
+            data(1,1,fce_i,tar_i,1:trials_num,3) = celltmp(1,tar_i,:,3);
         end
     end
 end
-save('data/processedData/ss3307_3314_6D.mat', 'data')
+save('data/processedData/ss3307_3314.mat', 'data')
+
 %% export a data from formatted requirements 
 % Date: 2021-11-04 USE SPRINGS TO DO THE SAME THING with ss3307_ss3314
+% SPRING TESTING
 % make sure that:   1. The force exerted on robot is the same with subject's level; 
 %                   2. The robot before-release position is on the same level with subject;
 % Thus, I fixed the xr0 (robot nominal position) depend on the force, and
@@ -266,13 +224,32 @@ save('data/processedData/ss3307_3314_6D.mat', 'data')
 % | 25N     | 3344     | 3336      | 3337      |    -   |
 % | 0N      |     -    |    -      |    -      | 3345   |
 
+% backward movements: (make James happier, do not change to order of
+% subject)
+% format like:
+% |sessions:| K160     | K320      | K640      | K0     |
+% | ------- | -------- | --------- | --------- | ------ |
+% | 15N     | 3683     | 3688      | 3689      |    -   |
+% | 20N     | 3684     | 3687      | 3690      |    -   |
+% | 25N     | 3685     | 3686      | 3691      |    -   |
+% | 0N      |     -    |    -      |    -      | 3682   |
+
 % To make sure I only need to adjust the spring combinations equilibrium 
 % position once, I combined the pulse and stoc perturbation with the same 
 % springs and equilibirum positions in one session. 
 
-ss_num = [  3341        3335        3340
-            3343        3334        3338
-            3344        3336        3337];
+% ss_num = [  3341        3335        3340
+%             3343        3334        3338
+%             3344        3336        3337];
+
+% ss_num = [  3683        3688        3689
+%             3684        3687        3690
+%             3685        3686        3691];
+
+ss_num = [  3725        3722        3689
+            3684        3723        3690
+            3685        3724        3691];
+
 for dir_i = 1:size(ss_num,1)
     for tar_i = 1:size(ss_num,2) % step perts
         ss_tmp = SessionScan(ss_num(dir_i, tar_i));
@@ -287,10 +264,43 @@ for dir_i = 1:size(ss_num,1)
     end
 
 end
-save('data/processedData/ss3334_3344.mat', 'data')
+% save('data/processedData/ss3334_3344.mat', 'data')
+save('data/processedData/ss3683_3691.mat', 'data')
+
+%% Do the spring test for mutiple directions... (for x & y direction movement)
+% use springs 320N/m, F0 = 25N (maximize the spring exerting force to
+% enable under-damped movement after release.)  
+
+% format like:
+% |sessions:| K320,25N  |
+% | ------- | --------- |
+% | front   | 3763      |
+% | back    | 3764      |
+% | left    | 3761      |
+% | right   | 3759      |  
+
+clear;
+ss_num = [      3763    3764    3761    3759];
+data = cell(4,1,1,15,3); % direction-force-stiffness-trial-perturbation
+for dir_i = 1:4
+        ss_tmp = SessionScan(ss_num(dir_i));
+        celltmp = ss_tmp.export_as_formatted_hybridss(1);
+        
+        trials_num = size(celltmp,1);
+        if trials_num>15
+            data(dir_i,1,1,:,:) = celltmp(1:15,:);
+        else
+            data(dir_i,1,1,1:trials_num,:) = celltmp(:,:);
+        end
 
 
-ss_num = [3345];
+end
+save('data/processedData/ss3759_3764.mat', 'data')
+
+
+
+%% ss_num = [3345];
+ss_num = [3682];
 for dir_i = 1:size(ss_num,1)
     for tar_i = 1:size(ss_num,2) % step perts
         ss_tmp = SessionScan(ss_num(dir_i, tar_i));
@@ -305,7 +315,30 @@ for dir_i = 1:size(ss_num,1)
     end
 
 end
-save('data/processedData/ss3345.mat', 'data')
+% save('data/processedData/ss3345.mat', 'data')
+save('data/processedData/ss3682.mat', 'data')
+
+
+%% Convert spring using the same order with the subjects
+
+ss_num = [  3340        3335        3341
+            3338        3334        3343
+            3337        3336        3344];
+for dir_i = 1:size(ss_num,1)
+    for tar_i = 1:size(ss_num,2) % step perts
+        ss_tmp = SessionScan(ss_num(dir_i, tar_i));
+        celltmp = ss_tmp.export_as_formatted_hybridss(1);
+        
+        trials_num = size(celltmp,1);
+        if trials_num>15
+            data(1,dir_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(1,dir_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+    end
+
+end
+save('data/processedData/ss3334_3344_alter.mat', 'data')
 
 %% format like:
 % |sessions:| K160     | K320      | 
@@ -683,7 +716,7 @@ save('data/processedData/prelimData_4subj_fine.mat', 'data')
 clear;
 fnames = {
     '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3486_3534.mat'; % Chenguang testing
-    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3486_3534.mat'; % James testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3307_3314.mat'; % James testing
     '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3491_3503.mat'; % Himanshu testing
     '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3615_3618.mat'; % Micheal testing
     '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3620_3629.mat'; % Adam testing
@@ -697,6 +730,30 @@ for idx_subj = 1:6
 end
 data = data1;
 save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine.mat', 'data', '-v7.3')
+
+%% spring + 6 subjects
+clear;
+fnames = {
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/ProcessedData/ss3334_3344_alter.mat'; % Springs
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3486_3534.mat'; % Chenguang testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3307_3314.mat'; % James testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3491_3503.mat'; % Himanshu testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3615_3618.mat'; % Micheal testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3620_3629.mat'; % Adam testing
+    '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3641_3644.mat'; % Marco testing
+    };
+data1 = cell(7, 4, 3, 3, 15, 3);
+for idx_subj = 1:7
+    clear data;
+    load(fnames{idx_subj});
+    if idx_subj==1
+        data1(idx_subj,1,:,:,:,:) = data(1,:,:,:,:,:);
+    else
+        data1(idx_subj,:,:,:,:,:) = data(1,:,:,:,:,:);
+    end
+end
+data = data1;
+save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_S_6subj_fine.mat', 'data', '-v7.3')
 
 %% tidy up Himanshu's data as a comparation 
 clear; 

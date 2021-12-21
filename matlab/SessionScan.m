@@ -131,6 +131,8 @@ classdef (HandleCompatible)SessionScan < handle
                     disp('Loading (intermed/raw) EMG...');
                 end
                 obj.emg = SessionScanEMG(obj.ssnum);
+                obj.emg_t = obj.emg.data.t;
+                obj.emg_h = obj.emg.data.emg;
             catch
 
 %                 disp('no EMG data here! ')
@@ -289,6 +291,22 @@ classdef (HandleCompatible)SessionScan < handle
         function obj = dealingSessionsExceptions(obj)
             % solve some data-code inconsistant problem, specify for each
             % sessions
+            
+            % deal with force exceptions
+            force_exception_sessions = [3683:3691, ...
+                                        3722:3725, ...
+                                        3727:3728, ...
+                                        3737, 3740];
+            % in these sessions, I wrongly calibrate the force, that the
+            % collected force is biased for certain value. To deal with
+            % this exception, the only way is to add the force value of ts7
+            % to avoid the force calibration problem, do the force
+            % exception for every single trial
+            if (sum(obj.ssnum == force_exception_sessions) ~= 0 )
+                for trial_i = 1:obj.trials_num
+                    obj.trials(trial_i) = obj.trials(trial_i).dealForceException();
+                end
+            end
 
         end
         function [sT, tT, sR] = getConditionalSucessTrials(obj) 
@@ -432,7 +450,7 @@ classdef (HandleCompatible)SessionScan < handle
 %             obj.force_t
 %             obj.wam_t
             force_h = interp1(obj.force_t', obj.ft.force', obj.wam_t', 'linear', 'extrap')'; 
-            ifplot = 1;
+            ifplot = 0;
             if (ifplot)
                 clf;
                 axh(1) = subplot(3,1,1);  hold on;
@@ -474,6 +492,22 @@ classdef (HandleCompatible)SessionScan < handle
                 plot(obj.data.t, obj.data.tq(4,:), 'b.');
                 ylabel('torque (Nm)');
                 linkaxes(axh, 'x');
+            end
+            
+            if (~isempty(obj.emg_t) && ~isempty(obj.emg_h))
+                obj.data.emg = interp1(obj.emg_t', obj.emg_h', obj.wam_t', 'linear', 'extrap')';
+                
+                
+                if (ifplot)
+                    clf;
+                    for i = 1:8
+                        axh(i) = subplot(8,1,i); hold on; grid on;
+                        plot(obj.emg_t, obj.emg_h(i,:), 'marker', '.', 'Color', 'r');
+                        plot(obj.wam_t, obj.data.emg(i,:), 'marker', '.', 'Color', 'b');
+                        ylim([-5000 5000]);
+                    end
+                    linkaxes(axh, 'xy');
+                end
             end
         end
         function force = rotateAxisForce(obj) % convert from select into world axis
@@ -719,7 +753,7 @@ classdef (HandleCompatible)SessionScan < handle
             %   ts: 1-by-N matrix, task states
             %   time: 1-by-N matrix, time 
             %   movement onset: the mask that robot start move
-            %  -[ ] emg: 8-by-N matrix, emg data
+            %   emg: 8-by-N matrix, emg data
             pert_trials = [obj.trials.ifpert];
             t_idx = cell(1,3);
             for p_i = 1:3
@@ -737,9 +771,10 @@ classdef (HandleCompatible)SessionScan < handle
                     trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
                     trial_list = setdiff(trial_list,1);
                     for t_i = 1:length(t_idx{3})
-                        t_tmp = obj.trials(trial_list==t_idx{3}(t_i));
+                        trial_idx = trial_list(trial_list==t_idx{3}(t_i));
+                        t_tmp = obj.trials(trial_idx);
                         %cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                        cellsmat{t_i,3} = t_tmp.export_as_formatted;
+                        cellsmat{t_i,3} = t_tmp.export_as_formatted(ifplot);
                     end
                 end
             end
@@ -752,7 +787,7 @@ classdef (HandleCompatible)SessionScan < handle
                 trial_list = setdiff(trial_list,[1]);
                 for t_i = 1:length(trial_list)
                     t_tmp = obj.trials(trial_list(t_i));
-                    cellsmat{t_i,p_i} = t_tmp.export_as_formatted;  % each trial
+                    cellsmat{t_i,p_i} = t_tmp.export_as_formatted(ifplot);  % each trial
                     xlim([-5 -4])
                     ifplot = true;
                     if (ifplot) 
@@ -1136,6 +1171,43 @@ classdef (HandleCompatible)SessionScan < handle
                 %             ylabel('position y (m)');
             end
             % title('all trials position');
+        end
+        function axh = plotTrialfyVelocityh_all(obj, axh)
+
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            axh_arr = 'xyz';
+            trials = obj.trials;
+            for axi = 1:3
+                axh(axi) = subplot(3,1,axi); hold on;
+                for trial_i = 1:length(trials)
+                    plot(trials(trial_i).data.t_shift, trials(trial_i).data.v(axi,:));
+                end
+                xlim([-1 1]);
+                xlabel('time');
+                ylabel('velocity (m/s)');
+                title(['vel ' axh_arr(axi)]);
+            end
+            linkaxes(axh, 'xy');
+        end
+        function axh = plotTrialfyVelocityh(obj, axh)
+
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            hold on;
+            trials = obj.trials;
+            for trial_i = 1:length(trials)
+                plot(trials(trial_i).data.t_shift, trials(trial_i).data.x(2,:)); % only y position here
+            end
+            xlabel('time');
+            ylabel('position');
+            title('all trials position');
         end
         function axh = plotTrialfyForceh(obj, axh, tidx)
             if nargin < 2

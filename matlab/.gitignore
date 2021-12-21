@@ -14,8 +14,8 @@ sanityCheck_StiffnessMeasurement/
 slprj/
 tmp.txt
 ../slprj/
-../EMG_tmp/
-../ballisticReleaseSimu/
+../ballisticReleaseSimu/*
 ../ballisticRelease_GaussianPerte.slxc
 ../ballisticRelease_stepPert.slxc
 ../slprj/
+sanityCheck*

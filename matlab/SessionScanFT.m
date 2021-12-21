@@ -80,7 +80,7 @@ classdef SessionScanFT
         
         function plotForceOrigin(obj)
            figure();
-           SAMPLE_R = 700; % plot from every 700 data points
+           SAMPLE_R = 1; % plot from every 700 data points
            plot(obj.force_origin(:,1:SAMPLE_R:end)');
            legend('x','y','z');
            xlabel('read_timepints');
