@@ -1356,20 +1356,21 @@ classdef TrialScan
 %             axhl(2) = subplot(3,1,2); hold on;
 %             %plot(dat.t, dat.Fp, 'r');
 %             plot(dat.t, dat.f, 'r');
-%             plot(obj.force_t, obj.force_h(:,:), 'b');
+%             %plot(obj.force_t, obj.force_h(:,:), 'b');
 %             title('perturbation force');
 %             axhl(3) = subplot(3,1,3); hold on;
 %             plot(dat.t, dat.x(2,:), 'r');
-%             plot(obj.position_t, obj.position_h(2,:), 'b');
+%             %plot(obj.position_t, obj.position_h(2,:), 'b');
 %             title('endpoint position');
-%             linkaxes(axhl, 'x');
+%             %linkaxes(axhl, 'x');
 %             suptitle(['trial ' num2str(obj.tNo)]);
 %         end
         
         % if pert happen eailier
         %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),3)) && obj.ifpert==1
         %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),4)) && obj.ifpert==1 % perturb at ts4
-        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4])) && obj.ifpert==1 % perturb at either ts3 or ts4
+        %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4])) && obj.ifpert==1 % perturb at either ts3 or ts4
+        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4,5])) && obj.ifpert==1 % perturb at either ts3 or ts4
             dat.Fp = zeros(size(dat.Fp));
         end
         

@@ -296,7 +296,8 @@ classdef (HandleCompatible)SessionScan < handle
             force_exception_sessions = [3683:3691, ...
                                         3722:3725, ...
                                         3727:3728, ...
-                                        3737, 3740];
+                                        3737, 3740, ...
+                                        3766, 3767];
             % in these sessions, I wrongly calibrate the force, that the
             % collected force is biased for certain value. To deal with
             % this exception, the only way is to add the force value of ts7
@@ -1193,30 +1194,33 @@ classdef (HandleCompatible)SessionScan < handle
             end
             linkaxes(axh, 'xy');
         end
-        function axh = plotTrialfyVelocityh(obj, axh)
+        function axh = plotTrialfyVelocityh(obj, axh, tidx)
 
             if nargin < 2
                 axh = figure();
             else
                 figure(axh);
             end
+             if ~exist('tidx','var')
+                tidx = 1:length(obj.trials);
+            end
             hold on;
-            trials = obj.trials;
+            trials = obj.trials(tidx);
             for trial_i = 1:length(trials)
-                plot(trials(trial_i).data.t_shift, trials(trial_i).data.x(2,:)); % only y position here
+                plot(trials(trial_i).data.t_shift, trials(trial_i).data.v(2,:)); % only y position here
             end
             xlabel('time');
-            ylabel('position');
-            title('all trials position');
+            ylabel('velocity');
+            title('all trials velocity');
         end
         function axh = plotTrialfyForceh(obj, axh, tidx)
             if nargin < 2
-                axh = figure();
+                axh = figure(); hold on;
             else
-                figure(axh);
+                figure(axh); hold on;
             end
             if ~exist('tidx','var')
-                tidx = ones(size(obj.trials));
+                tidx = 1:length(obj.trials);
             end
             hold on;
             trials = obj.trials(tidx);

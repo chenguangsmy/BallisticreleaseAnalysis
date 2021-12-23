@@ -44,6 +44,7 @@ classdef SessionScanFT
             obj.elapse = [Data.elapse]';     % read time elapse, wrongly elapse... Change code! 
             obj = forceFTconvert(obj);
             %plotForce(obj)
+            obj = obj.dealwithExceptions(ss_num);
             
             obj = intropTime(obj);
             
@@ -53,7 +54,19 @@ classdef SessionScanFT
                 axh(1) = subplot(2,1,1); plot(obj.RDT, obj.force_net(2,:));
                 axh(2) = subplot(2,1,2); plot(obj.RDT, obj.torque_origin(2,:));
             end
-
+            
+            % this part hard code to deal with exception 
+            
+        end
+        
+        function obj = dealwithExceptions(obj, ss_num)
+            % deal with exceptions 
+             if (ss_num == 3775)
+                 obj.elapse(502620) = nanmean(obj.elapse(502619:502621));
+             end
+             if (ss_num == 3778)
+                 obj.elapse(199100) = nanmean(obj.elapse(199099:199101));
+             end
         end
         
         function obj = intropTime(obj)
