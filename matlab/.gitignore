@@ -10,7 +10,6 @@ func/cpDatarg2.m~
 func/results.txt
 optotrack/
 sanityCheck_BallisticRelease/ReleaseDataCheck.m
-sanityCheck_StiffnessMeasurement/
 slprj/
 tmp.txt
 ../slprj/
@@ -18,4 +17,7 @@ tmp.txt
 ../ballisticRelease_GaussianPerte.slxc
 ../ballisticRelease_stepPert.slxc
 ../slprj/
-sanityCheck*
+*.pptx
+*.png
+*.mp4
+*.mat
