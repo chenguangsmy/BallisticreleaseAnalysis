@@ -199,17 +199,7 @@ classdef (HandleCompatible)SessionScan < handle
 
             % processing 
             trials_all = setdiff(unique(TrialNo), 0);
-            [obj, syncflag] = updateTimeBlackRock(obj); 
-            % syncflag: 
-            %           -1: no TSync file 
-            %           -2: no intermediate file 
-            %           -3: no FT pulse was detected 
-            if syncflag == -3
-                % under this case, map the FT time into the BK time 
-                
-                % rely on the message to get the data aligned
-                obj = obj.forceHighSample(obj.ft);%, ft_intm);
-            end
+            [obj, syncflag] = updateTimeBlackRock(obj);
 %             if (~isempty(obj.ft))
 %                 if (flag_progress)
 %                     disp('FT High Sample...');
@@ -307,8 +297,7 @@ classdef (HandleCompatible)SessionScan < handle
                                         3722:3725, ...
                                         3727:3728, ...
                                         3737, 3740, ...
-                                        3766, 3767, 3768:3778, ...
-                                        3793:3795];
+                                        3766, 3767];
             % in these sessions, I wrongly calibrate the force, that the
             % collected force is biased for certain value. To deal with
             % this exception, the only way is to add the force value of ts7
@@ -780,10 +769,6 @@ classdef (HandleCompatible)SessionScan < handle
                 % spring testing)
                 for tl_i = 1:length(obj.tarLs)
                     %trial_list = setdiff(find([obj.trials.tarL] == obj.tarLs(tl_i)),1);
-                    % exception dealing 
-                    if (obj.ssnum >= 3803 && obj.ssnum <= 3830 && obj.tarLs(tl_i) == 0.25) % wrong trial
-                        continue
-                    end
                     trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
                     trial_list = setdiff(trial_list,1);
                     for t_i = 1:length(t_idx{3})
@@ -1157,22 +1142,6 @@ classdef (HandleCompatible)SessionScan < handle
             end
             xlabel('time');
             ylabel('position');
-            title('all trials position');
-        end
-        function axh = plotTrialfyPFh(obj, axh)
-
-            if nargin < 2
-                axh = figure();
-            else
-                figure(axh);
-            end
-            hold on;
-            trials = obj.trials;
-            for trial_i = 1:length(trials)
-                plot(trials(trial_i).data.t_shift, trials(trial_i).data.Fp(2,:));
-            end
-            xlabel('time');
-            ylabel('Pert Force');
             title('all trials position');
         end
         function axh = plotTrialfyPositionh_all(obj, axh)
@@ -1585,7 +1554,6 @@ classdef (HandleCompatible)SessionScan < handle
                 eventTrials= dataTs.eventsTrials;
             end
             
-            
             % pulse from the blackrock
             events_type = unique(eventsL);
             for etype = events_type
@@ -1739,7 +1707,7 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
             
-            ifplot = 0;
+            ifplot = 1;
             if (ifplot)
                 clf; 
                 hold on;
@@ -1784,74 +1752,7 @@ classdef (HandleCompatible)SessionScan < handle
                 
             end
             flag = 1;
-            
-            if (isempty(setdiff(eventsL, 2)))   % error message: no FT pulse recorded! 
-                disp('no FT pulse was recorded');
-                flag = -3; 
-                % not quit, but finish the rest 
-            end
-            
             return;
-        end
-        %% update time from the message 
-        function obj = forceHighSample(obj, force_obj)%, ft_intm)
-            % align force to higher resolution according to a seperate
-            % ft_obj file. the seperate ft_obj file should extract from
-            % object of SessionScanFT
-            % check variable 
-            align_frdt = obj.Data.Force.RDTSeq;
-            align_Frdt = reshape(force_obj.RDT, 1, length(force_obj.RDT));
-            align_time = obj.time;
-            %plot(align_frdt, align_time, '*', align_Frdt, align_Time, 'o');
-            % aim: find all non-NaN value of frdts, fill the corresponding
-            %      time to align_Time, and linearly fill each interval 
-            %%% use each interval seperately
-             if (length(align_frdt)<2)
-                 msg = 'Data error: not enough sample, aborted!';
-                 error(msg);
-            end
-            %align_time_= align_time(~isnan(align_frdt));
-%             [~,idxFrdt] = intersect(align_Frdt,align_frdt,'stable'); %??? check this line
-%             [~,idxfrdt]          = intersect(align_frdt,align_Frdt,'stable'); %??? check this line
-%             align_Time = nan(1, length(align_Frdt));           % ??? can this work
-%             align_Time(idxFrdt) = align_time(idxfrdt);
-             align_frdt = double(align_frdt);
-             align_frdt(align_frdt==0) = nan;
-             align_frdt_idx = [min(find(~isnan(align_frdt))) max(find(~isnan(align_frdt)))];
-             align_Time = interp1(align_frdt(align_frdt_idx), obj.time(align_frdt_idx), force_obj.RDT, 'linear', 'extrap');
-             obj.force_t = align_Time;
-            % loop each interval
-%             for i = 1:length(idxFrdt)-1
-%                 idx_l = idxFrdt(i); 
-%                 idx_r = idxFrdt(i+1);
-%                 aligned_tmp = interp1q([idx_l, idx_r]', [align_Time(idx_l),align_Time(idx_r)]', (idx_l:idx_r)');
-%                 %plot(1:(idx_r-idx_l+1), align_Time(idx_l:idx_r), 'o', 1:(idx_r-idx_l+1), aligned_tmp', '*');
-%                 %title(['i = ' num2str(i) ' of ' num2str(length(idxFrdt))]);
-%                 align_Time(idx_l:idx_r) = aligned_tmp';
-%             end
-            ifplot = 0;
-            if(ifplot) % validation figure
-                %figure();
-                clf;
-                plot(align_frdt, align_time, 'o', align_Frdt, align_Time, '.');
-                legend('reconstructed (fake) time', 'introplated time'); 
-                xlabel('RDT seq num'); ylabel('time'); 
-                title('validation interp');
-                
-                clf;
-                title('lo- hi- sampled data');
-                plot(obj.time, obj.force(2,:), '*'); hold on;
-                plot(align_Time, force_obj.force(2,:), '.');
-                legend('lo-sample, RTMA', 'hi-sample, reconstructed time');
-                
-            end
-             %obj.force_h = force_obj.force_net;    % not rotated
-%              obj.force_h = force_obj.force;         % rotated
-%              if isempty(obj.force_t)
-%                 disp('Force did not aligned with blackrock signal, align using messages');
-%                 obj.force_t = align_Time; % not work after ss 3046
-%                 obj.force_t = reshape(obj.force_t, 1, length(obj.force_t));
-%              end
         end
     end
 

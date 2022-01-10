@@ -95,7 +95,7 @@ for ss_i = 1:length(ss_num)
     dstn3  = sprintf([dstdir1 'KingKong.%05d.mat'], ss_num(ss_i));
     dstn4  = sprintf([dstdir2 'KingKong.%05d.mat'], ss_num(ss_i));
     dstn5  = sprintf([dstdir1 'KingKongTSync.%05d.mat'], ss_num(ss_i));
-    dstn6  = sprintf([dstdir1 'KingKongEMG.%05d.csv'], ss_num(ss_i));
+    dstn6 = sprintf([dstdir1 'KingKongEMG.%05d.csv'], ss_num(ss_i));
     
     
     
