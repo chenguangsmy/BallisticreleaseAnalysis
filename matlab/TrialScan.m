@@ -1370,7 +1370,8 @@ classdef TrialScan
         %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),3)) && obj.ifpert==1
         %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),4)) && obj.ifpert==1 % perturb at ts4
         %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4])) && obj.ifpert==1 % perturb at either ts3 or ts4
-        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4,5])) && obj.ifpert==1 % perturb at either ts3 or ts4
+        %if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4,5])) && obj.ifpert==1 % perturb at either ts3 or ts4
+        if ~isempty(setdiff(unique((dat.ts(dat.Fp(2,:)~=0))),[3,4,5,6,7])) && obj.ifpert==1 % perturb at either ts3 or ts4, 5, 6, 7
             dat.Fp = zeros(size(dat.Fp));
         end
         
