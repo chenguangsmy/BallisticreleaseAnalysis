@@ -1,6 +1,22 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This script is aimed at testing different directions of perturbation, it
+% contains following parts: 
+%       1. Find the current problem that the x direction is over-dampped
+%       2. Trying some wam configurations so that x direction is less
+%       damped;
+%       3. Find the 'sweet spot' so that both x and y direction are less
+%       damped. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % ballisticreleaseAtX
 % according to Andy's instruction, try to do x direction ballistic release 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PART1, THAT X DIRECTION IS OVERLY DAMPED
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % cpDatarg2(3727);
 sstmp = SessionScan(3727);
 sstmp.plotTrialfyPositionh_all()
@@ -49,6 +65,10 @@ linkaxes(axh, 'x');
 % plot out these plot to to show in next time! 
 
 %% 
+%%%%%%%%%%%%%%%%%%%
+% still in x direction, but decrease the damping (even use the negative),
+% to see if the over-damping problem has been solved.
+
 %%% try robot with different perturbation magnitude
 %sstmp = SessionScan(3731);
 %sstmp = SessionScan(3732); % up to 16N perturbation, not working yet (1 dip at the perturbation)
@@ -84,7 +104,15 @@ end
 title(axh(1), 'a-x');title(axh(2), 'a-y');title(axh(3), 'a-z');
 linkaxes(axh, 'x');
 
-%% try roobt at a differnt configuration: 
+
+%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PART2, THAT TRYING NEW ROBOT CONFIGURATIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% try roobt at a differnt configuration: 
 % configuration at the following: 
 %           jp = [-1.57, -0.785, 0, 1.57];
 %           tp = [0, 0.7707, 0]; 
@@ -229,19 +257,24 @@ plot(wamtmp.time, wamtmp.jp);
 legend('1','2','3','4');
 linkaxes(axh,'x');
 
-%% do the following spring tests: 
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Stack all the new configuration data in one matrix 
+% do the following spring tests: 
+%  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% read all the data 
 ss_num = [...
-           3336, 3724, 3727, 3727
-           3743, 3744, 3746, 3747; ...
-           3752, 3750, 3751, 3749; ...
-           3753, 3755, 3754, 3756;...
-            3759, 3761, 3763, 3764]';
+            3336, 3724, 3727, 3727
+            3743, 3744, 3746, 3747; ...
+            3752, 3750, 3751, 3749; ...
+            3753, 3755, 3754, 3756;...
+            3759, 3761, 3763, 3764]';       % This is the 'sweet point' 
+        % ... sequence: R, L, U, D
 ssnum = ss_num(:);
-for i = 1:length(ssnum )
+for i = 1:length(ssnum)
     sstmp(i) = SessionScan(ssnum(i));
 end
 
-%%
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% show all the data 
 
 figure(); hold on; grid on;
 for ss_i = 1:length(ssnum)
@@ -287,3 +320,60 @@ axh(3) = subplot(3,1,3);
 plot(wamtmp.time, wamtmp.cf); 
 legend('1','2','3');
 linkaxes(axh,'x');
+
+%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PART3, ANALYSE THE 'SWEET SPOT'
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 1. Export the data into standard spring format
+% format: 5D (direction-force-stiffness-trial-perturbation
+
+% note: the data feed into James' code should be 3-by-3 (force vs springs),
+% here I just use 1-by-1, and copy and paste it if nessesary 
+
+ss_num = [3759 3761 3763 3764];
+
+for dir_i = 1:4
+    ss_tmp = SessionScan(ss_num(dir_i));
+    celltmp = ss_tmp.export_as_formatted_hybridss(1); % stochastic data not recorded 
+    for fce_i = 1:3
+        for tar_i = 1:3 % step perts
+%         ss_tmp = SessionScan(ss_num(fce_i, tar_i));
+%         celltmp = ss_tmp.export_as_formatted_hybridss(1); % stochastic data not recorded 
+        trials_num = size(celltmp,1);
+        if trials_num>15
+            data(dir_i,fce_i,tar_i,:,:) = celltmp(1:15,:);
+        else
+            data(dir_i,fce_i,tar_i,1:trials_num,:) = celltmp(:,:);
+        end
+        end
+    end
+end
+save('data/processedData/ss3759_3764.mat', 'data')
+
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 1. Feed the data into James' code 
+
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3759_3764.mat');
+data = reshape(Data(1:4,1,1,:,:,:),1,1,2,15,3);
+crossConditionAnalysis(data, 1, 1, 1:2,'spring');
+% crossConditionAnalysis(data,dexSubject,dexDirection,dexDistance,subjectType)
+% dexSubject: (spring) stiffness levels and (human) target distances
+% dexDirection: 
+
+%% try 
+%% % tmptmp: try the code to see if it works 
+            % Test from Chenguang Full data (11/19/2021)
+            load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3486_3534.mat');
+            data_human = reshape(data(1,4,:,:,:,:),1,3,3,15,3); % originally 3
+            clear data
+            dexSubject = 1; % [Chenguang]
+            dexForce = 1:3; % [15N, 20N, 25N]
+            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+            depMeasures_human2 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+            
+            
