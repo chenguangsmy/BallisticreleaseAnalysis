@@ -751,7 +751,7 @@ classdef (HandleCompatible)SessionScan < handle
 %                 end
 %             end
         end
-        function [cellsmat] = export_as_formatted_hybridss(obj, ifplot)
+        function [cellsmat, paramsmat] = export_as_formatted_hybridss(obj, ifplot)
             % hybrids can have pulse, stoc and no pulse pert
             if (~exist('ifplot', 'var'))
                 ifplot = 0;
@@ -775,6 +775,7 @@ classdef (HandleCompatible)SessionScan < handle
             t_idx{3} = t_idx{3}(2:end); % works for the hybrid pert, to avoid error
             
             cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
+            paramsmat =cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
             if ~isempty(t_idx{3}) % stoc-perturbed trials. 
                 % stoc trials are in the same sessions for step trials (for
                 % spring testing)
@@ -784,13 +785,15 @@ classdef (HandleCompatible)SessionScan < handle
                     if (obj.ssnum >= 3803 && obj.ssnum <= 3830 && obj.tarLs(tl_i) == 0.25) % wrong trial
                         continue
                     end
-                    trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i) & [obj.trials.outcome] == 1);
+                   % trial_list = find([obj.trials.tarL] == obj.tarLs(tl_i)& [obj.trials.outcome] == 1);% for subject test 
+                   trial_list = find([obj.trials.outcome] == 1);% for spring test 
                     trial_list = setdiff(trial_list,1);
                     for t_i = 1:length(t_idx{3})
                         trial_idx = trial_list(trial_list==t_idx{3}(t_i));
                         t_tmp = obj.trials(trial_idx);
                         %cellsmat{tl_i,t_i,3} = t_tmp.export_as_formatted;
-                        cellsmat{t_i,3} = t_tmp.export_as_formatted(ifplot);
+                        cellsmat{t_i,3} = t_tmp.export_as_formatted(ifplot);  
+                        paramsmat{t_i,3} = t_tmp.export_trial_params();
                     end
                 end
             end
@@ -804,6 +807,7 @@ classdef (HandleCompatible)SessionScan < handle
                 for t_i = 1:length(trial_list)
                     t_tmp = obj.trials(trial_list(t_i));
                     cellsmat{t_i,p_i} = t_tmp.export_as_formatted(ifplot);  % each trial
+                    paramsmat{t_i,p_i} = t_tmp.export_trial_params();
                     xlim([-5 -4])
                     ifplot = true;
                     if (ifplot) 

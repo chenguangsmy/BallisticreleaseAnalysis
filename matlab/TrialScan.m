@@ -158,14 +158,18 @@ classdef TrialScan
             
             if length(sessionScanObj.pertCond.wamKp) == 1
                 obj.wamKp    = sessionScanObj.pertCond.wamKp;
+            else
+                obj.wamKp    = unique(sessionScanObj.Data.TaskJudging.wamKp(maskTrial & maskHold));
+            end
+            
+            if length(sessionScanObj.pertCond.wamBp) == 1
                 obj.wamBp    = sessionScanObj.pertCond.wamBp;
             else
-                obj.wamKp    = unique(sessionScanObj.pertCond.wamKp(maskTrial & maskHold));
-                obj.wamBp    = unique(sessionScanObj.pertCond.wamBp(maskTrial & maskHold));
+                 obj.wamBp    = unique(sessionScanObj.Data.TaskJudging.wamBp(maskTrial & maskHold));
             end
 
             try
-                obj.pert_f   = unique(sessionScanObj.pertCond.pertdf(maskTrial & maskHold));
+                obj.pert_f   = unique(sessionScanObj.Data.TaskJudging.pertdf_mag(maskTrial & maskHold));
             catch
                  obj.pert_f  = [];
             end
@@ -1435,6 +1439,15 @@ classdef TrialScan
 %             plot(dat.t, dat.f);
         end
         end
+        
+        function params = export_trial_params(obj)
+            % return the parameters in this trial 
+            params.wamKp = obj.wamKp;
+            params.wamBp = obj.wamBp;
+            params.pertf = obj.pert_f;
+            
+        end
+        
         
         function obj = dealForceException(obj)
             % obj = dealForceException(obj)
