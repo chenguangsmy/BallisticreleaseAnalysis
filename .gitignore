@@ -4,3 +4,8 @@ rawdata/*
 DataAnalysis/forcedata/*
 matlab/*.mat
 matlab/data/*
+matlab/prelimSubjectsRawPlots/images/*
+matlab/prelimSubjectsRawPlots/*.aux
+matlab/prelimSubjectsRawPlots/*.log
+matlab/prelimSubjectsRawPlots/*.pdf
+matlab/prelimSubjectsRawPlots/*.gz
