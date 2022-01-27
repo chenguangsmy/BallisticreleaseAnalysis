@@ -107,10 +107,15 @@ classdef crossConditionAnalysis < handle
                         structPlotTrial{subj,force,dist}.est_catch_pulse  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_catch.est_pulse);
                         structPlotTrial{subj,force,dist}.est_stocastic_release  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_stocastic.est_release);
                         structPlotTrial{subj,force,dist}.est_stocastic_stocastic  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_stocastic.est_stocastic);
+                    
+%                         structPlotTrial{subj,force,dist}.est_catch_pulseMotion  = this.get_estStructCellTrialMotion(this.depMeasures{subj,force,dist}.trial_catch.est_pulseMotion);
+
                     end
                 end
             end
             clear subj
+            
+            % **Pause here to run Pulse motion plots later on
             
             %Summary Across conditions
             plotCon_norm_release = this.get_estStructCondition(structPlotTrial,'est_norm_release');
@@ -368,6 +373,163 @@ classdef crossConditionAnalysis < handle
                 end
             end
             saveas(gcf,[pathh,fileName,'_rawPulse'],'png');
+            
+%             %% Pulse during Motion
+%             
+%             lineTypee = {'-','--',':'};
+%             lineColorr = {[0.9290, 0.6940, 0.1250],...
+%                         [0, 0.4470, 0.7410],...
+%                         [0.8500, 0.3250, 0.0980]};
+%             % Stiffness Plot
+%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              count = 1;
+%              for force = this.dexForce
+%                  for dist = this.dexDistance
+% %                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+%                          
+% %                          title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
+%                          if(1==mod(count,length(this.dexDistance)))
+%                              ylabel('Stiffness (N/m)'); %ylim([0 100]);
+%                          end
+%                          if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                              xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                          end
+%                          set(gca,'fontsize',16);grid on;
+%                          
+%                          errorbar(1:12,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.k_hat_ave,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.k_hat_std,...
+%                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
+%                          
+% %                          ylim([-0.17 0.1]);
+% %                          xlim([0 0.35]);
+%                      
+%                      count = count + 1;
+%                  end
+%              end
+%              
+%              % Damping Plot
+%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              count = 1;
+%              for force = this.dexForce
+%                  for dist = this.dexDistance
+% %                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+%                          
+% %                          title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
+%                          if(1==mod(count,length(this.dexDistance)))
+%                              ylabel('Damping (N-s/m)'); %ylim([0 100]);
+%                          end
+%                          if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                              xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                          end
+%                          set(gca,'fontsize',16);grid on;
+%                          
+%                          errorbar(1:12,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.b_hat_ave,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.b_hat_std,...
+%                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
+%                          
+% %                          ylim([-0.17 0.1]);
+% %                          xlim([0 0.35]);
+%                      
+%                      count = count + 1;
+%                  end
+%              end
+%              
+%              
+%              % X0 Plot
+%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              count = 1;
+%              for force = this.dexForce
+%                  for dist = this.dexDistance
+% %                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+%                          
+% %                          title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
+%                          if(1==mod(count,length(this.dexDistance)))
+%                              ylabel('x_0 (m)'); %ylim([0 100]);
+%                          end
+%                          if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                              xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                          end
+%                          set(gca,'fontsize',16);grid on;
+%                          
+%                          errorbar(1:12,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.x_h_ave,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.x_h_std,...
+%                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
+%                          
+% %                          ylim([-0.17 0.1]);
+% %                          xlim([0 0.35]);
+%                      
+%                      count = count + 1;
+%                  end
+%              end
+%              
+%              % VAF Plot
+%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              count = 1;
+%              for force = this.dexForce
+%                  for dist = this.dexDistance
+% %                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+%                          
+% %                          title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
+%                          if(1==mod(count,length(this.dexDistance)))
+%                              ylabel('VAF'); %ylim([0 100]);
+%                          end
+%                          if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                              xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                          end
+%                          set(gca,'fontsize',16);grid on;
+%                          
+%                          errorbar(1:12,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.VAF_ave,...
+%                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.VAF_std,...
+%                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
+%                          
+% %                          ylim([-0.17 0.1]);
+% %                          xlim([0 0.35]);
+%                      
+%                      count = count + 1;
+%                  end
+%              end
+%              
+% 
+%              % Plot summary figure for pulse fitting
+%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              count = 1;
+%              for force = this.dexForce
+%                  for dist = this.dexDistance
+%                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+% 
+%                      for pretTime = 1:9% Skip 3
+%                          
+%                          axes(ax(count)); title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
+%                          if(1==mod(count,length(this.dexDistance)))
+%                              ylabel('Velocity (m/s)'); %ylim([0 100]);
+%                          end
+%                          if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                              xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                          end
+%                          set(gca,'fontsize',16);grid on;
+%                          
+%                          for triall = 1:size(this.depMeasures{subNum,force,dist}.trial_catch.est_pulseMotion,1)
+%                              structt = this.depMeasures{subNum,force,dist}.trial_catch.est_pulseMotion{triall,pretTime};
+%                              N = length(structt.x_dot);
+%                              plot3(pretTime*ones(1,401),structt.t, structt.x_dot_plot,'b');
+%                          end
+%                          
+%                          % Plot mean model
+%                          N = length(structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave{pretTime});
+%                          plot3(pretTime*ones(1,50),structt.t(structt.dexFpStart:structt.dexFpStart+50-1), structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave{pretTime},'r','linewidth',2.5);
+%                          
+%                          view(60,-45);
+% %                          ylim([-0.17 0.1]);
+% %                          xlim([0 0.35]);
+%                      end
+%                      count = count + 1;
+%                  end
+%              end
+%              %             saveas(gcf,[pathh,fileName,'_rawPulseMotion'],'png');
             
 %             axes(ax(1)); legend(forceVal,'location','south');
 
@@ -752,6 +914,74 @@ classdef crossConditionAnalysis < handle
             
             if( exist('x_dot_hat') )
                 outputt.x_dot_hat_ave = nanmean(x_dot_hat,2);
+            end
+                        
+        end
+        
+         function [outputt]  = get_estStructCellTrialMotion(this,structIn)
+             for j = 1:size(structIn,2)
+                 for i = 1:size(structIn,1)
+                     outputt.k_hat(i,j) = structIn{i,j}.k_hat;
+                     
+                     if( isfield(structIn{i},'x_dot_hat') )
+                         if(i == 1)
+                             x_dot_hat{j} = structIn{i,j}.x_dot_hat';
+                         end
+                         x_dot_hat{j} = this.auto_padd(x_dot_hat{j},structIn{i,j}.x_dot_hat');
+                     end
+                     
+                     if( isfield(structIn{i},'x_dot_tot') )
+                         if(i == 1)
+                             x_dot_tot{j} = structIn{i,j}.x_dot_tot';
+                         end
+                         x_dot_tot{j} = this.auto_padd(x_dot_hat{j},structIn{i,j}.x_dot_tot');
+                     end
+                     
+                     if( isfield(structIn{i},'b_hat') )
+                         outputt.b_hat(i,j) = structIn{i,j}.b_hat;
+                     end
+                     
+                     if( isfield(structIn{i},'VAF') )
+                         outputt.VAF(i,j) = structIn{i,j}.VAF;
+                     end
+                     
+                     if( isfield(structIn{i},'x_h') )
+                         outputt.x_h(i,j) = structIn{i}.x_h;
+                     end
+                     
+                     if( isfield(structIn{i},'OC_hat') )
+                         outputt.OC_hat(i,j) = structIn{i,j}.OC_hat;
+                     end
+                 end
+             end
+            
+            outputt.k_hat_ave = nanmean(outputt.k_hat,1);
+            outputt.k_hat_std = nanstd(outputt.k_hat,0,1);
+            
+            if( isfield(structIn{i},'b_hat') )
+                outputt.b_hat_ave = nanmean(outputt.b_hat,1);
+                outputt.b_hat_std = nanstd(outputt.b_hat,0,1);
+            end
+
+            if( isfield(structIn{i},'VAF') )
+                outputt.VAF_ave = nanmean(outputt.VAF,1);
+                outputt.VAF_std = nanstd(outputt.VAF,0,1);
+            end
+            
+            if( isfield(structIn{i},'x_h') )
+                outputt.x_h_ave = nanmean(outputt.x_h,1);
+                outputt.x_h_std = nanstd(outputt.x_h,0,1);
+            end
+            
+            if( isfield(structIn{i},'OC_hat') )
+                outputt.OC_hat_ave = nanmean(outputt.OC_hat,1);
+                outputt.OC_hat_std = nanstd(outputt.OC_hat,0,1);
+            end
+            
+            if( exist('x_dot_hat') )
+                for ii = 1:size(x_dot_hat,2)
+                    outputt.x_dot_hat_ave{ii} = nanmean(x_dot_hat{ii},2);
+                end
             end
                         
         end
