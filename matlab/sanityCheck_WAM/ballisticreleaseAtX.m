@@ -706,6 +706,44 @@ for pert_i = 1:5
     depMeasures_human2 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'spring');
     pert_result(pert_i,:) = reshape([depMeasures_human2.k_hat_pulse],1,15);
 end
-figure();
-plot(pert_result'); legend();
+
+
+fh = figure();
+subplot(1,2,1);
+plot(pert_result', 'o'); legend('6N B-5','6N B0', '8N B0', '10N B0', '12N B0');
+xlabel('trial');
+ylabel('Estimated stiffness');
+title('Stiffness Estimation on different perturbation');
+
+subplot(1,2,2);
+errorbar(nanmean(pert_result'), nanstd(pert_result'))
+xlim([0,6]);
+xticks([1:5])
+xticklabels({'6N B-5','6N B0', '8N B0', '10N B0', '12N B0'});
+ylabel('Estimated stiffness');
+title('Stiffness Estimation mean and std');
+
+
+saveas(fh, '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_WAM/tryingNewWamConfiguration/StiffnessEstOnConf5.png');
 % Cannot tell which one is better though.
+
+%% show the trajectories 
+sstmp = SessionScan(3838);
+sstmp.plotTrialfyVelocityh_all()
+xlim([-1 1])
+
+figure(); 
+for i = 1:sstmp.trials_num
+    Fpeak = max(abs(sstmp.trials(i).data.Fp(1,:))); 
+    wamBp = sstmp.trials(i).wamBp;
+    if (Fpeak == 6 && wamBp == 0)
+        axh(1) = subplot(3,1,1); hold on;
+    plot(sstmp.trials(i).data.t_shift(2:end), diff(smooth(sstmp.trials(i).data.v(1,:))));
+        axh(2) = subplot(3,1,2); hold on;
+    plot(sstmp.trials(i).data.t_shift(2:end), diff(smooth(sstmp.trials(i).data.v(2,:))));
+        axh(3) = subplot(3,1,3); hold on;
+    plot(sstmp.trials(i).data.t_shift(2:end), diff(smooth(sstmp.trials(i).data.v(3,:))));
+    end
+end
+linkaxes(axh, 'x');
+xlim([-4 -2]);

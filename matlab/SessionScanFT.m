@@ -83,7 +83,23 @@ classdef SessionScanFT
                  obj.elapse(1140790) = nanmean(obj.elapse(1140789:1140791));
                  obj.elapse(1352024) = nanmean(obj.elapse(1352023:1352025));
              end
-             
+             if (ss_num == 3905)
+                 obj.elapse(613100) = nanmean(obj.elapse(613099:613101));
+             end
+             if (ss_num == 3910)
+                 obj.elapse(368420) = nanmean(obj.elapse(368419:368421));
+             end
+             if (ss_num == 3914)
+                 obj.elapse(191400) = nanmean(obj.elapse(191399:191401));
+             end
+             if (ss_num == 3917)
+                 obj.elapse(602778) = nanmean(obj.elapse(602777:602779));
+                 obj.elapse(680951) = nanmean(obj.elapse(680950:680952));
+             end
+             if (ss_num == 3920)
+                 obj.elapse(92050) = nanmean(obj.elapse(92049:92051));
+                 obj.elapse(746502)= nanmean(obj.elapse(746501:746503));
+             end
         end
         
         function obj = intropTime(obj)
