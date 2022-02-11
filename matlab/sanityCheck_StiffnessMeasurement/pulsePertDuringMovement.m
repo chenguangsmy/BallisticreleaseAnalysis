@@ -308,7 +308,7 @@ for fce_i = 1:size(data,1)
        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
-        for dist_i = 1:size(data,2) % for each spring 
+        for dist_i = 1:size(data,2) % for each  
             axh(dist_i+1) = subplot(4,1,dist_i+1); hold on;         % plot each response
             celltmp1 = reshape(data(fce_i,dist_i,:,:),5,pertT_num);
             % 2.1 plot the original one, non-perturbed
@@ -348,11 +348,15 @@ close(v);
 
  %%
  %%%%%%%%%%%% plot the curve in a 2-D form and draw the video, the velocity subtraction 
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
+% v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/changing_Pert_SpringVel_subtract.mp4', 'MPEG-4');
+% pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
 color_arr = colormap('lines');
-pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
 close all;
-v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/changing_Pert_SpringVel_subtract.mp4', 'MPEG-4');
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3913_3921.mat', 'data'); pertT_num = 1+7; % 7 perturbs
+v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SubjectTimeChangingPert_3-by-3_200ms.mp4', 'MPEG-4');
+data = reshape(data(1,1,:,:,:,:),3,3,10,8);
+num_trials = 10;
 v.FrameRate = 1;
 open(v);
 for fce_i = 1:size(data,1)
@@ -361,7 +365,7 @@ for fce_i = 1:size(data,1)
        % 1. plot the perturbed force in the first panel 
        clf; hold on;
        axh(1) = subplot(4,1,1); hold on;                     % plot PF
-       celltmp1 = reshape(data(fce_i,1,:,:),5,pertT_num);
+       celltmp1 = reshape(data(fce_i,1,:,:),num_trials,pertT_num);
        idx_release = find(celltmp1{1,pi}.ts == 5);
        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
@@ -370,7 +374,7 @@ for fce_i = 1:size(data,1)
             
         for dist_i = 1:size(data,2) % for each spring 
             axh(dist_i+1) = subplot(4,1,dist_i+1); hold on;         % plot each response
-            celltmp1 = reshape(data(fce_i,dist_i,:,:),5,pertT_num);
+            celltmp1 = reshape(data(fce_i,dist_i,:,:),num_trials,pertT_num);
             
             % Get the un-perturbed avg velocity 
             v_mean = zeros(1,500);  
@@ -425,15 +429,17 @@ for fce_i = 1:size(data,1)
         frame = getframe(gcf);
         writeVideo(v,frame);
     end
-    
 end
 close(v);
 
  %%
  %%%%%%%%%%%% plot the curve in a 3-D form and draw the video, the velocity SUBTRACTION 
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
+% pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
+data = reshape(data(1,:,:,:,:), size(data, [2 3 4 5]));pertT_num = size(data,4);
+
 color_arr = colormap('lines');
-pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
 close all;
 
 for dist_i = 1:size(data,2) % for each spring 
@@ -442,10 +448,10 @@ for dist_i = 1:size(data,2) % for each spring
 
         for pi = 1:pertT_num
             % 1. get the data tobe plotted
-            celltmp1 = reshape(data(fce_i,1,:,:),5,pertT_num);
+            celltmp1 = reshape(data(fce_i,1,:,:),size(data,3),pertT_num);
             idx_release = find(celltmp1{1,pi}.ts == 5);
             t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
-            celltmp1 = reshape(data(fce_i,dist_i,:,:),5,pertT_num);
+            celltmp1 = reshape(data(fce_i,dist_i,:,:),size(data,3),pertT_num);
             
             % Get the un-perturbed avg velocity
             v_mean = zeros(1,500);
@@ -489,6 +495,81 @@ for dist_i = 1:size(data,2) % for each spring
         end
 %         view(120, 57);
         view(58.2, 68.4);
+         xlabel('pert time');
+         ylabel('time');
+         zlabel('velocity');
+%         frame = getframe(gcf);
+%         writeVideo(v,frame);
+    end
+    
+end
+% close(v);
+
+%% Velocity subtraction of longer pulse spring data 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
+data = reshape(data(1,:,:,:,:), size(data, [2 3 4 5]));pertT_num = size(data,4);
+
+color_arr = colormap('lines');
+close all;
+
+for dist_i = 1:size(data,2) % for each spring 
+    fh(dist_i) = figure(); hold on;
+    for fce_i = 1:size(data,1)
+
+        for pi = 1:pertT_num
+            % 1. get the data tobe plotted
+            celltmp1 = reshape(data(fce_i,1,:,:),size(data,3),pertT_num);
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            celltmp1 = reshape(data(fce_i,dist_i,:,:),size(data,3),pertT_num);
+            
+            % Get the un-perturbed avg velocity
+            sec = 3; 
+            freq = 500;
+            v_mean = zeros(1,sec*freq);
+            v_mean_mat = [];
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                idx_aftrelease = find(celltmp1{ti,1}.ts >= 5);
+                idx_aftrelease = idx_aftrelease(1:sec*freq);
+%                 v_mean_mat = [v_mean_mat; celltmp1{ti,1}.v(2, idx_aftrelease)];
+                v_mean_mat = [v_mean_mat; celltmp1{ti,1}.x(2, idx_aftrelease)];
+            end
+            v_mean = mean(v_mean_mat);
+            t_mean = 0.002:0.002:sec; % 500 data points
+            
+            % 2 plot the original one, non-perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                idx_aftrelease = find(celltmp1{ti,1}.ts >= 5);
+                idx_aftrelease = idx_aftrelease(1:sec*freq);  
+                
+%                 plot3 (-pi*ones(size(t_mean)), t_mean, celltmp1{ti,1}.v(2,idx_aftrelease) - v_mean,  'color', [0.5 0.5 0.5]);
+                plot3 (-pi*ones(size(t_mean)), t_mean, celltmp1{ti,1}.x(2,idx_aftrelease) - v_mean,  'color', [0.5 0.5 0.5]);
+                
+                dat_mat_unpert(ti,:) = celltmp1{ti,1}.v(2,idx_aftrelease) - v_mean;
+                
+            end
+            % 2.2 plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                idx_aftrelease = find(celltmp1{ti,pi}.ts >= 5);
+                idx_aftrelease = idx_aftrelease(1:sec*freq);
+                
+                dat_mat_unpert(ti,:) = celltmp1{ti,pi}.v(2,idx_aftrelease) - v_mean;
+                
+                plot3( -pi*ones(size(t_mean)), t_mean, celltmp1{ti,pi}.v(2,idx_aftrelease) - v_mean,  'color',color_arr(dist_i+4,:));
+            end
+        end
+%         view(120, 57);
+%         view(58.2, 68.4);
+         view(90, 0);
          xlabel('pert time');
          ylabel('time');
          zlabel('velocity');
@@ -1261,7 +1342,7 @@ pertT_num = 1 + 12 + 1;     % 1 without pert, and 12 perturbation time, and 1 st
 close all;
 v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SpringTimeChangingPert_3-by-3.mp4', 'MPEG-4');
 v.FrameRate = 1;
-open(v);
+% open(v);
 
 fh(1) = figure();
 hold on;
@@ -1286,7 +1367,8 @@ for pi = 1:(pertT_num-1)
                 end
                 idx_release = find(celltmp1{ti,1}.ts == 5);
                 t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
-                plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+                plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
             for ti = 1:size(celltmp1,1)
@@ -1295,7 +1377,8 @@ for pi = 1:(pertT_num-1)
                 end
                 idx_release = find(celltmp1{ti,pi}.ts == 5);
                 t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
-                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+1,:));
             end
         end
     end
@@ -1311,17 +1394,19 @@ for pi = 1:(pertT_num-1)
         end
         set(gcf, 'position', [0,0, 1080, 680]);
         frame = getframe(gcf);
-        writeVideo(v,frame);
+%         writeVideo(v,frame);
 end
-close(v);  
+% close(v);  
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 2. Visualize for the subject data 
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3818_3828.mat', 'data');
-color_arr = colormap('lines');
 pertT_num = 1 + 12;     % 1 without pert, and 12 perturbation time, and 1 stoc pert
+num_trials = 5;
+v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SubjectTimeChangingPert_3-by-3_100ms.mp4', 'MPEG-4');
+color_arr = colormap('lines');
 close all;
-v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SubjectTimeChangingPert_3-by-3.mp4', 'MPEG-4');
+% v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SubjectTimeChangingPert_3-by-3.mp4', 'MPEG-4');
 v.FrameRate = 1;
 open(v);
 
@@ -1333,7 +1418,7 @@ for pi = 1:(pertT_num)
        % 1. plot the perturbed force in the first panel 
        
        axh(1,fce_i) = subplot(4,3,fce_i); hold on;                     % plot PF
-       celltmp1 = reshape(data(1,1,fce_i,1,:,:),5,pertT_num);
+       celltmp1 = reshape(data(1,1,fce_i,1,:,:),num_trials,pertT_num);
        idx_release = find(celltmp1{1,pi}.ts == 5);
        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
@@ -1404,7 +1489,8 @@ for frc_i = 1:size(ss_num,1) % actually force
         cell_idx_from = [0 0 0];
         for si = 1:length(ss_num{frc_i, dist_i})
             ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
-            celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
             % check the size of celltmptmp
             cell_avail_num = zeros(1,3);
@@ -1650,8 +1736,8 @@ color_arr = colormap('lines');
 close all;
 for fce_i = 1:size(data,2)
     for dist_i = 1:size(data,3) % for each spring 
-%         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
-        figure; hold on;
+        subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+%         figure; hold on;
         for pi = 1:6%1:length(pertT_unq)
 %        fh(pi) = figure(); hold on;
        
@@ -1707,8 +1793,8 @@ for fce_i = 1:size(data,2)
 %         set(gca, 'View', [90, 0]); % this view all lines are overlapped.  
 %         set(gca, 'View', [57, 65]); % this view all pert are well aligned. 
         set(gca, 'View', [112, 47]); % according to James' figure. 
-        saveas(gcf, ['data/processedData/dataDescriptions/ss3873_3884/velF' num2str(F_list(fce_i)) 'K' num2str(K_list(dist_i)) '.png']);
-        close all;
+%         saveas(gcf, ['data/processedData/dataDescriptions/ss3873_3884/velF' num2str(F_list(fce_i)) 'K' num2str(K_list(dist_i)) '.png']);
+%         close all;
     end
     
     
@@ -1783,7 +1869,7 @@ for frc_i = 1:3
     K_est_cell{dist_i,1} = K_est_all;
 end
 
-% the code just duplicate from last segment, and do roughly the same thing on different data
+%% the code just duplicate from last segment, and do roughly the same thing on different data
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
 dist_i = 2; % the 320N/m springs
 % K_est_cell = cell(3,3);
@@ -1942,8 +2028,8 @@ color_arr = colormap('lines');
 close all;
 for fce_i = 1:size(data,3)
     for dist_i = 1:size(data,4) % for each spring 
-%         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
-        figure; hold on;
+        subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+% %         figure; hold on;
         for pi = 1:pt_num%1:length(pertT_unq)
 %        fh(pi) = figure(); hold on;
        
@@ -2003,7 +2089,7 @@ for fce_i = 1:size(data,3)
 %         set(gca, 'View', [90, 0]); % this view all lines are overlapped.
 %         set(gca, 'View', [57, 65]); % this view all pert are well aligned. 
         set(gca, 'View', [112, 47]); % according to James' figure. 
-        saveas(gcf, ['data/processedData/dataDescriptions/ss3896_3905/velF' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) '.png']);
+%         saveas(gcf, ['data/processedData/dataDescriptions/ss3896_3905/velF' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) '.png']);
 %         close all;
     end
     
@@ -2020,7 +2106,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% see what is the x and f change during the movement  
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3818_3828.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3818_3828.mat', 'data');
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3913_3921.mat', 'data');
 figure(); 
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];
@@ -2034,12 +2121,14 @@ for fce_i = 1:size(data,3)
     for dist_i = 1:size(data,4) % for each spring
         %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
         %         figure; hold on;
-        psudoK_mat = zeros(5,12); % 
-        for pi = 1:13%1:length(pertT_unq)
+%         psudoK_mat = zeros(5,12); % 
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:8%13%1:length(pertT_unq)
             fh(pi,1) = figure(); hold on;
             
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
-            celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+            celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 5 pert
             idx_release = find(celltmp1{1,pi}.ts == 5);
             t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
@@ -2212,7 +2301,7 @@ for fce_i = 1:size(data,3)
         ylabel(axh(1), 'Fp');
         ylabel(axh(3), 'x');
         ylabel(axh(5), 'f');
-        saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
         end
         psudoK_cell{fce_i,dist_i} = -psudoK_mat;
         close all;
@@ -2602,7 +2691,8 @@ for frc_i = 1:size(ss_num,1) % actually force
         cell_idx_from = [0 0 0];
         for si = 1:length(ss_num{frc_i, dist_i})
             ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
-            celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
                 % dim: ifsucess - #targets - #trials #pert
             % check the size of celltmptmp
             cell_avail_num = zeros(1,3);
@@ -2694,22 +2784,25 @@ save('data/processedData/ss3913_3921.mat', 'data'); % 12N perturbation, various 
 
 %% plot in 3D curve 
 figure(); 
-pt_num = 1 + 7; % 5 perts
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3913_3921.mat', 'data'); pt_num = 1+7; % 7 perturbs
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3913_3921.mat', 'data'); pt_num = 1+7; % 7 perturbs
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data'); pt_num = size(data,5); % 7 perturbs
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];
 color_arr = colormap('lines');
-close all;
-for fce_i = 1:size(data,3)
-    for dist_i = 1:size(data,4) % for each spring 
-%         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
-        figure; hold on;
+% close all;
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for target 
+for fce_i = 1:size(data,2)
+     for dist_i = 1:size(data,3) % for each spring 
+        subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+%         figure; hold on;
         for pi = 1:pt_num%1:length(pertT_unq)
 %        fh(pi) = figure(); hold on;
        
 %        axh(1) = subplot(4,1,1); hold on;                     % plot PF
 %        celltmp1 = reshape(data(1,1,fce_i,1,:,1:6),5,6); % 1 no -ert and 5 pert
-        celltmp1 = reshape(data(1,1,fce_i,1,:,1:8),10,8); % 1 no -ert and 7 pert
+%         celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 7 pert
+         celltmp1 = reshape(data(1,fce_i,dist_i,:,:),size(data,[4 5])); % for sprigns
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
@@ -2727,9 +2820,9 @@ for fce_i = 1:size(data,3)
                 end
                 idx_release = find(celltmp1{ti,1}.ts == 5);
                 t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
-                plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
-%                   plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+                  plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
             end
             % plot the perturbed one, -perturbed
             for ti = 1:size(celltmp1,1)
@@ -2742,9 +2835,9 @@ for fce_i = 1:size(data,3)
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
                 idx_release = find(celltmp1{ti,pi}.ts == 5);
                 t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
-                plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
+%                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
-%                   plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
+                  plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
                     % 4, for consistant with previous color 
             end
             %xlim([-0.1 1]); ylim([-0.8 1.0]);
@@ -2752,22 +2845,22 @@ for fce_i = 1:size(data,3)
         
         % plot notes here: 
         title(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i))]);
-%         ylim([-0.1 1.36]);
-        ylim([-0.1 0.5]);
-        zlim([-0.2 0.55]); % velocity
+        ylim([-0.1 1.36]);
+%         ylim([-0.1 0.5]);
+%         zlim([-0.2 0.55]); % velocity
 %         zlim([0.47 0.58]);   % position
         xlabel('perturb positions');
         ylabel('release time');
         zlabel('endpoint velocity(m/s)');
 %         view(120, 57);
-%         set(gca, 'View', [90, 0]); % this view all lines are overlapped.
+         set(gca, 'View', [90, 0]); % this view all lines are overlapped.
 %         set(gca, 'View', [57, 65]); % this view all pert are well aligned. 
-        set(gca, 'View', [112, 47]); % according to James' figure. 
-        saveas(gcf, ['data/processedData/dataDescriptions/ss3913_3921/velF' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) '.png']);
-        close all;
-    end
-%     saveas(gcf, ['data/processedData/dataDescriptions/ss3913_3921/velAll.png']);
+%         set(gca, 'View', [112, 47]); % according to James' figure. 
+%         saveas(gcf, ['data/processedData/dataDescriptions/ss3913_3921/velF' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) '.png']);
+%         close all;
+    end 
 end
+% saveas(gcf, ['data/processedData/dataDescriptions/ss3913_3921/velAll_flat.png']);
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -2831,12 +2924,13 @@ end
 
 %%
 figure()
+color_arr = colormap('lines');
 for session_i = 1:4
     sstmp1 = sstmp(session_i); 
     
 for trial_i = 1:min(20,length(sstmp1.trials))
     t_idx = find(sstmp1.trials(trial_i).data.Fp(2,:)~=0 & ...
-        (sstmp1.trials(trial_i).data.ts==5)); % hold 
+        (sstmp1.trials(trial_i).data.ts==4)); % hold 
     if isempty(t_idx) 
         continue;
     end
@@ -2852,9 +2946,10 @@ for trial_i = 1:min(20,length(sstmp1.trials))
     sstmp1.trials(trial_i).data.t_shift = sstmp1.trials(trial_i).data.t - t_shift;
     
 %     axh(1) = subplot(2,1,1);  grid on; hold on;
-    plot(sstmp1.trials(trial_i).data.t_shift, -sstmp1.trials(trial_i).data.Fp(2,:), 'Marker','.', 'Color', 'b');
+%     plot(sstmp1.trials(trial_i).data.t_shift, -sstmp1.trials(trial_i).data.Fp(2,:), 'Marker','.', 'Color', color_arr(1,:));
+    plot(sstmp1.trials(trial_i).data.t_shift, -sstmp1.trials(trial_i).data.Fp(2,:),  'Color', color_arr(2,:), 'LineWidth', 2);
     % axh(3) = subplot(4,1,2); grid on;
-    plot(sstmp1.trials(trial_i).data.t_shift, sstmp1.trials(trial_i).data.f(2,:), 'Marker','.', 'Color', 'r');
+    plot(sstmp1.trials(trial_i).data.t_shift, sstmp1.trials(trial_i).data.f(2,:), 'Marker','.', 'Color', color_arr(3,:));
     ylim([0 15]);
     % linkaxes(axh([1,3]), 'x')
 %     title('pulse of 100ms');
@@ -2865,5 +2960,5 @@ end
 end
 linkaxes(axh, 'x');
 xlim([0 0.4]); % perturb holding 
-% sgtitle('during hold');
-sgtitle('during move');
+sgtitle('during hold');
+% sgtitle('during move');

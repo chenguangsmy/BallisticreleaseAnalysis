@@ -1426,12 +1426,14 @@ classdef TrialScan
               ylabel('velocity (m/s)');
               grid on;
               axh(4) = subplot(4,1,4);  hold on;
-              plot(t, dat.f(2,:));
+              plot(t, dat.f(2,:), 'Marker', '.');
               grid on;
               ylabel('Force (N)')
               
               linkaxes(axh, 'x');
-%              xlim([-2 0.7]);
+              % xlim for better read
+%               xlim([[-0.01 0.02]]);
+              xlim([-0.2 1]);
 
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');

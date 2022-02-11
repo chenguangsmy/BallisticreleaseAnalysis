@@ -309,7 +309,8 @@ classdef (HandleCompatible)SessionScan < handle
                                         3737, 3740, ...
                                         3766, 3767, 3768:3778, ...
                                         3793:3795, ...
-                                        3856:3860, ...
+                                        3803:3812, 3856:3860, ...
+                                        3873:3884, ...
                                         3906:3912];
             % in these sessions, I wrongly calibrate the force, that the
             % collected force is biased for certain value. To deal with
@@ -774,8 +775,9 @@ classdef (HandleCompatible)SessionScan < handle
                  t_idx{p_i} = find(pert_trials==p_i-1); % 0,nopert; 1, pulse; 2, stoc
             end
             
-            t_idx{3} = t_idx{3}(2:end); % works for the hybrid pert, to avoid error
-            
+%             t_idx{3} = t_idx{3}(2:end); % works for the hybrid pert, to avoid error
+            % if trials are not enough, commit the upper line
+            t_idx{3} = setdiff(t_idx{3}, find([obj.trials.outcome]==0));
             cellsmat = cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
             paramsmat =cell(max([length(t_idx{1}), length(t_idx{2}), length(t_idx{3})]),3);
             if ~isempty(t_idx{3}) % stoc-perturbed trials. 

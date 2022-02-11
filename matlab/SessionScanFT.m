@@ -110,16 +110,36 @@ classdef SessionScanFT
 
             time = obj.elapse; 
             rdt  = obj.RDT;
-            
-            time1= interp1(rdt(10:10:end),time(10:10:end), rdt, 'linear', 'extrap');
-            
-            ifplot = 1;
-            if (ifplot)
-                clf; hold on;
-                plot(rdt, time, 'b*');
-                plot(rdt, time1, 'r.');
-                legend('pfem time', 'reconstructed time' );
+            if(~isempty(setdiff(unique(diff(rdt)),1)))
+                %                 rdt1 = rdt(1):rdt(end);
+                %                 time1= interp1(rdt(10:10:end),time(10:10:end), rdt1, 'linear', 'extrap');
+                timediffidx = find(diff([time(1) time]) > 0.003);
+                timediffdx = (timediffidx-1);            % select the last timepoint
+                timediffidx = timediffdx(timediffdx>1);
+                time1 = interp1(rdt(timediffidx),time(timediffidx), rdt, 'linear', 'extrap');
+                ifplot = 1;
+                if (ifplot)
+                    clf; hold on;
+                    plot(rdt, time, 'b*');
+                    plot(rdt(timediffidx), time(timediffidx), 'mo');
+                    plot(rdt, time1, 'r.');
+                    legend('pfem time', 'difftime', 'reconstructed time' );
+                end
+            else
+                time1= interp1(rdt(10:10:end),time(10:10:end), rdt, 'linear', 'extrap'); 
+                                % has to be 10 because the last datapoint
+                                % in the batch is the 'realtime'. The first
+                                % should have time before that. 
+                ifplot = 1;
+                if (ifplot)
+                    clf; hold on;
+                    plot(rdt, time, 'b*');
+                    plot(rdt, time1, 'r.');
+                    legend('pfem time', 'difftime', 'reconstructed time' );
+                end
             end
+            
+
             
             obj.elapse = time1;
         end

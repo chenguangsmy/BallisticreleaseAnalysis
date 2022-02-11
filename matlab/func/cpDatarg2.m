@@ -7,9 +7,11 @@ function [cp_flag] = cpDatarg2(ss_num)
 srcdir1 = '/Volumes/rg2/data/KingKong/Raw/';
 srcdir2 = '/Volumes/rg2/data/KingKong/Formatted/';
 srcdir3 = '/Volumes/rg2/data/KingKong/Intermediate/';
+srcdirvd = '/Volumes/rg2/data/VideoLoggerData/';
 
 dstdir1 = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
 dstdir2 = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
+dstdirvd= '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/VideoLoggerData/';
 
 ss_num = ss_num(:);
 cp_flag = zeros(size(ss_num));
@@ -89,6 +91,12 @@ for ss_i = 1:length(ss_num)
         end
     end
     
+    % Videologger data
+    fnamevd = sprintf([srcdirvd 'KingKong.DK.' num2str(ss_num(ss_i)) '.mp4']); % video
+    fnamevdd = sprintf([srcdirvd 'KingKong.DK.' num2str(ss_num(ss_i)) '.txt']); % video description 
+    
+    
+    
     dstn1  = sprintf([dstdir1 'KingKongFT%05d.csv'], ss_num(ss_i));
     dstn2  = sprintf([dstdir1 'KingKongWAM%05d.csv'], ss_num(ss_i));
     dstn21 = sprintf([dstdir1 'KingKongWAM%05d.bin'], ss_num(ss_i));
@@ -97,7 +105,8 @@ for ss_i = 1:length(ss_num)
     dstn5  = sprintf([dstdir1 'KingKongTSync.%05d.mat'], ss_num(ss_i));
     dstn6  = sprintf([dstdir1 'KingKongEMG.%05d.csv'], ss_num(ss_i));
     
-    
+    dstnvd = sprintf([dstdirvd 'KingKong%05d.mp4'], ss_num(ss_i));
+    dstnvdd= sprintf([dstdirvd 'KingKong%05d.txt'], ss_num(ss_i));
     
     try
         copyfile(fname1, dstn1);
@@ -131,9 +140,20 @@ for ss_i = 1:length(ss_num)
         
     try 
         copyfile(fname6, dstn6);
-        copyfile(fname60, dstn6);
     catch 
-        
+        try
+        copyfile(fname60, dstn6);
+        catch 
+            disp('no EMG at all');
+        end
+    end
+    
+    % videologger
+    try 
+        copyfile(fnamevd, dstnvd);
+        copyfile(fnamevdd, dstnvdd);
+    catch 
+        disp('no Video in this session!');
     end
 end
 
