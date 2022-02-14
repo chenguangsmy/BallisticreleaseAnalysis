@@ -381,7 +381,7 @@ classdef crossConditionAnalysis < handle
 %                         [0, 0.4470, 0.7410],...
 %                         [0.8500, 0.3250, 0.0980]};
 %             % Stiffness Plot
-%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              figure('Position',[300 314 929 420]);
 %              count = 1;
 %              for force = this.dexForce
 %                  for dist = this.dexDistance
@@ -396,7 +396,7 @@ classdef crossConditionAnalysis < handle
 %                          end
 %                          set(gca,'fontsize',16);grid on;
 %                          
-%                          errorbar(1:12,...
+%                          errorbar(1:length(structPlotTrial{1,force,dist}.est_catch_pulseMotion.k_hat_ave),...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.k_hat_ave,...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.k_hat_std,...
 %                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
@@ -407,9 +407,10 @@ classdef crossConditionAnalysis < handle
 %                      count = count + 1;
 %                  end
 %              end
+%              saveas(gcf,[pathh,fileName,'_k_motion'],'png');
 %              
 %              % Damping Plot
-%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              figure('Position',[300 314 929 420]);
 %              count = 1;
 %              for force = this.dexForce
 %                  for dist = this.dexDistance
@@ -424,7 +425,7 @@ classdef crossConditionAnalysis < handle
 %                          end
 %                          set(gca,'fontsize',16);grid on;
 %                          
-%                          errorbar(1:12,...
+%                          errorbar(1:length(structPlotTrial{1,force,dist}.est_catch_pulseMotion.b_hat_ave),...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.b_hat_ave,...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.b_hat_std,...
 %                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
@@ -435,10 +436,12 @@ classdef crossConditionAnalysis < handle
 %                      count = count + 1;
 %                  end
 %              end
+%              saveas(gcf,[pathh,fileName,'_b_motion'],'png');
+% 
 %              
 %              
 %              % X0 Plot
-%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              figure('Position',[300 314 929 420]);
 %              count = 1;
 %              for force = this.dexForce
 %                  for dist = this.dexDistance
@@ -453,7 +456,7 @@ classdef crossConditionAnalysis < handle
 %                          end
 %                          set(gca,'fontsize',16);grid on;
 %                          
-%                          errorbar(1:12,...
+%                          errorbar(1:length(structPlotTrial{1,force,dist}.est_catch_pulseMotion.x_h_ave),...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.x_h_ave,...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.x_h_std,...
 %                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
@@ -464,9 +467,11 @@ classdef crossConditionAnalysis < handle
 %                      count = count + 1;
 %                  end
 %              end
+%              saveas(gcf,[pathh,fileName,'_x0_motion'],'png');
+% 
 %              
 %              % VAF Plot
-%              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%              figure('Position',[300 314 929 420]);
 %              count = 1;
 %              for force = this.dexForce
 %                  for dist = this.dexDistance
@@ -481,27 +486,31 @@ classdef crossConditionAnalysis < handle
 %                          end
 %                          set(gca,'fontsize',16);grid on;
 %                          
-%                          errorbar(1:12,...
+%                          errorbar(1:length(structPlotTrial{1,force,dist}.est_catch_pulseMotion.VAF_ave),...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.VAF_ave,...
 %                              structPlotTrial{1,force,dist}.est_catch_pulseMotion.VAF_std,...
 %                              'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
 %                          
-% %                          ylim([-0.17 0.1]);
+%                          ylim([0 100]);
 % %                          xlim([0 0.35]);
 %                      
 %                      count = count + 1;
 %                  end
 %              end
+%              saveas(gcf,[pathh,fileName,'_vaf_motion'],'png');
+% 
 %              
 % 
 %              % Plot summary figure for pulse fitting
+%              pulseWidth = 100;
 %              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
 %              count = 1;
+%              L = 251;% 701
 %              for force = this.dexForce
 %                  for dist = this.dexDistance
 %                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
 % 
-%                      for pretTime = 1:9% Skip 3
+%                      for pretTime = 1:length(structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave)
 %                          
 %                          axes(ax(count)); title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
 %                          if(1==mod(count,length(this.dexDistance)))
@@ -515,13 +524,14 @@ classdef crossConditionAnalysis < handle
 %                          for triall = 1:size(this.depMeasures{subNum,force,dist}.trial_catch.est_pulseMotion,1)
 %                              structt = this.depMeasures{subNum,force,dist}.trial_catch.est_pulseMotion{triall,pretTime};
 %                              N = length(structt.x_dot);
-%                              plot3(pretTime*ones(1,401),structt.t, structt.x_dot_plot,'b');
+%                              plot3(pretTime*ones(1,L),structt.t(1:L), structt.x_dot_plot(1:L),'b');
 %                          end
 %                          
 %                          % Plot mean model
 %                          N = length(structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave{pretTime});
-%                          plot3(pretTime*ones(1,50),structt.t(structt.dexFpStart:structt.dexFpStart+50-1), structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave{pretTime},'r','linewidth',2.5);
-%                          
+%                          if(~isnan(structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave{pretTime}))
+%                          plot3(pretTime*ones(1,pulseWidth),structt.t(structt.dexFpStart:structt.dexFpStart+pulseWidth-1), structPlotTrial{subNum,force,dist}.est_catch_pulseMotion.x_dot_hat_ave{pretTime},'r','linewidth',2.5);
+%                          end
 %                          view(60,-45);
 % %                          ylim([-0.17 0.1]);
 % %                          xlim([0 0.35]);
@@ -529,7 +539,7 @@ classdef crossConditionAnalysis < handle
 %                      count = count + 1;
 %                  end
 %              end
-%              %             saveas(gcf,[pathh,fileName,'_rawPulseMotion'],'png');
+%              saveas(gcf,[pathh,fileName,'_rawPulse_Motion'],'png');
             
 %             axes(ax(1)); legend(forceVal,'location','south');
 
@@ -946,7 +956,7 @@ classdef crossConditionAnalysis < handle
                      end
                      
                      if( isfield(structIn{i},'x_h') )
-                         outputt.x_h(i,j) = structIn{i}.x_h;
+                         outputt.x_h(i,j) = structIn{i,j}.x_h;
                      end
                      
                      if( isfield(structIn{i},'OC_hat') )

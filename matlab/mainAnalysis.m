@@ -15,69 +15,110 @@ classdef mainAnalysis < handle
             dbstop if error
             addpath('func/');
 
-            % Spring Test
-            load('data/ss3334_3344.mat');
-            dexForce_spring = 1:3; % [15N, 20N, 25N]
-            data_spring = data;
-            for force = dexForce_spring
-                for stiff = 1:3
-                    for trial = 1:15
-                        for pret = 1:3
-                            data_spring{1,force,stiff+1,trial,pret} = data{1,force,stiff,trial,pret};
-                        end
-                    end
-                end
-            end
-            clear data
-            load('data/ss3345.mat');
-            for force = dexForce_spring
-                for trial = 1:15
-                    for pret = 1:3
-                    data_spring{1,force,1,trial,pret} = data{1,1,1,trial,pret};
-                    end
-                end
-            end
-            clear data
-            dexStiff_spring = 1:4; 
-            depMeasures_spring = crossConditionAnalysis(data_spring,1,dexForce_spring,dexStiff_spring,'spring');
-
+%              % Spring Test
+%             load('data/ss3334_3344.mat');
+%             dexForce_spring = 1:3; % [15N, 20N, 25N]
+%             data_spring = data;
+%             for force = dexForce_spring
+%                 for stiff = 1:3
+%                     for trial = 1:15
+%                         for pret = 1:3
+%                             data_spring{1,force,stiff+1,trial,pret} = data{1,force,stiff,trial,pret};
+%                         end
+%                     end
+%                 end
+%             end
+%             clear data
+%             load('data/ss3345.mat');
+%             for force = dexForce_spring
+%                 for trial = 1:15
+%                     for pret = 1:3
+%                     data_spring{1,force,1,trial,pret} = data{1,1,1,trial,pret};
+%                     end
+%                 end
+%             end
+%             clear data
+%             dexStiff_spring = 1:4; 
+%             depMeasures_spring = crossConditionAnalysis(data_spring,1,dexForce_spring,dexStiff_spring,'spring');
+ 
             % Combined Many subject Tests (12/10/2021)
-            load('data/prelimData_6subj_fine.mat');
-            data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
-            clear data
-            dexSubject = 1:6;
-            dexForce = 1:3; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-
-%             %% Pulse during Motion Human (1/20/2022)
-%             load('data/ss3818_3828.mat');
-%             data_human = reshape(data(1,1,:,:,:,:),1,3,3,5,13); % Elliminate direction
+%             load('data/prelimData_6subj_fine.mat');
+%             data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
+%             clear data
+%             dexSubject = 1:6;
+%             dexForce = 1:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+         
+%             % Human 12N 100ms to late
+%             load('data/ss3818_3828.mat');  
+%             data_spring = reshape(data(1,1,:,:,:,:),1,3,3,5,13);
 %             clear data
 %             dexSubject = 1;
 %             dexForce = 1:3;%:3; % [15N, 20N, 25N]
 %             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
-%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-%             
-%             %% Pulse during Motion Spring (1/20/2022)
-%             load('data/ss3803_3812');
-%             data_human = data;
-%             clear data
-%             dexSubject = 1;
-%             dexForce = 1:3;%:3; % [15N, 20N, 25N]
-%             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
-%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+%             save('/Users/jhermus/Desktop/Spring_12N_100ms_ss3818_3828_latespaceing.mat');
             
+            %% Meeting Motion Pulse Analysis
+            
+%             % Spring 12N 100ms
+%             load('data/ss3803_3812.mat');  
+%             data_spring = data; % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3;%:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+%             save('/Users/jhermus/Desktop/Spring_12N_100ms_ss3803_3812.mat');
+
+%             % Human 12N 100 ms 
+%             load('data/ss3896_3905.mat');
+%             data_human = reshape(data(1,1,:,:,:,:),1,3,3,10,8); % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3 ; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human'); 
+%             save('/Users/jhermus/Desktop/Human_12N_100ms_ss3896_3905.mat');
+            
+%             % Springs 12N 200 ms
+%             load('data/ss3873_3884.mat');
+%             data_spring = data; % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3;%:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+% %             save('/Users/jhermus/Desktop/Spring_12N_200ms_ss3873_3884.mat');
+
+             % Human 12N 200 ms 
+            load('data/ss3913_3921.mat');
+            data_human = reshape(data(1,1,:,:,:,:),1,3,3,10,8); % Elliminate direction
+            clear data
+            dexSubject = 1;
+            dexForce = 1:3 ; % [15N, 20N, 25N]
+            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+            depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human'); 
+% %             save('/Users/jhermus/Desktop/Human_12N_200ms_ss3913_3921.mat');
+
             
             %% Run from here to plot
-%             save('/Users/jhermus/Desktop/test.mat');
-%             load('/Users/jhermus/Desktop/test.mat');
+
+%             save('/Users/jhermus/Desktop/test2022-2-4NoConstraint_noPrior.mat');
+%             load('/Users/jhermus/Desktop/test2022-2-4.mat');
              
+%             load('/Users/jhermus/Desktop/Spring_12N_100ms_ss3803_3812.mat');
+%             load('/Users/jhermus/Desktop/Human_12N_100ms_ss3896_3905.mat');
+%             load('/Users/jhermus/Desktop/Spring_12N_200ms_ss3873_3884.mat');
+%             load('/Users/jhermus/Desktop/Human_12N_200ms_ss3913_3921.mat');
+
+%             load('/Users/jhermus/Desktop/Spring_12N_100ms_ss3818_3828_latespaceing.mat');
             pathh = 'prelimSubjectsRawPlots/images/';
 
             % Make plots Spring
 %             depMeasures_spring.get_mainPlot('spring',1,pathh);
-%             
+             
             % Make plots subjects
             for i = 1
                depMeasures_human.get_mainPlot('human',i,pathh);
@@ -97,3 +138,15 @@ classdef mainAnalysis < handle
         
     end
 end
+
+% sfrq = 10000;
+% dt = 1/sfrq;
+% fs_pulse = 10;
+% bw = 0.5; % 60%
+% trunk = 60; % 40 dB truncated
+% tc = gauspuls('cutoff',fs_pulse,bw,[],-trunk); 
+% t = -tc : dt : tc; 
+% [yi,yq,ye] = gauspuls(t,fs_pulse,bw); 
+% 
+% figure; plot(t,yi,t,yq,[t,t],[ye,-ye],'linewidth',2.5);
+% legend('Inphase','Quadrature','Envelope');
