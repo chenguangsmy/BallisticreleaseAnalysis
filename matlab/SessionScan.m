@@ -39,6 +39,7 @@ classdef (HandleCompatible)SessionScan < handle
         wam_t
         emg_h
         emg_t
+        opt_t           % optotrak time
         data            % all the data including force and wam information (aligned)
         %%% other variables
         endpoint0 = [-0.517 0.481 0.0] 
@@ -311,7 +312,8 @@ classdef (HandleCompatible)SessionScan < handle
                                         3793:3795, ...
                                         3803:3812, 3856:3860, ...
                                         3873:3884, ...
-                                        3906:3912];
+                                        3906:3912, 3925:3937, ...
+                                        3987:3999];
             % in these sessions, I wrongly calibrate the force, that the
             % collected force is biased for certain value. To deal with
             % this exception, the only way is to add the force value of ts7
@@ -465,6 +467,8 @@ classdef (HandleCompatible)SessionScan < handle
 %             obj.force_t
 %             obj.wam_t
             force_h = interp1(obj.force_t', obj.ft.force', obj.wam_t', 'linear', 'extrap')'; 
+            torque_h = interp1(obj.force_t', obj.ft.torque_origin', obj.wam_t', 'linear', 'extrap')';
+            
             ifplot = 0;
             if (ifplot)
                 clf;
@@ -479,6 +483,21 @@ classdef (HandleCompatible)SessionScan < handle
                 plot(obj.wam_t, force_h(3,:), 'b.');
                 linkaxes(axh, 'x');
             end
+            
+            ifplot = 1;     % torque
+            if (ifplot)
+                clf;
+                axh(1) = subplot(3,1,1);  hold on;
+                plot(obj.force_t, obj.ft.torque_origin(1,:), 'r.');
+                plot(obj.wam_t, torque_h(1,:), 'b.');
+                axh(2) = subplot(3,1,2);  hold on;
+                plot(obj.force_t, obj.ft.torque_origin(2,:), 'r.');
+                plot(obj.wam_t, torque_h(2,:), 'b.');
+                axh(3) = subplot(3,1,3);  hold on;
+                plot(obj.force_t, obj.ft.torque_origin(3,:), 'r.');
+                plot(obj.wam_t, torque_h(3,:), 'b.');
+                linkaxes(axh, 'x');
+            end
 
             obj.data.t = obj.wam_t;
             obj.data.x = obj.wam.tp;
@@ -488,6 +507,7 @@ classdef (HandleCompatible)SessionScan < handle
             obj.data.jp = obj.wam.jp;
             obj.data.ts = obj.wam.state;
             obj.data.f = force_h;
+            obj.data.ftq= torque_h; % force transducer cencored torque
             
             if (ifplot)
                 clf;
@@ -507,6 +527,32 @@ classdef (HandleCompatible)SessionScan < handle
                 plot(obj.data.t, obj.data.tq(4,:), 'b.');
                 ylabel('torque (Nm)');
                 linkaxes(axh, 'x');
+            end
+            
+            if (~isempty(obj.opt))
+                data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'linear', 'extrap')'; 
+                data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'linear', 'extrap')'; 
+                data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'linear', 'extrap')'; 
+                
+                nmarkers = size(data.optx,1);
+                if (ifplot)
+                    clf; 
+                    for i = 1:nmarkers
+                        axh(i) = subplot(nmarkers,1,i); hold on; grid on; 
+                        plot(obj.opt.datah.bkt,obj.opt.datah.x(i,:),'marker', '.', 'Color', 'r');
+                        plot(obj.wam_t, data.optx(i,:), '.', 'Color', 'b');
+                        
+                        plot(obj.opt.datah.bkt,obj.opt.datah.y(i,:),'marker', '.', 'Color', 'r');
+                        plot(obj.wam_t, data.opty(i,:), '.', 'Color', 'b');
+                        
+                        plot(obj.opt.datah.bkt,obj.opt.datah.z(i,:),'marker', '.', 'Color', 'r');
+                        plot(obj.wam_t, data.optz(i,:), '.', 'Color', 'b');
+                    end
+                    
+                end
+                obj.data.optx = data.optx;
+                obj.data.opty = data.opty;
+                obj.data.optz = data.optz;
             end
             
             if (~isempty(obj.emg_t) && ~isempty(obj.emg_h))
@@ -606,7 +652,68 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             return
         end
-
+        function delay_idx = getDelayedTrialIdx(obj)
+            % delay_idx = getDelayTrialIdx(obj) 
+            % Return the delayed trials indexes.
+            % The delay was detected in some trials, at the release point, 
+            % it did not release immediately, it will delay the data a bit. 
+            delay_idx = [];
+            
+            trial = obj.trials;
+            for trial_i = 1:length(trial)
+                
+                ts_valid = [1:7];
+                idx = ismember(trial(trial_i).data.ts, ts_valid);
+        
+                ts_interest = 5; % the first 5 is the release point 
+                release_idx = find(trial(trial_i).data.ts(idx)==ts_interest); 
+                if (isempty(release_idx)) % no ts5
+                    continue;
+                end
+                release_idx = release_idx(1);
+                t_release = trial(trial_i).data.t(idx);
+                t_release = t_release(release_idx);
+                t_shift = trial(trial_i).data.t(idx) - t_release; 
+                Fp = trial(trial_i).data.Fp(:,idx); 
+                x = trial(trial_i).data.x(:,idx); 
+                v = trial(trial_i).data.v(:,idx); 
+                f = trial(trial_i).data.f(:,idx); 
+                
+                v_threshold = 5e-4; 
+                val = sum(v(:,release_idx + 2).^2);
+                ifplot = 0;
+                if val < v_threshold
+                    delay_idx = [delay_idx, trial_i];
+                    ifplot = 1;
+                end
+                
+                if (ifplot)
+                    figure(); 
+                    axh(1) = subplot(4,1,1);     
+                    grid on;
+                    hold on;
+                    plot(t_shift, Fp, 'Marker', '.'); 
+                    axh(2) = subplot(4,1,2);     
+                    grid on;
+                    hold on;
+                    plot(t_shift, x, 'Marker', '.');
+                    axh(3) = subplot(4,1,3);     
+                    grid on;
+                    hold on;
+                    plot(t_shift, v, 'Marker', '.');
+                    plot(t_shift(release_idx), v(:,release_idx), 'Marker', 'o', 'MarkerSize', 5);
+                    plot(t_shift(release_idx+2), v(:,release_idx+2), 'Marker', 'o', 'MarkerSize', 5);
+                    axh(4) = subplot(4,1,4);     
+                    grid on;
+                    hold on;
+                    plot(t_shift, f, 'Marker', '.');
+                    linkaxes(axh, 'x');
+                    xlim([-0.02 0.04]);
+                    sgtitle(['trial' num2str(trial_i)]);
+                end
+            end
+            
+        end
         %%% other process
         function obj_new = ConcatTrials(obj1, obj2, trial_idx1, trial_idx2)
             trials = [obj1.trials(trial_idx1) obj2.trials(trial_idx2)];
@@ -1580,9 +1687,10 @@ classdef (HandleCompatible)SessionScan < handle
             clear d
             
             % defines num
-            MID_FT  = 67;   % NETBOX
-            MID_WAM = 62;   % ROBOT
-            mid_type = [MID_FT, MID_WAM];
+            MID_FT  = 67;       % NETBOX
+            MID_WAM = 62;       % ROBOT
+            MID_OPTOTRAK = 74;  % OPTOTRAK
+            mid_type = [MID_FT, MID_WAM, MID_OPTOTRAK];
             
             %%%%%%%%%%%%%%%%% DATA READING PART %%%%%%%%%%%%%%%%%%%%
             %%%%% 1. read times from blackrock and check it value (ifplot)
@@ -1596,9 +1704,9 @@ classdef (HandleCompatible)SessionScan < handle
             
             % pulse from the blackrock
             events_type = unique(eventsL);
-            for etype = events_type
-                bk_time{etype} = eventsT(eventsL == etype);
-                bk_trials{etype} = eventTrials(eventsL == etype); % after ss3090
+            for etypei = 1:length(events_type)
+                bk_time{etypei} = eventsT(eventsL == events_type(etypei));
+                bk_trials{etypei} = eventTrials(eventsL == events_type(etypei)); % after ss3090
             end
             
             %   etype:  1-FT, 
@@ -1647,7 +1755,7 @@ classdef (HandleCompatible)SessionScan < handle
             end
             msg_mid = dataMsTh.src_mod_id;
             %mid_type = unique(msg_mid);
-            mid_type = [MID_FT, MID_WAM];
+            mid_type = [MID_FT, MID_WAM, MID_OPTOTRAK];
             for mtype_idx = 1:length(mid_type)
                 tleading{mtype_idx} = time_leading(msg_mid == mid_type(mtype_idx));
                 tlasting{mtype_idx} = time_lasting(msg_mid == mid_type(mtype_idx));
@@ -1705,13 +1813,17 @@ classdef (HandleCompatible)SessionScan < handle
                 % 1. find the intersect of trials
                 [trial_its, idx_msg1, idx_bk1] = intersect(t_msg_trialidx{1}, bk_trials{1}); % FT
                 [trial_its, idx_msg2, idx_bk2] = intersect(t_msg_trialidx{2}, bk_trials{2}); % FT
+                [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
+%                 [trial_its, idx_msg3, idx_bk3] = intersect(bk_trials{3}, bk_trials{3}); % OPTOTRAK
                 % assuem every FT sync signal has a WAM sync signal
                 
                 % 2. change to-aligned data into certain trials
                 t_interest{1} = t_interest{1}(idx_msg1);
                 t_interest{2} = t_interest{2}(idx_msg2);
+                t_interest{3} = t_interest{3}(idx_msg3);
                 bk_time{1} = bk_time{1}(idx_bk1);
                 bk_time{2} = bk_time{2}(idx_bk2);
+                bk_time{3} = bk_time{3}(idx_bk3);
                 
                 
             else % old way to deal with the two message do not have the same length problem
@@ -1720,6 +1832,7 @@ classdef (HandleCompatible)SessionScan < handle
                     
                     t_interest{1} = t_interest{1}(1:end-1);
                     t_interest{2} = t_interest{2}(1:end-1);
+                    t_interest{3} = t_interest{3}(1:end-1);
                 end
              end
             
@@ -1727,11 +1840,12 @@ classdef (HandleCompatible)SessionScan < handle
             if (ifplot)
                 clf;
                 hold on;
-                plot(bk_time{1}, t_interest{1}, 'r*'); 
-                plot(bk_time{2}, t_interest{2}, 'b*');
-                legend('FT', 'WAM');
+                plot(bk_time{1}, t_interest{1} - t_interest{1}(1), 'r*'); 
+                plot(bk_time{2}, t_interest{2} - t_interest{2}(1), 'b*');
+                plot(bk_time{3}, t_interest{3} - t_interest{3}(1), 'g*');
+                legend('FT', 'WAM', 'OPTOTRAK');
                 xlabel('BK time');
-                ylabel('each computer time');
+                ylabel('each computer time (shifted)');
             end
             % intropolate each data time to the bk_time;
             
@@ -1791,6 +1905,23 @@ classdef (HandleCompatible)SessionScan < handle
                 linkaxes([axh(2), axh(3)], 'y');
                 
             end
+            
+            %%% 1. the OPT time
+            try
+                obj.opt_t = interp1(t_interest{3}, bk_time{3}, obj.opt.datah.t, 'linear', 'extrap'); 
+            catch 
+                display('wrong in opt time!');
+            end
+            
+            ifplot = 1;
+            if (ifplot)
+                clf; 
+                hold on;
+                plot(t_interest{3}, bk_time{3}, 'b*');
+                plot(obj.opt.datah.t, obj.opt_t, 'r.');
+            end
+            
+            
             flag = 1;
             
             if (isempty(setdiff(eventsL, 2)))   % error message: no FT pulse recorded! 
@@ -1867,7 +1998,7 @@ end
 function [s,f] = readManualSetsf(ssnum)
 
     %  for manual sucessful trials; 
-    filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/NotTrack/config/manualSetTrials.conf';
+    filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/config/manualSetTrials.conf';
     fid = fopen(filename);
     %C = textscan(fid, '%s', 'delimiter',sprintf('\n')); 
     C = textscan(fid, '%s\n','CommentStyle','#'); 
@@ -1889,7 +2020,7 @@ function [s,f] = readManualSetsf(ssnum)
     end
     
     %  for manual failure trials;
-    filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/NotTrack/config/manualSetTrialf.conf';
+    filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/config/manualSetTrialf.conf';
     fid = fopen(filename);
     C = textscan(fid, '%s\n','CommentStyle','#'); 
     fclose(fid);

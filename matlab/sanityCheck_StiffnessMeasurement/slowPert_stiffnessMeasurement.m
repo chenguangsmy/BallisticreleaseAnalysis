@@ -1,4 +1,4 @@
-% use the slow perturbation as the stiffness measurement. 
+s% use the slow perturbation as the stiffness measurement. 
 % the step last 1s, and the raising phase last for 0.5s. 
 % use the \delta F/\delta x as the stiffness measurement. 
 % as this measureemnt independent from the mass. This could be a easy

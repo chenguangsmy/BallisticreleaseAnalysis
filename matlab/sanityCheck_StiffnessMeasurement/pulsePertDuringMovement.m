@@ -1668,11 +1668,13 @@ save('data/processedData/ss3885_3894.mat', 'data'); % 12N perturbation, various 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 1. Visualize for the spring data 
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data');
 color_arr = colormap('lines');
 pertT_num = 1 + 5 + 1;     % 1 without pert, and 12 perturbation time, and 1 stoc pert
 close all;
-v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SpringTimeChangingPert_3-by-3_200ms.mp4', 'MPEG-4');
+% v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SpringTimeChangingPert_3-by-3_200ms.mp4', 'MPEG-4');
+v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3925_3937/v_compare.mp4', 'MPEG-4');
 v.FrameRate = 1;
 open(v);
 
@@ -1682,16 +1684,16 @@ for pi = 1:(pertT_num-1)
     clf;
     for fce_i = 1:size(data,2)
        % 1. plot the perturbed force in the first panel 
-       
+       trial_num = size(data,4); % 4 for spring data, 5 for human data
        axh(1,fce_i) = subplot(4,3,fce_i); hold on;                     % plot PF
-       celltmp1 = reshape(data(1,fce_i,1,:,:),5,pertT_num);
+       celltmp1 = reshape(data(1,fce_i,1,:,:),trial_num,pertT_num);
        idx_release = find(celltmp1{1,pi}.ts == 5);
        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
         for dist_i = 1:size(data,3) % for each spring 
             axh(dist_i+1,fce_i) = subplot(4,3,fce_i+(dist_i*3)); hold on;         % plot each response
-            celltmp1 = reshape(data(1,fce_i,dist_i,:,:),5,pertT_num);
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,:),trial_num,pertT_num);
             % 2.1 plot the original one, non-perturbed
             for ti = 1:size(celltmp1,1)
                 if isempty(celltmp1{ti,1})
@@ -1700,6 +1702,7 @@ for pi = 1:(pertT_num-1)
                 idx_release = find(celltmp1{ti,1}.ts == 5);
                 t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
             for ti = 1:size(celltmp1,1)
@@ -1709,22 +1712,28 @@ for pi = 1:(pertT_num-1)
                 idx_release = find(celltmp1{ti,pi}.ts == 5);
                 t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
+%                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+1,:));
             end
         end
     end
         % plot notes here: 
         linkaxes(axh(:), 'x'); xlim([-0.1 1.5]);
-        linkaxes(axh(2:end,:), 'y'); ylim([-1 1.2]); 
+        
+%         title_str = 'force'; label_str = 'N';
+%         linkaxes(axh(2:end,:), 'y'); ylim([-12 28]); %force 
+        title_str = 'velocity'; label_str = 'm/s';
+        linkaxes(axh(2:end,:), 'y'); ylim([-1 1.2]); % velocity
+        
         for fce_i = 1:3
         subplot(4,3,fce_i); title('F-pert'); ylabel('N');
-        subplot(4,3,fce_i*3+1); title('velocity'); ylabel('m/s');
-        subplot(4,3,fce_i*3+2); title('velocity'); ylabel('m/s');
-        subplot(4,3,fce_i*3+3); title('velocity'); ylabel('m/s');
+        subplot(4,3,fce_i*3+1); title(title_str); ylabel(label_str);
+        subplot(4,3,fce_i*3+2); title(title_str); ylabel(label_str);
+        subplot(4,3,fce_i*3+3); title(title_str); ylabel(label_str);
         xlabel('time');
         end
         set(gcf, 'position', [0,0, 1080, 680]);
         frame = getframe(gcf);
-        writeVideo(v,frame);
+%         writeVideo(v,frame);
 end
 close(v);  
 
@@ -1742,7 +1751,8 @@ for fce_i = 1:size(data,2)
 %        fh(pi) = figure(); hold on;
        
 %        axh(1) = subplot(4,1,1); hold on;                     % plot PF
-       celltmp1 = reshape(data(1,fce_i,1,:,1:6),5,6); % 1 no -ert and 5 pert
+%        celltmp1 = reshape(data(1,fce_i,1,:,1:6),5,6); % 1 no -ert and 5 pert
+        celltmp1 = reshape(data(1,fce_i,1,:,1:6),15,6); % 1 no -ert and 5 pert
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
@@ -1752,7 +1762,8 @@ for fce_i = 1:size(data,2)
        %xlim([-0.1 1]); 
         
 %             axh(dist_i+1) = subplot(3,1,dist_i+1); hold on;         % plot each response
-            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),5,6);
+%             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),5,6);
+        celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),15,6);
             % plot the original one, non-perturbed
             for ti = 1:size(celltmp1,1)
                 if isempty(celltmp1{ti,1})
@@ -2923,7 +2934,8 @@ for session_i = 1:4
 end
 
 %%
-figure()
+% The force exertion and censored during hold 
+fh(1) = figure();
 color_arr = colormap('lines');
 for session_i = 1:4
     sstmp1 = sstmp(session_i); 
@@ -2938,7 +2950,7 @@ for trial_i = 1:min(20,length(sstmp1.trials))
         axh((session_i-1)*2 + 1) = subplot(4,2,(session_i-1)*2 + 1); % left one;
         hold on;
     elseif (round(max(abs(sstmp1.trials(trial_i).data.Fp(2,:)))) == 12)
-        axh((session_i-1)*2 + 2) = subplot(4,2,(session_i-1)*2 + 2); % left one;
+        axh((session_i-1)*2 + 2) = subplot(4,2,(session_i-1)*2 + 2); % right one;
         hold on;
     end
     
@@ -2953,12 +2965,840 @@ for trial_i = 1:min(20,length(sstmp1.trials))
     ylim([0 15]);
     % linkaxes(axh([1,3]), 'x')
 %     title('pulse of 100ms');
-    legend('command y', 'sensor y');
+    if((session_i-1)*2 + 1 == 1)
+        legend('command y', 'sensor y');
+    end
+    if ((session_i-1) == 3)
+        xlabel('t (s)' );
+    end
+    ylabel('force (N)');
 end 
     subplot(4,2,(session_i-1)*2 + 1); grid on; title(['6N max' dur_name{session_i}]);
     subplot(4,2,(session_i-1)*2 + 2); grid on; title(['12N max' dur_name{session_i}]);
 end
 linkaxes(axh, 'x');
 xlim([0 0.4]); % perturb holding 
-sgtitle('during hold');
+sgtitle('Force during hold');
 % sgtitle('during move');
+
+%% The force exertion and censored during hold and release 
+clear axh lnh
+fh(2) = figure('Position', [0 0 600 800]);
+for ts = 4:5
+for session_i = 1:4
+    sstmp1 = sstmp(session_i); 
+    
+for trial_i = 1:min(20,length(sstmp1.trials))
+    t_idx = find(sstmp1.trials(trial_i).data.Fp(2,:)~=0 & ...
+        (sstmp1.trials(trial_i).data.ts==ts)); % release
+    if isempty(t_idx) 
+        continue;
+    end
+    if (round(max(abs(sstmp1.trials(trial_i).data.Fp(2,:)))) == 6)
+        axh((session_i-1)*2 + 1) = subplot(4,2,(session_i-1)*2 + 1); % left one;
+        hold on;
+    elseif (round(max(abs(sstmp1.trials(trial_i).data.Fp(2,:)))) == 12)
+        axh((session_i-1)*2 + 2) = subplot(4,2,(session_i-1)*2 + 2); % right one;
+        hold on;
+    end
+    
+    t_shift = sstmp1.trials(trial_i).data.t(t_idx(1));
+    sstmp1.trials(trial_i).data.t_shift = sstmp1.trials(trial_i).data.t - t_shift;
+    
+%     axh(1) = subplot(2,1,1);  grid on; hold on;
+%     plot(sstmp1.trials(trial_i).data.t_shift, -sstmp1.trials(trial_i).data.Fp(2,:), 'Marker','.', 'Color', color_arr(1,:));
+    lnh{session_i}(1) = plot(sstmp1.trials(trial_i).data.t_shift, -sstmp1.trials(trial_i).data.Fp(2,:),  'Color', color_arr(2,:), 'LineWidth', 2);
+    % axh(3) = subplot(4,1,2); grid on;
+    switch ts
+        case 4
+    lnh{session_i}(2) = plot(sstmp1.trials(trial_i).data.t_shift, sstmp1.trials(trial_i).data.f(2,:), 'Marker','.', 'Color', color_arr(ts-1,:));
+        case 5
+            lnh{session_i}(3) = plot(sstmp1.trials(trial_i).data.t_shift, sstmp1.trials(trial_i).data.f(2,:), 'Marker','.', 'Color', color_arr(ts-1,:));
+    end
+    ylim([0 15]);
+    % linkaxes(axh([1,3]), 'x')
+%     title('pulse of 100ms');
+%     if((session_i-1)*2 + 1 == 1)
+%         legend('command y', 'sensor y');
+%     end
+    if ((session_i-1) == 3)
+        xlabel('t (s)' );
+    end
+    ylabel('force (N)');
+end 
+    subplot(4,2,(session_i-1)*2 + 1); grid on; title(['6N max' dur_name{session_i}]);
+    subplot(4,2,(session_i-1)*2 + 2); grid on; title(['12N max' dur_name{session_i}]);
+end
+linkaxes(axh, 'x');
+xlim(axh(1), [0 0.4]); % perturb during release 
+end
+legend(lnh{1}, {'command Force', 'censored during hold', 'censored during release'});
+% sgtitle('during hold');
+sgtitle(fh(2), 'Force command and censored in gaussian pulse');
+
+%% %% The position measurement during hold 
+fh(4) = figure('Position', [0 0 600 800]);
+color_arr = colormap('lines');
+
+for ts = 4:5 % hold and release
+for session_i = 1:4
+    sstmp1 = sstmp(session_i); 
+    
+for trial_i = 2:min(20,length(sstmp1.trials))
+    t_idx = find(sstmp1.trials(trial_i).data.Fp(2,:)~=0 & ...
+        (sstmp1.trials(trial_i).data.ts==ts)); % hold 
+    if isempty(t_idx) 
+        continue;
+    end
+    if (round(max(abs(sstmp1.trials(trial_i).data.Fp(2,:)))) == 6)
+        axh((session_i-1)*2 + 1) = subplot(4,2,(session_i-1)*2 + 1); % left one;
+        hold on;
+    elseif (round(max(abs(sstmp1.trials(trial_i).data.Fp(2,:)))) == 12)
+        axh((session_i-1)*2 + 2) = subplot(4,2,(session_i-1)*2 + 2); % right one;
+        hold on;
+    end
+    
+    t_shift = sstmp1.trials(trial_i).data.t(t_idx(1));
+    sstmp1.trials(trial_i).data.t_shift = sstmp1.trials(trial_i).data.t - t_shift;
+    
+    switch ts
+        case 4
+            lnh{session_i}(1) = plot(sstmp1.trials(trial_i).data.t_shift, sstmp1.trials(trial_i).data.x(2,:),  'Color', color_arr(ts-1,:), 'LineWidth', 2);
+        case 5
+            lnh{session_i}(2) = plot(sstmp1.trials(trial_i).data.t_shift, sstmp1.trials(trial_i).data.x(2,:),  'Color', color_arr(ts-1,:), 'LineWidth', 2);
+    end
+    ylim([0.483, 0.485]);
+    if ((session_i-1) == 3)
+        xlabel('t (s)' );
+    end
+    ylabel('position (m)');
+end 
+    subplot(4,2,(session_i-1)*2 + 1); grid on; title(['6N max' dur_name{session_i}]);
+    subplot(4,2,(session_i-1)*2 + 2); grid on; title(['12N max' dur_name{session_i}]);
+
+end
+linkaxes(axh, 'x');
+xlim([0 0.4]); % perturb holding 
+sgtitle('position measurement in clamp experiment');
+% sgtitle('during move');
+end
+
+    
+legend(lnh{1}, {'during hold', 'during release'});
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                   TIDY UP DATA AND FORWARD TO JAMES                     %
+ss_num = [3937, 3931, 3925, ...
+    3935,3936, 3930, 3928,3929, ...
+    3934, 3932,3933, 3926,3927 ];
+not_working_list = [];
+for si = 1:length(ss_num)
+    try
+        SessionScan(ss_num(si));
+    catch
+        disp(['NOT WORK ss' num2str(ss_num(si))]);
+        not_working_list = [not_working_list ss_num(si)];
+    end
+end
+    
+not_working_list
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 1. Tidy up for the spring data 
+        
+ss_num = {  3937,           3931,        3925 
+            [3935,3936],    3930,        [3928,3929]
+            3934,           [3932,3933], [3926,3927]} 
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num+1); % The stochastic ones are attached at the end 
+for frc_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % step perts
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{frc_i, dist_i})
+            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                idx_PF_peak = floor(idx_PF_peak/25)*25;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,frc_i,dist_i,1:15,1:pertT_num) = celltmp1(1:15,1:pertT_num);
+        data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:15,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss3925_3937.mat', 'data'); % 12N perturbation, various time
+%% 
+figure(); 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data'); pt_num = size(data,5); % 7 perturbs
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+% close all;
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for target 
+for fce_i = 1:size(data,2)
+     for dist_i = 1:size(data,3) % for each spring 
+        subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+%         figure; hold on;
+        for pi = 1:pt_num%1:length(pertT_unq)
+%        fh(pi) = figure(); hold on;
+       
+%        axh(1) = subplot(4,1,1); hold on;                     % plot PF
+%        celltmp1 = reshape(data(1,1,fce_i,1,:,1:6),5,6); % 1 no -ert and 5 pert
+%         celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 7 pert
+         celltmp1 = reshape(data(1,fce_i,dist_i,:,:),size(data,[4 5])); % for sprigns
+%        idx_release = find(celltmp1{1,pi+1}.ts == 5);
+%        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
+%        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
+       idx_release = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+%        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+       %xlim([-0.1 1]); 
+        
+%             axh(dist_i+1) = subplot(3,1,dist_i+1); hold on;         % plot each response
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:6),5,6);
+            % plot the original one, non-perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+%                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
+                  plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+%                   plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.Fp(2,:), 'color', [0.5 0.5 0.5]);
+            end
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+%                 if isempty(celltmp1{ti,pi+1})
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+%                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
+%                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
+%                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+%                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
+%                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
+%                   plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
+                  plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
+                    % 4, for consistant with previous color 
+            end
+            %xlim([-0.1 1]); ylim([-0.8 1.0]);
+        end
+        
+        % plot notes here: 
+        title(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i))]);
+%         ylim([-0.1 1.36]);
+          xlim([-0.1 1.36]);
+%         ylim([-0.1 0.5]);
+%         zlim([-0.2 0.55]); % velocity
+%         zlim([0.47 0.58]);   % position
+%         xlabel('perturb positions');
+%         ylabel('release time');
+%         zlabel('endpoint velocity(m/s)');
+%         view(120, 57);
+%          set(gca, 'View', [90, 0]); % this view all lines are overlapped.
+%         set(gca, 'View', [57, 65]); % this view all pert are well aligned. 
+%         set(gca, 'View', [112, 47]); % according to James' figure. 
+%         saveas(gcf, ['data/processedData/dataDescriptions/ss3913_3921/velF' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) '.png']);
+%         close all;
+    end 
+end
+% saveas(gcf, ['data/processedData/dataDescriptions/ss3913_3921/velAll_flat.png']);
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 1. SPRING DATA COMPARE Visualize for the spring data 
+
+fce_list = [15 20 25];
+dist_list = [2.5 5.0 7.5];
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data');
+color_arr = colormap('lines');
+pertT_num = 1 + 5 + 1;     % 1 without pert, and 12 perturbation time, and 1 stoc pert
+close all;
+v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3925_3937/f_compare.mp4', 'MPEG-4');
+v.FrameRate = 1;
+open(v);
+
+fh(1) = figure();
+hold on;
+for pi = 1:(pertT_num-1)
+    clf;
+    for dist_i = 1:size(data,3) % for each spring
+        % 1. plot the perturbed force in the first panel
+        trial_num = size(data,4); % 4 for spring data, 5 for human data
+        axh(1,dist_i) = subplot(4,3,dist_i); hold on;                     % plot PF
+        celltmp1 = reshape(data(1,1,dist_i,:,:),trial_num,pertT_num);
+        idx_release = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+        ylabel('command force')
+        % 2. plot the perturbed velocity in the following panels
+        for fce_i = 1:size(data,2)
+            axh(dist_i+1,fce_i) = subplot(4,3,dist_i+(fce_i*3)); hold on;         % plot each response
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,:),trial_num,pertT_num);
+            % 2.1 plot the original one, non-perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+%                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+                 plot(t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
+            end
+            % 2.2 plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
+%                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+4,:));
+                plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(dist_i+4,:));
+                plot(t, -celltmp1{ti,pi}.Fp(2,:));
+            end
+        end
+    end
+        % plot notes here: 
+        linkaxes(axh(:), 'x'); xlim([-0.1 1.5]);
+        
+        sgtitle_str = 'unperturbed and perturbed force'; label_str = 'censored force (N)';
+%         linkaxes(axh(2:end,:), 'y'); ylim([-12 28]); %force 
+        linkaxes(axh(2:end,:), 'y'); ylim([0.45 0.8]); %position 
+%         sgtitle_str = 'unperturbed and perturbed velocity'; label_str = 'velocity (m/s)';
+%         linkaxes(axh(2:end,:), 'y'); ylim([-1 1.2]); % velocity
+%         
+        for fce_i = 1:3
+            for dist_i = 1:3
+            subplot(4,3,fce_i*3 + dist_i); 
+            title_str = (['force' num2str(fce_list(fce_i)) 'N dist' num2str(dist_list(dist_i)) 'cm']); 
+            ylabel('N');
+            subplot(4,3,fce_i*3 + dist_i); title(title_str); ylabel(label_str);
+            xlabel('time');
+            end
+        end
+        set(gcf, 'position', [0,0, 1080, 680]);
+        sgtitle(sgtitle_str);
+        fname = ['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3925_3937/f_comparep' num2str(pi) '.png'];
+%         saveas(gcf, fname);
+        frame = getframe(gcf);
+%         writeVideo(v,frame);
+end
+close(v);  
+
+%% Tricks to get tidier data 
+% After dumpped, some condition (f1d1p1, f3d1p1, do not have enough 15
+% trials), I will copy and paste then...
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data');
+data(1,1,1,15,1) = data(1,1,1,6,1);
+data(1,3,1,15,1) = data(1,3,1,6,1);
+save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Subject data: perturbation during movement, randomize trials 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cpDatarg2(3923);
+        
+ss_num = {  [3938,3939],    3931,        3925 
+            [3935,3936],    3930,        [3928,3929]
+            3934,           [3932,3933], [3926,3927]} 
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % The stochastic ones are not attached at the end 
+for frc_i = 1%:size(ss_num,1) % actually force 
+    for dist_i = 1%:size(ss_num,2) % step perts
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{frc_i, dist_i})
+            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,frc_i,dist_i,1:8,1:pertT_num) = celltmp1(1:8,1:pertT_num);
+%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss3938_3939.mat', 'data'); % 12N perturbation, various time
+
+%%                   TIDY UP DATA AND FORWARD TO JAMES                     %
+% subject
+ss_num = [3938, 3939, 3944, 3945, 3949, ...
+    3940,3943, 3947, 3948, ...
+    3941, 3942,3946];
+not_working_list = [];
+for si = 1:length(ss_num)
+    try
+        SessionScan(ss_num(si));
+    catch
+        disp(['NOT WORK ss' num2str(ss_num(si))]);
+        not_working_list = [not_working_list ss_num(si)];
+    end
+end
+    
+not_working_list
+%%
+for si = 1:length(ss_num)
+    sstmp = SessionScan(ss_num(si));
+    idx = sstmp.getDelayedTrialIdx;
+    disp(['ss' num2str(ss_num(si)) 'delay' num2str(idx)]);
+end
+
+    %%
+ss_num = {  [3938,3939],    [3944,3945],        3949 
+            3940,           3943,        [3947,3948]
+            3941,           3942,       3946} 
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % The stochastic ones are not attached at the end 
+for frc_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % step perts
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{frc_i, dist_i})
+            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,frc_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss3938_3949.mat', 'data'); % 12N perturbation, various time
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The data with optotrak recording, still pulse during movement! 
+% %                   TIDY UP DATA AND FORWARD TO JAMES                     %
+% subject
+ss_num = [3992,3993,    3988,        3987, ... 
+            3994,           3989,        3997, ...
+          3995,3996,    3990,3991,   3998, 3999];
+not_working_list = [];
+for si = 1:length(ss_num)
+    try
+        SessionScan(ss_num(si));
+    catch
+        disp(['NOT WORK ss' num2str(ss_num(si))]);
+        not_working_list = [not_working_list ss_num(si)];
+    end
+end
+    
+not_working_list
+%%
+for si = 1:length(ss_num)
+    sstmp = SessionScan(ss_num(si));
+    idx = sstmp.getDelayedTrialIdx;
+    disp(['ss' num2str(ss_num(si)) 'delay' num2str(idx)]);
+end
+
+    %%
+clear; clc; close all; 
+ss_num = {  [3992,3993],    3988,        3987 
+            3994,           3989,        3997
+            [3995,3996],    [3990,3991],   [3998,3999]};
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 10, pertT_num); % The stochastic ones are not attached at the end 
+for frc_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % stiffness levels
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{frc_i, dist_i})
+            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,frc_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss3987_3999.mat', 'data'); % 12N perturbation, various time
+
+%%
+fce_list = [15 20 25];
+dist_list = [2.5 5.0 7.5];
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+color_arr = colormap('lines');
+pertT_num = 1 + 5;     % 1 without pert, and 12 perturbation time, and 1 stoc pert
+close all;
+v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3987_3999/f_compare.mp4', 'MPEG-4');
+v.FrameRate = 1;
+open(v);
+
+fh(1) = figure();
+hold on;
+for pi = 1:(pertT_num)
+    clf;
+    for dist_i = 1:size(data,3) % for each spring
+        % 1. plot the perturbed force in the first panel
+        trial_num = size(data,4); % 4 for spring data, 5 for human data
+        axh(1,dist_i) = subplot(4,3,dist_i); hold on;                     % plot PF
+        celltmp1 = reshape(data(1,1,dist_i,:,:),trial_num,pertT_num);
+        idx_release = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+        ylabel('command force')
+        % 2. plot the perturbed velocity in the following panels
+        for fce_i = 1:size(data,2)
+            axh(dist_i+1,fce_i) = subplot(4,3,dist_i+(fce_i*3)); hold on;         % plot each response
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,:),trial_num,pertT_num);
+            % 2.1 plot the original one, non-perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+%                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+                plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+%                  plot(t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
+            end
+            % 2.2 plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+4,:));
+%                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(dist_i+4,:));
+                plot(t, -celltmp1{ti,pi}.Fp(2,:));
+            end
+        end
+    end
+        % plot notes here: 
+        linkaxes(axh(:), 'x'); xlim([-0.1 1.5]);
+        
+        sgtitle_str = 'unperturbed and perturbed force'; label_str = 'censored force (N)';
+        linkaxes(axh(2:end,:), 'y'); ylim([-12 28]); %force 
+%         linkaxes(axh(2:end,:), 'y'); ylim([0.45 0.8]); %position 
+%         sgtitle_str = 'unperturbed and perturbed velocity'; label_str = 'velocity (m/s)';
+%         linkaxes(axh(2:end,:), 'y'); ylim([-1 1.2]); % velocity
+%         
+        for fce_i = 1:3
+            for dist_i = 1:3
+            subplot(4,3,fce_i*3 + dist_i); 
+            title_str = (['force' num2str(fce_list(fce_i)) 'N dist' num2str(dist_list(dist_i)) 'cm']); 
+            ylabel('N');
+            subplot(4,3,fce_i*3 + dist_i); title(title_str); ylabel(label_str);
+            xlabel('time');
+            end
+        end
+        set(gcf, 'position', [0,0, 1080, 680]);
+        sgtitle(sgtitle_str);
+        fname = ['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3987_3999/f_comparep' num2str(pi) '.png'];
+         saveas(gcf, fname);
+        frame = getframe(gcf);
+%         writeVideo(v,frame);
+end
+close(v);  

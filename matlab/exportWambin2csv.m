@@ -57,7 +57,7 @@ while ~feof(fileID)
         idx_stt = idx;
         idx_edn = idx + data_ptn{ri,3}-1;
         data = fread(fileID,data_ptn{ri,3},data_ptn{ri,2});
-        if (n>datalen)
+        if (n>datalen-1)
             continue % read out
         end
         datamat(n,idx:idx_edn) = data;

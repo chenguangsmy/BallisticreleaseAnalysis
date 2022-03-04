@@ -18,7 +18,7 @@ classdef SessionScanFT
     end
     
     methods
-        function obj = SessionScanFT(ss_num)
+        function obj = SessionScanFT(ss_num, fname_other)
             %FTSEPERATEDAT Construct an instance of this class
             %   Detailed explanation goes here
             fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
@@ -26,6 +26,9 @@ classdef SessionScanFT
             %fname = 'KingKongFT01865.csv';
             fname = sprintf('KingKongFT%05d.csv', ss_num);
             Data = readtable([fdir '/' fname]);
+            if (exist('fname_other', 'var'))
+                Data = readtable([fdir '/' fname_other]);
+            end
             Data = dealRDTError(Data);
             obj.force_origin = [Data.Fx' + Data.Fx0'
                                 Data.Fy' + Data.Fy0'
@@ -99,6 +102,9 @@ classdef SessionScanFT
              if (ss_num == 3920)
                  obj.elapse(92050) = nanmean(obj.elapse(92049:92051));
                  obj.elapse(746502)= nanmean(obj.elapse(746501:746503));
+             end
+             if (ss_num == 3938)
+                 obj.elapse(650240) = nanmean(obj.elapse(650239:650241));
              end
         end
         

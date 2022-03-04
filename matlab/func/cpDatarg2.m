@@ -91,6 +91,19 @@ for ss_i = 1:length(ss_num)
         end
     end
     
+    % OPTOTRAK data
+    fname7 = sprintf([srcdir1 'KingKong.DK.%05d/KingKongOPT%05d.csv'], ss_num(ss_i), ss_num(ss_i));
+    fname70= sprintf([srcdir1 'KingKong.DK.%05d/KingKongOPT0.csv'], ss_num(ss_i));
+    if (~exist(fname7, 'file'))
+        disp(['no processed OPTOTRAK file for ss' num2str(ss_num(ss_i))]);
+        if (~exist(fname70, 'file'))
+            disp('cautiion: no OPTOTRAK file at all');
+%             cp_flag(ss_i) = cp_flag(ss_i) + ERRORCODE_LOSTWAMCSV;
+        else
+            disp('use OPT0.csv file.');
+        end
+    end
+    
     % Videologger data
     fnamevd = sprintf([srcdirvd 'KingKong.DK.' num2str(ss_num(ss_i)) '.mp4']); % video
     fnamevdd = sprintf([srcdirvd 'KingKong.DK.' num2str(ss_num(ss_i)) '.txt']); % video description 
@@ -104,6 +117,7 @@ for ss_i = 1:length(ss_num)
     dstn4  = sprintf([dstdir2 'KingKong.%05d.mat'], ss_num(ss_i));
     dstn5  = sprintf([dstdir1 'KingKongTSync.%05d.mat'], ss_num(ss_i));
     dstn6  = sprintf([dstdir1 'KingKongEMG.%05d.csv'], ss_num(ss_i));
+    dstn7  = sprintf([dstdir1 'KingKongOPT.%05d.csv'], ss_num(ss_i));
     
     dstnvd = sprintf([dstdirvd 'KingKong%05d.mp4'], ss_num(ss_i));
     dstnvdd= sprintf([dstdirvd 'KingKong%05d.txt'], ss_num(ss_i));
@@ -145,6 +159,16 @@ for ss_i = 1:length(ss_num)
         copyfile(fname60, dstn6);
         catch 
             disp('no EMG at all');
+        end
+    end
+    
+    try 
+        copyfile(fname7, dstn7);
+    catch 
+        try
+            copyfile(fname70, dstn7);
+        catch 
+            disp('no OPT at all');
         end
     end
     
