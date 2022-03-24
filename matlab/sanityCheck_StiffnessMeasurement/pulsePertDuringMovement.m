@@ -2795,7 +2795,6 @@ save('data/processedData/ss3913_3921.mat', 'data'); % 12N perturbation, various 
 
 %% plot in 3D curve 
 figure(); 
-% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3913_3921.mat', 'data'); pt_num = 1+7; % 7 perturbs
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data'); pt_num = size(data,5); % 7 perturbs
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];
@@ -3623,7 +3622,7 @@ for si = 1:length(ss_num)
     disp(['ss' num2str(ss_num(si)) 'delay' num2str(idx)]);
 end
 
-    %%
+    %% export data when there are optotrak message recorded. 
 clear; clc; close all; 
 ss_num = {  [3992,3993],    3988,        3987 
             3994,           3989,        3997
@@ -3723,6 +3722,104 @@ for frc_i = 1:size(ss_num,1) % actually force
 end
 save('data/processedData/ss3987_3999.mat', 'data'); % 12N perturbation, various time
 
+%% get the data where no release exist ( only perturb)
+clear; clc; close all; 
+ss_num = {  [4000, 4001, 4002]};
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 10, pertT_num); % The stochastic ones are not attached at the end 
+for frc_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % stiffness levels
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{frc_i, dist_i})
+            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,frc_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss4000_4002.mat', 'data'); % 12N perturbation, various time
+
 %%
 fce_list = [15 20 25];
 dist_list = [2.5 5.0 7.5];
@@ -3758,8 +3855,10 @@ for pi = 1:(pertT_num)
                 end
                 idx_release = find(celltmp1{ti,1}.ts == 5);
                 t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
-%                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
-                plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+                plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5])
+                plot(t, celltmp1{ti,1}.ov(2,:), 'color', [0.5 0.5 0.5]);
+%                plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot(t, celltmp1{ti,1}.ox(2,:), 'color', [0.5 0.5 0.5]);
 %                  plot(t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
@@ -3769,8 +3868,10 @@ for pi = 1:(pertT_num)
                 end
                 idx_release = find(celltmp1{ti,pi}.ts == 5);
                 t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
-%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
-                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+4,:));
+                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
+                plot(t, celltmp1{ti,pi}.ov(2,:), 'color', [1 1 1] - color_arr(dist_i+4,:));
+%                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+4,:));
+%                 plot(t, celltmp1{ti,pi}.ox(2,:), 'color', [1 1 1] - color_arr(dist_i+4,:));
 %                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(dist_i+4,:));
                 plot(t, -celltmp1{ti,pi}.Fp(2,:));
             end
@@ -3780,10 +3881,10 @@ for pi = 1:(pertT_num)
         linkaxes(axh(:), 'x'); xlim([-0.1 1.5]);
         
         sgtitle_str = 'unperturbed and perturbed force'; label_str = 'censored force (N)';
-        linkaxes(axh(2:end,:), 'y'); ylim([-12 28]); %force 
+%         linkaxes(axh(2:end,:), 'y'); ylim([-12 28]); %force 
 %         linkaxes(axh(2:end,:), 'y'); ylim([0.45 0.8]); %position 
 %         sgtitle_str = 'unperturbed and perturbed velocity'; label_str = 'velocity (m/s)';
-%         linkaxes(axh(2:end,:), 'y'); ylim([-1 1.2]); % velocity
+        linkaxes(axh(2:end,:), 'y'); ylim([-1 1.2]); % velocity
 %         
         for fce_i = 1:3
             for dist_i = 1:3
@@ -3796,9 +3897,4270 @@ for pi = 1:(pertT_num)
         end
         set(gcf, 'position', [0,0, 1080, 680]);
         sgtitle(sgtitle_str);
-        fname = ['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3987_3999/f_comparep' num2str(pi) '.png'];
+        fname = ['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3987_3999/optv_comparep' num2str(pi) '.png'];
          saveas(gcf, fname);
         frame = getframe(gcf);
 %         writeVideo(v,frame);
 end
 close(v);  
+
+%%%%%%%
+%% see what is the x and f change during the movement  
+% plot: 4-row * 2 -col 
+% 1,1: The original and perturbed command force;  1,2: The command force net effect 
+% 2,1: The original and perturbed position;       2,2: The resulted position net effect;
+% 3,1: The original and perturbed censored force; 3,2: The resulted censored net force;
+% 4,1: None;                                      4.2: The psudo-stiffness: dF/dx
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 3%1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            axh(1) = subplot(3,1,1); hold on;                     % plot PF
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;  % this f_avg might not be right as it is 'centralized' after the release.
+            
+            % A TRICK TO UPDATE F_AVG HERE
+            if_favgupdate = 1;
+            if (if_favgupdate)
+                f_avg_br_pert = 0;  % the force before released.
+                t_tmp = 0;          % the number of trials
+                for tti = 1:size(celltmp1,1)
+                    if isempty(celltmp1{tti,pi}) || pi == 1
+                        continue;
+                    end
+                    idx_release = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_tmp = find(t>=-0.1 & t<0);
+                    f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
+                    t_tmp = t_tmp + 1;
+                    f_avg_br_pert = f_avg_br_pert + f_tmp;
+                    celltmp1{tti,pi}.tshift = t;
+                end
+                f_avg_br_pert = f_avg_br_pert/t_tmp;
+                f_avg_bfr = mean(f_avg(t_grids > -0.1 & t_grids<0));    % before release
+                f_diff = f_avg_br_pert - f_avg_bfr;
+                f_avg_upd = f_avg + f_diff;         % the before-release value are same now
+                
+                if (ifplot)
+                    clf;
+                    hold on;
+                    plot(t_grids, f_avg_upd, 'r.');
+                    plot(t_grids, f_avg, 'b.');
+                    for tti = 1:size(celltmp1,1)
+                        if isempty(celltmp1{tti,pi}) || pi == 1
+                            continue;
+                        end
+                        plot(celltmp1{tti,pi}.tshift, celltmp1{tti,pi}.f(2,:), 'Color', [0.5 0.5 0.5]);
+                    end
+                    
+                end
+                if (pi~=1)
+                    f_avg = f_avg_upd;
+                end
+            end
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+            plot(t_grids, x_avg);
+%             plot(t_grids, v_avg);
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+ 
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+                plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+                plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; % subtracted dF/dx
+                plot(t_grids, (f_dat - f_avg)./(x_dat - x_avg), 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+                plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                ylim([-0.05 0.04]);
+%                 plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+                scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+                scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+                scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+                scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        if (pi~=1)
+            ylabel(axh(8), 'K (N/m)'); subplot(axh(8));ylim(-1000+[0 1000]);
+        end
+%         saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness300ms' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+        close all;
+    end
+    
+end
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% validating the method to calculate stiffness by dF/dx
+%% see what is the x and f change during the movement  
+% plot: 4-row * 2 -col 
+% 1,1: The original and perturbed command force;  1,2: The command force net effect 
+% 2,1: The original and perturbed position;       2,2: The resulted position net effect;
+% 3,1: The original and perturbed censored force; 3,2: The resulted censored net force;
+% 4,1: psudo-stiffness of dF/dx, release;         4.2: The psudo-stiffness: dF/dx
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+k_stfcoef = 13/20;
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 1:3%1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            axh(1) = subplot(3,1,1); hold on;                     % plot PF
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,1}.ox(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;  % this f_avg might not be right as it is 'centralized' after the release.
+            
+            % A TRICK TO UPDATE F_AVG HERE
+            if_favgupdate = 1;
+            if (if_favgupdate)
+                f_avg_br_pert = 0;  % the force before released.
+                t_tmp = 0;          % the number of trials
+                for tti = 1:size(celltmp1,1)
+                    if isempty(celltmp1{tti,pi}) || pi == 1
+                        continue;
+                    end
+                    idx_release = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_tmp = find(t>=-0.1 & t<0);
+                    f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
+                    t_tmp = t_tmp + 1;
+                    f_avg_br_pert = f_avg_br_pert + f_tmp;
+                    celltmp1{tti,pi}.tshift = t;
+                end
+                f_avg_br_pert = f_avg_br_pert/t_tmp;
+                f_avg_bfr = mean(f_avg(t_grids > -0.1 & t_grids<0));    % before release
+                f_diff = f_avg_br_pert - f_avg_bfr;
+                f_avg_upd = f_avg + f_diff;         % the before-release value are same now
+                
+                if (ifplot)
+                    clf;
+                    hold on;
+                    plot(t_grids, f_avg_upd, 'r.');
+                    plot(t_grids, f_avg, 'b.');
+                    for tti = 1:size(celltmp1,1)
+                        if isempty(celltmp1{tti,pi}) || pi == 1
+                            continue;
+                        end
+                        plot(celltmp1{tti,pi}.tshift, celltmp1{tti,pi}.f(2,:), 'Color', [0.5 0.5 0.5]);
+                    end
+                    
+                end
+                if (pi~=1)
+                    f_avg = f_avg_upd;
+                end
+            end
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+            plot(t_grids, x_avg);
+%             plot(t_grids, v_avg);
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+ 
+            axh(7) = subplot(4,2,7);
+            k_avgest = f_avg ./ (x_avg - x_avg(end));
+            plot(t_grids, -k_avgest);
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+                plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                     plot(t, celltmp1{ti,pi}.ox(2,:), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,pi}.ox(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+                plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; % subtracted dF/dx
+                plot(t_grids, -(f_dat - f_avg)./(x_dat - x_avg), 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+                plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                ylim([-0.05 0.04]);
+%                 plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+                scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+                scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+                scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+                scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'K (N/m)'); subplot(axh(7));ylim(+[0 K_list(dist_i)*1.5]);
+        yline(K_list(dist_i)*k_stfcoef);
+        yline(K_list(dist_i));
+        if (pi~=1)
+            ylabel(axh(8), 'K (N/m)'); subplot(axh(8));ylim(+[0 K_list(dist_i)*1.5]);
+            yline(K_list(dist_i)*k_stfcoef); yline(K_list(dist_i));
+        end
+%           saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness300ms' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+%         close all;
+    end
+    
+end
+
+%% Compare the displacement difference at different position
+% Also, compare the condition where there is no release (left) and with
+% release (right)
+% plot: 1-row * 2 -col 
+% col1: without release: 
+%           x-pert time, 
+%           y-displacement before perturb, 
+%           z-displacement different in release
+
+% The left column, only plot the displacement (raw) 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4000_4002.mat', 'data');
+figure(); 
+color_arr = colormap('lines');
+close all;
+fh1 = figure();
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 1 %1:size(data,2)
+    for dist_i = 1 %1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6 %13%1:length(pertT_unq)
+             figure(fh1); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;
+ 
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                % offset index
+                offset_idx = find(fp_dat ~= 0);
+                offset_idx = offset_idx(1);
+                % offset time 
+                t_offset = t_grids(offset_idx);
+                % offset position
+                x_offset = x_dat(offset_idx);
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                axh(1) = subplot(1,2,1); hold on;% subtracted x
+                pos_offset = x_offset * ones(size(x_avg)); % get position offset from the raw data
+                plot3(t_grids - t_offset, pos_offset ,x_dat - pos_offset, 'color', color_arr(4+2,:));
+                
+
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+
+%                 
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+
+        
+
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+%         close all;
+    end
+    
+end
+subplot(axh(1));
+view([0, 80]); 
+xlabel('time after perturb');
+ylabel('robot position');
+zlabel('induced position difference');
+title('perturb no release')
+
+% The right column, only plot displacement difference 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 2 %1:size(data,2)
+    for dist_i = 2 %1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6 %13%1:length(pertT_unq)
+             figure(fh1); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                % offset index
+                offset_idx = find(fp_dat ~= 0);
+                offset_idx = offset_idx(1);
+                % offset time 
+                t_offset = t_grids(offset_idx);
+                % offset position
+                x_offset = x_dat(offset_idx);
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+
+                axh(2) = subplot(1,2,2); hold on;% subtracted x
+                pos_offset = x_offset * ones(size(x_avg)); % get position offset from the raw data
+                plot3(t_grids - t_offset, pos_offset ,x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+%                 
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+%                 
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+    end
+    
+end
+subplot(axh(2));
+view([0, 80]); 
+xlabel('time after perturb');
+ylabel('robot position');
+zlabel('induced position difference');
+title('perturb during release');
+saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityCheck_pulseAcrossPositions_quene.png')
+
+subplot(axh(1));
+view([0, 0]);  zlim([-0.04 0.04]);
+subplot(axh(2));
+view([0, 0]); zlim([-0.04 0.04]);
+saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityCheck_pulseAcrossPositions_overlay.png')
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sanity check: why the position difference is so huge in some of the pulses
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compare the displacement difference at different position
+% Also, compare the condition where there is no release (left) and with
+% release (right)
+% plot: 1-row * 2 -col 
+% col1: without release: 
+%           x-pert time, 
+%           y-displacement before perturb, 
+%           z-displacement different in release
+
+% The left column, only plot the displacement (raw) 
+% The right column, only plot displacement difference 
+
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+color_arr = colormap('lines');
+close all;
+fh1 = figure();
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 2 %1:size(data,2)
+    for dist_i = 2 %1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6 %13%1:length(pertT_unq)
+             figure(fh1); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                % offset index
+                offset_idx = find(fp_dat ~= 0);
+                offset_idx = offset_idx(1);
+                % offset time 
+                t_offset = t_grids(offset_idx);
+                % offset position
+                x_offset = x_dat(offset_idx);
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+
+%                 axh(2) = subplot(1,2,2); hold on;% subtracted x
+                hold on;
+                pos_offset = x_offset * ones(size(x_avg)); % get position offset from the raw data
+%                 plot3(t_grids - t_offset, pos_offset ,x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                plot3(t_grids - t_offset, pos_offset ,x_dat, 'color', color_arr(4+dist_i,:));
+                plot3(t_grids - t_offset, pos_offset ,x_avg, 'color', [0.5 0.5 0.5]);
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+%                 
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+%                 
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+    end
+    
+end
+% subplot(axh(2));
+view([0, 80]); 
+xlabel('time after perturb');
+ylabel('robot position');
+zlabel('induced position difference');
+title('perturb during release');
+saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityCheck_pulseAcrossPositions_SanityCheck.png')
+% 
+% subplot(axh(1));
+% view([0, 0]);  zlim([-0.04 0.04]);
+% subplot(axh(2));
+% view([0, 0]); zlim([-0.04 0.04]);
+% saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityCheck_pulseAcrossPositions_overlay.png')
+
+
+
+%% Compare the displacement difference at different Velocity
+% Also, compare the condition where there is no release (left) and with
+% release (right) 
+% Arrange the displacement difference when there is release on the velocity
+% dot product with the perturb force 
+% plot: 1-row * 2 -col 
+% col1: without release: 
+%           x-pert time, 
+%           y-velocity before perturb, 
+%           z-displacement different in release
+
+% The left column, only plot the displacement (raw) 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4000_4002.mat', 'data');
+figure(); 
+color_arr = colormap('lines');
+close all;
+fh1 = figure();
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 1 %1:size(data,2)
+    for dist_i = 1 %1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6 %13%1:length(pertT_unq)
+             figure(fh1); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,3}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,3}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,3}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;
+ 
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                % offset index
+                offset_idx = find(fp_dat ~= 0);
+                offset_idx = offset_idx(1);
+                % offset time 
+                t_offset = t_grids(offset_idx);
+                % offset position
+                x_offset = x_dat(offset_idx);
+                v_offset = v_dat(offset_idx);
+                
+                fp_effectv = fp_dat .* v_dat;
+                v_offset = sum(fp_effectv);
+                
+                ifplot = 1;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                axh(1) = subplot(1,2,1); hold on;% subtracted x
+                pos_offset = x_offset * ones(size(x_avg)); % get position offset from the raw data
+                vel_offset = v_offset * ones(size(v_avg));
+                plot3(t_grids - t_offset, vel_offset ,x_dat - pos_offset, 'color', color_arr(4+2,:));
+                
+
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+
+%                 
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+
+        
+
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+%         close all;
+    end
+    
+end
+subplot(axh(1));
+view([0, 80]); ylim([-100 400]);
+xlabel('time after perturb');
+ylabel('robot velocity');
+zlabel('induced position difference');
+title('perturb no release')
+
+% The right column, only plot displacement difference 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 2 %1:size(data,2)
+    for dist_i = 2 %1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6 %13%1:length(pertT_unq)
+             figure(fh1); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                % offset index
+                offset_idx = find(fp_dat ~= 0);
+                offset_idx = offset_idx(1) + 150; % 100ms after perturb~=0
+                % offset time 
+                t_offset = t_grids(offset_idx);
+                % offset position
+                x_offset = x_dat(offset_idx);
+                v_offset = v_dat(offset_idx); % change this into the convolution between velocity and perturb force. 
+                
+                fp_effectv = fp_dat .* v_dat;
+                v_offset = sum(fp_effectv);
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+
+                axh(2) = subplot(1,2,2); hold on;% subtracted x
+                pos_offset = x_offset * ones(size(x_avg)); % get position offset from the raw data
+                vel_offset = v_offset * ones(size(v_avg));
+                
+                plot3(t_grids - t_offset, vel_offset ,x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+%                 
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+%                 
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+    end
+    
+end
+subplot(axh(2));
+view([0, 80]); 
+ylim([-100 400]);
+xlabel('time after perturb');
+ylabel('Fp effect on v');   % sum(f_offset.*fp)
+zlabel('induced position difference');
+title('perturb during release');
+% saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityCheck_pulseAcrossPositions_quene.png')
+
+% subplot(axh(1));
+% view([0, 0]);  zlim([-0.04 0.04]);
+% subplot(axh(2));
+% view([0, 0]); zlim([-0.04 0.04]);
+% saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityCheck_pulseAcrossForceEffectVelocity_overlay.png')
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Do dF/dx change in the subject data
+
+%% see what is the x and f change during the movement  
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3818_3828.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3913_3921.mat', 'data');
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            axh(1) = subplot(3,1,1); hold on;                     % plot PF
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 5 pert
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(3,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(3,2,3);
+            plot(t_grids, x_avg);
+%             plot(t_grids, x_avg - x_avg(1));
+            axh(5) = subplot(3,2,5);
+            plot(t_grids, f_avg);
+ 
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+                x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+                plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(3,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(3,2,4); hold on;% subtracted x
+                plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(3,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(3,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(3,2,4); % subtracted x
+                plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(6) = subplot(3,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(3,2,4); % subtracted x
+                scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                axh(6) = subplot(3,2,6); % subtracted F
+                scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(3,2,4); % subtracted x
+                scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                axh(6) = subplot(3,2,6); % subtracted F
+                scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+                psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+%         saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+        close all;
+    end
+    
+end
+
+
+%% The following code answers the question:
+% Does the mass change across conditions? 
+% The mass measureing method is using the point immediate after release to
+% get the mass estimation. The conclusion is based on the following 
+% assumption:
+% 1. The force transducer measures the net tention (force) before relese,
+%    and only measures the acceleration of the free part after release.  
+% 2. The acceleration of two parts of force transducer should be the same. 
+%
+% Hence, the before release force 
+%   F0- = (m1 + m2)*a           ...(1)
+%   F0+ = m2*a                  ...(2)
+% F0-: force measured before release. m1, the mass at subject end, m2, the
+% mass at robot end, which will be a free end after release. a, the two
+% ends acceleration
+% F0+: force measured immediately after release. 
+% Hence, the mass at the subject end can be calculated as: 
+% m1/m2 = (F(0-) - F(0+))/(F0+)
+% Which means, the mass at the subject end can be described by the
+% perprotion of the force measured change and the force immediately after
+% release. 
+%
+% The code using the aforementioned theory, and get the conclusion that
+% mass have increased by the condition
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+f_ratio_cell = cell(3,3);
+for fce_i = 1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); %
+        pi = 1; % only see the unperturbed trials
+%         fh(pi,1) = figure(); hold on;
+        
+        celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+        idx_release = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        
+        
+        % calculate the Unperturbed situation, x and f
+        x_avg = zeros(1, length(t_grids));
+        f_avg = zeros(1, length(t_grids));
+        fp_avg= zeros(1, length(t_grids));
+        cti = 0; % count how many trials are added up
+        f_ratio = zeros(1,size(celltmp1,1));
+        for ti = 1:1:size(celltmp1,1)
+            if isempty(celltmp1{ti,1})
+                continue;
+            end
+            cti = cti + 1;
+            idx_release = find(celltmp1{ti,1}.ts == 5);
+            t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+            idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+            length(idx_t)
+            % intropolate (x, f, Fp) to t_grids
+            
+            x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+            f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+            fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+            
+            ifplot = 1; % controls whether plot or not
+            t_idx = find(t_grids>0 & t_grids < 0.1); 
+            [f_pk_neg,locs1] = findpeaks(-f_dat(t_idx), 'NPeaks', 1);
+            [f_pk_pos,locs2] = findpeaks(f_dat(t_idx), 'NPeaks', 1);
+            if (ifplot)
+%                 clf;
+                figure('unit', 'inch', 'position', [12 0 5 5] );
+                axh(1) = subplot(3,1,1);  hold on;
+                plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                
+                axh(2) = subplot(3,1,2);  hold on;
+                plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                plot(t_grids, x_dat, 'r', 'Marker', '.');
+                
+                axh(3) = subplot(3,1,3); hold on;
+                plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                plot(t_grids, f_dat, 'r', 'Marker', '.'); hold on;
+                
+                plot(t_grids(t_idx(locs1)),-f_pk_neg, 'marker', '.', 'markersize', 20);
+                plot(t_grids(t_idx(locs2)), f_pk_pos, 'marker', '.', 'markersize', 20);
+                
+                linkaxes(axh, 'x');
+                xlim(axh(3), [-0.1 0.1]);
+            end    
+            f0_bef = mean(f_dat(t_grids<0)); 
+%             f0_aft = mean(f_dat(t_grids>0.01 & t_grids<0.04));
+            f0_aft = 1/2*(f_pk_pos + (-f_pk_neg));
+            f_ratio(ti) = f0_bef/f0_aft;
+            
+           f_ratio_cell{fce_i,dist_i} = f_ratio;
+        end 
+    end    
+end
+close all;
+%
+fh = figure();
+clear axh;
+for fce_i = 1:3 
+    for dist_i = 1:3 
+        % for each panel
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        f_ratio = f_ratio_cell{fce_i,dist_i};
+        fratio_num = length(f_ratio); 
+        scatter(1:fratio_num, f_ratio, 5, 'MarkerFaceColor' , 'b'); 
+        title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+    end
+end
+linkaxes(axh(:), 'xy');
+sgtitle('F0-/F0+ on different conditions');  
+
+
+% if I convert the relationship into the mass...
+% Knowing from previous calculation, Mr = 1.27, Ms0 = 0.33
+% F0-/F0+ = (Madd + Ms0 + Mr) / Mr
+% Madd = F0-/F0+ * Mr - Mr - Ms0
+%      = F0-/F0+ * 0.94-1.27
+fh = figure();
+clear axh;
+for fce_i = 1:3 
+    for dist_i = 1:3 
+        % for each panel
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        f_ratio = f_ratio_cell{fce_i,dist_i};
+        fratio_num = length(f_ratio); 
+        mass_add = f_ratio * 0.94 - 1.27; % kg
+        scatter(1:fratio_num, mass_add, 5, 'MarkerFaceColor' , 'b'); 
+        title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+        xlabel('trial');
+        ylabel('mass (kg)');
+    end
+end
+linkaxes(axh(:), 'xy');
+sgtitle('mass add on different conditions');  
+
+%%%%%%%%%%%%%%%%%%%%%% do a barplot or a errorbar with line
+fh = figure('unit', 'inch', 'position', [0 0 3 3]);
+clear axh;
+mass_mean = zeros(3,3); 
+mass_std  = zeros(3,3); 
+for fce_i = 1:3 
+    for dist_i = 1:3 
+        % for each panel
+%         axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        f_ratio = f_ratio_cell{fce_i,dist_i};
+        fratio_num = length(f_ratio); 
+        mass_add = f_ratio * 0.94 - 1.27; % kg
+%         scatter(1:fratio_num, mass_add, 5, 'MarkerFaceColor' , 'b'); 
+        %.......!!!!!!!!!!!!! TODO!!!!!
+        mass_mean(fce_i,dist_i) = mean(mass_add); 
+        mass_std(fce_i,dist_i)  = std(mass_add);
+    end
+end
+
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, mass_mean(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, mass_mean(:,dist_i), mass_std(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([0 10]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+legend(lnh, {'2.5cm', '5cm', '7.5cm'});
+ylabel('mass (kg)');
+% linkaxes(axh(:), 'xy');
+title('mass cross conditions (subject)');  
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The same measurement using the spring data
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+f_ratio_cell = cell(3,3);
+for fce_i = 1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        psudoK_mat = zeros(5,7); %
+        pi = 1; % only see the unperturbed trials
+%         fh(pi,1) = figure(); hold on;
+        
+        celltmp1 = reshape(data(1,fce_i,dist_i,1:7,1:6),7,6); % 1 no -ert and 5 pert
+        idx_release = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        
+        
+        % calculate the Unperturbed situation, x and f
+        x_avg = zeros(1, length(t_grids));
+        f_avg = zeros(1, length(t_grids));
+        fp_avg= zeros(1, length(t_grids));
+        cti = 0; % count how many trials are added up
+        f_ratio = zeros(1,size(celltmp1,1));
+        for ti = 1:1:size(celltmp1,1)
+            if isempty(celltmp1{ti,1})
+                continue;
+            end
+            cti = cti + 1;
+            idx_release = find(celltmp1{ti,1}.ts == 5);
+            t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+            idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+            length(idx_t);
+            % intropolate (x, f, Fp) to t_grids
+            
+            x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+            f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+            fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+            
+            ifplot = 1; % controls whether plot or not
+            t_idx = find(t_grids>0 & t_grids < 0.1); 
+            [f_pk_neg,locs1] = findpeaks(-f_dat(t_idx), 'NPeaks', 1);
+            [f_pk_pos,locs2] = findpeaks(f_dat(t_idx), 'NPeaks', 1);
+            if (ifplot)
+%                 clf;
+                figure('unit', 'inch', 'position', [12 0 5 5] );
+                axh(1) = subplot(3,1,1);  hold on;
+                plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                
+                axh(2) = subplot(3,1,2);  hold on;
+                plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                plot(t_grids, x_dat, 'r', 'Marker', '.');
+                
+                axh(3) = subplot(3,1,3); hold on;
+                plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                plot(t_grids, f_dat, 'r', 'Marker', '.'); hold on;
+                
+                plot(t_grids(t_idx(locs1)),-f_pk_neg, 'marker', '.', 'markersize', 20);
+                plot(t_grids(t_idx(locs2)), f_pk_pos, 'marker', '.', 'markersize', 20);
+                
+                linkaxes(axh, 'x');
+                xlim(axh(3), [-0.1 0.1]);
+            end    
+            f0_bef = mean(f_dat(t_grids<0)); 
+%             f0_aft = mean(f_dat(t_grids>0.01 & t_grids<0.04));
+            f0_aft = 1/2*(f_pk_pos + (-f_pk_neg));
+            f_ratio(ti) = f0_bef/f0_aft;
+            
+           f_ratio_cell{fce_i,dist_i} = f_ratio;
+        end 
+    end    
+end
+close all;
+%
+fh = figure();
+clear axh;
+for fce_i = 1:3 
+    for dist_i = 1:3 
+        % for each panel
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        f_ratio = f_ratio_cell{fce_i,dist_i};
+        fratio_num = length(f_ratio); 
+        scatter(1:fratio_num, f_ratio, 5, 'MarkerFaceColor' , 'b'); 
+        title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+    end
+end
+linkaxes(axh(:), 'xy');
+sgtitle('F0-/F0+ on different conditions');  
+
+
+% % if I convert the relationship into the mass...
+% % Knowing from previous calculation, Mr = 1.27, Ms0 = 0.33
+% % F0-/F0+ = (Madd + Ms0 + Mr) / Mr
+% % Madd = F0-/F0+ * Mr - Mr - Ms0
+% %      = F0-/F0+ * 0.94-1.27
+% fh = figure();
+% clear axh;
+% for fce_i = 1:3 
+%     for dist_i = 1:3 
+%         % for each panel
+%         axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+%         f_ratio = f_ratio_cell{fce_i,dist_i};
+%         fratio_num = length(f_ratio); 
+%         mass_add = f_ratio * 0.94 - 1.27; % kg
+%         scatter(1:fratio_num, mass_add, 5, 'MarkerFaceColor' , 'b'); 
+%         title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+%         xlabel('trial');
+%         ylabel('mass (kg)');
+%     end
+% end
+% ylim([0 0.5]);
+% linkaxes(axh(:), 'xy');
+% sgtitle('mass add on different conditions');  
+
+%%%%%%%%%%%%%%%%%%%%%% do a barplot or a errorbar with line
+fh = figure('unit', 'inch', 'position', [0 0 3 3]);
+clear axh;
+mass_mean = zeros(3,3); 
+mass_std  = zeros(3,3); 
+for fce_i = 1:3 
+    for dist_i = 1:3 
+        % for each panel
+%         axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        f_ratio = f_ratio_cell{fce_i,dist_i};
+        fratio_num = length(f_ratio); 
+        mass_add = f_ratio * 0.94 - 1.27; % kg
+%         scatter(1:fratio_num, mass_add, 5, 'MarkerFaceColor' , 'b'); 
+        %.......!!!!!!!!!!!!! TODO!!!!!
+        mass_mean(fce_i,dist_i) = mean(mass_add); 
+        mass_std(fce_i,dist_i)  = std(mass_add);
+    end
+end
+
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, mass_mean(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, mass_mean(:,dist_i), mass_std(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([0 10]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+legend(lnh, {'2.5cm', '5cm', '7.5cm'});
+ylabel('mass (kg)');
+% linkaxes(axh(:), 'xy');
+title('mass cross conditions (spring)');  
+
+
+
+%% use the x and f, do the dF/dx to show how the stiffness works here
+% Stiffness measurement using definition dF/dx, have 72 figures * 8 pannels
+% assume hand is only 3kg. 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+% for fce_i = 3
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+        psudoK_mat = zeros(7,7); % 
+        for pi = 1:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            clear axh;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+            plot(t_grids, x_avg);
+            x_settled = nanmean(x_avg(t_grids>1.0 & t_grids<1.1));
+%             plot(t_grids, x_avg - x_avg(1));
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+            axh(7) = subplot(4,2,7);
+            plot(t_grids, -f_avg ./ (x_avg - x_settled));
+            
+            % find the reference value 
+            psudo_stiffness = -f_avg ./ (x_avg - x_settled); 
+            psudo_stiffness0= mean(psudo_stiffness(t_grids<0));
+            psudo_stiffness1= psudo_stiffness0/3.62; % after relase, the number is corresponding to 3kg hand
+            yline(psudo_stiffness1, 'linewidth', 2);
+%             ylim([0 2000]);
+ 
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+                x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+                plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+                plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; 
+                plot(t_grids, -(f_dat - f_avg)./(x_dat - x_avg), 'color', color_arr(4+dist_i,:));
+                
+                [~,fp_max_idx] = max(abs(fp_dat));
+                x_net = x_dat - x_avg; 
+                x_net_tmp = x_net; x_net_tmp(1:fp_max_idx) = 0;
+                [~, x_net_idx] = min(x_net_tmp);
+                k_est = -(f_dat - f_avg)./(x_dat - x_avg); 
+                k_est_pt = k_est(x_net_idx); 
+                psudoK_mat(pi-1,ti) = k_est_pt;
+                
+                plot(t_grids(x_net_idx), k_est_pt, 'marker', 'o', 'markersize', 10); 
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+                plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+% %                 % Find and plot on the original data point 
+% %                 pert0idx  = find(abs(fp_dat) > 0.01);
+% %                 pert0idx = pert0idx(1);  
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+% %                 
+% %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+% %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+% %                 
+% %                 % Find and plot on the peak data point 
+% %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+% %                 
+% %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+% %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+% %                 
+% %                 psudoK = (f1-f0)/(x1-x0);
+% %                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            try % if has axh8, plot, ifnot, noplot 
+                linkaxes(axh(7:8), 'y'); 
+                yline(axh(8),psudo_stiffness1, 'linewidth', 2);
+            catch
+            end
+            ylim(axh(7), [0 1000]);
+            linkaxes(axh, 'x');
+            % plot notes here: 
+            xlim(axh(1), [-0.1 1.36]);
+        
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'df/dx');
+        try
+        ylabel(axh(2), 'dFp'); 
+        ylabel(axh(4), 'dx'); 
+        ylabel(axh(6), 'dF'); 
+        ylabel(axh(8), 'dF/dx'); 
+        catch
+        end
+        
+%          saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = psudoK_mat;
+%         close all;
+    end
+    
+end
+
+%%%%%%%%%%%%%%%%%
+figure(); 
+clear axh; 
+dat_mean_cc = zeros(3,3); 
+dat_std_cc  = zeros(3,3); 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoK_Mat = psudoK_cell{fce_i,dist_i};
+        % need to detect outlaiers before get mean and std
+        dat_arr = psudoK_Mat(:); 
+        dat_arr_outlairidx = isoutlier(dat_arr);
+        dat_mean_cc(fce_i,dist_i) = mean(dat_arr(~dat_arr_outlairidx));
+        dat_std_cc(fce_i,dist_i) = std(dat_arr(~dat_arr_outlairidx));
+        ifplot = 1; 
+        if (ifplot)
+            fh_tmp = figure(); hold on;
+            plot(dat_arr, '.'); 
+            plot(find(dat_arr_outlairidx), dat_arr(dat_arr_outlairidx), 'marker', 'o', 'markersize', 10, 'color', 'r');
+            title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+        end
+        try 
+            close(fh_tmp)
+        catch
+        end
+        plot(psudoK_Mat); 
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('mass estimation using dF/da');
+linkaxes(axh);
+ylim([-200 1000]);
+
+% better figure; 
+peak_time = [0.1:0.025:0.25]; % s... Need to change here! 
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = psudoK_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel('K (N/m)');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('Subject stiffness after release, dF/dx');
+linkaxes(axh);
+ylim([-200 1000]);
+
+% corss condition plot 
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([-200 1000]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+% legend(lnh, {'640N/m', '320N/m', '160N/m'});
+legend(lnh, {'2.5cm', '5.0cm', '7.5cm'});
+ylabel('stiffness (N/m)');
+% linkaxes(axh(:), 'xy');
+title('stiffness cross conditions (subject)');  
+
+
+%% use the x and f, do the dF/dx to show how the stiffness works here
+% Stiffness measurement using definition dF/dx, have 72 figures * 8 pannels
+% IN THIS CODE BLOCK, TRY ANDY'S IDEA ON AVERAGE THE DATA THEN DO THE df/dx
+% assume hand is only 3kg. 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+% for fce_i = 3
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+        psudoK_mat = zeros(7,7); % 
+        for pi = 2:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            clear axh;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            
+            x_avg_pert = zeros(1, length(t_grids));
+            f_avg_pert = zeros(1, length(t_grids));
+            fp_avg_pert= zeros(1, length(t_grids));
+            
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+%                 if isempty(celltmp1{ti,1})
+                if isempty(celltmp1{ti,pi})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_tp = find(t>=t_interest(1) & t<=t_interest(2));
+                x_dat_pert = interp1(t(idx_tp), celltmp1{ti,pi}.x(2,idx_tp), t_grids, 'linear', 'extrap'); % check...
+                f_dat_pert = interp1(t(idx_tp), celltmp1{ti,pi}.f(2,idx_tp), t_grids, 'linear', 'extrap'); % check...
+                fp_dat_pert= interp1(t(idx_tp), celltmp1{ti,pi}.Fp(2,idx_tp), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    plot(t_grids, fp_dat_pert, 'g', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    plot(t_grids, x_dat_pert, 'g', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                    plot(t_grids, f_dat_pert, 'g', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+                
+                x_avg_pert = x_avg_pert + x_dat_pert;
+                f_avg_pert = f_avg_pert + f_dat_pert;
+                fp_avg_pert = fp_avg_pert + fp_dat_pert;
+                
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            f_avg = f_avg/cti;
+            
+            x_avg_pert = x_avg_pert/cti;
+            f_avg_pert = f_avg_pert/cti;
+            fp_avg_pert = fp_avg_pert/cti;
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); hold on;
+            plot(t_grids, fp_avg);
+            plot(t_grids, fp_avg_pert); 
+            axh(3) = subplot(4,2,3); hold on;
+            plot(t_grids, x_avg);
+            plot(t_grids, x_avg_pert);
+            x_settled = nanmean(x_avg(t_grids>1.0 & t_grids<1.1));
+%             plot(t_grids, x_avg - x_avg(1));
+            axh(5) = subplot(4,2,5); hold on;
+            plot(t_grids, f_avg);
+            plot(t_grids, f_avg_pert); 
+            axh(7) = subplot(4,2,7);
+            plot(t_grids, -f_avg ./ (x_avg - x_settled));
+            
+            axh(2) = subplot(4,2,2); 
+            plot(t_grids, fp_avg_pert - fp_avg);
+            axh(4) = subplot(4,2,4); 
+            plot(t_grids, x_avg_pert - x_avg);
+            axh(6) = subplot(4,2,6); 
+            plot(t_grids, f_avg_pert - f_avg);
+            axh(8) = subplot(4,2,8); 
+            plot(t_grids, (f_avg_pert - f_avg)./(x_avg_pert - x_avg));
+            
+            % find the reference value 
+            psudo_stiffness = -f_avg ./ (x_avg - x_settled); 
+            psudo_stiffness0= mean(psudo_stiffness(t_grids<0));
+            psudo_stiffness1= psudo_stiffness0/3.62; % after relase, the number is corresponding to 3kg hand
+            yline(psudo_stiffness1, 'linewidth', 2);
+%             ylim([0 2000]);
+
+            % find the stiffness prediction here 
+            x_net = x_avg_pert - x_avg;
+            f_net = f_avg_pert - f_avg;
+            k_net = -(f_avg_pert - f_avg)./(x_avg_pert - x_avg);
+            [~,pert_peak_idx] = max(abs(fp_avg_pert));
+            x_net_tmp = x_net; x_net_tmp(1:pert_peak_idx) = 0; 
+            [~, pos_peak_idx] = min(x_net_tmp); 
+            subplot(axh(4)); hold on; 
+            plot(t_grids(pos_peak_idx), x_net(pos_peak_idx), '*');
+            subplot(axh(6)); hold on;
+            % option one, just use the exact time value as the f
+%             plot(t_grids(pos_peak_idx), f_net(pos_peak_idx), '*');
+            % option two, use the +-50ms mininum as the f value, +-50ms is
+            % +- 25 datapoints
+            f_net_tmp = f_net; 
+            t_range = 25; % points
+            f_net_tmp([1:pos_peak_idx-t_range, pos_peak_idx+t_range:end]) = nan;
+            [~, fce_peak_idx] = nanmin(f_net_tmp); 
+            plot(t_grids(fce_peak_idx), f_net(fce_peak_idx), '*');
+            psudo_K_tmp =-f_net(fce_peak_idx)/x_net(pos_peak_idx);
+            
+            subplot(axh(8)); hold on;
+            plot(t_grids(pos_peak_idx), k_net(pos_peak_idx), '*');
+            
+% %             psudoK_mat(pi-1,:) = k_net(pos_peak_idx); % ... some averaged value, exact point 
+            psudoK_mat(pi-1,:) = psudo_K_tmp; % ... some averaged value, shift minimum
+            % plot the perturbed one, -perturbed
+%             for ti = 1%:size(celltmp1,1) ... looks like only averaged viable trial 
+%                 if isempty(celltmp1{ti,pi}) || pi == 1
+%                     continue;
+%                 end
+%                 
+%                 idx_release = find(celltmp1{ti,pi}.ts == 5);
+%                 t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+%                 subplot(axh(1)); hold on;
+%                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+%                 
+%                 subplot(axh(3)); hold on;
+%                 x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+%                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+% %                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+%                 
+%                 subplot(axh(5)); hold on;
+%                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+%                 
+%                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+%                 length(idx_t)
+% 
+%                 fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+%                 f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+% %                 linkaxes(axh(1:3:5), 'x');
+%                 
+%                 ifplot = 0;
+%                 if (ifplot)
+%                     clf;
+%                     subplot(2,1,1);  hold on;
+%                     plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+%                     plot(t_grids, x_dat, 'r', 'Marker', '.');
+%                     
+%                     subplot(2,1,2); hold on;
+%                     plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+%                     plot(t_grids, f_dat, 'r', 'Marker', '.');
+%                 end
+%                    
+%                 % plot the subtraction in other panels 
+%                 axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+%                 plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+%                 axh(4) = subplot(4,2,4); hold on;% subtracted x
+%                 plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+%                 axh(6) = subplot(4,2,6); hold on;% subtracted F
+%                 plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+%                 axh(8) = subplot(4,2,8); hold on; 
+%                 plot(t_grids, -(f_dat - f_avg)./(x_dat - x_avg), 'color', color_arr(4+dist_i,:));
+%                 
+%                 [~,fp_max_idx] = max(abs(fp_dat));
+%                 x_net = x_dat - x_avg; 
+%                 x_net_tmp = x_net; x_net_tmp(1:fp_max_idx) = 0;
+%                 [~, x_net_idx] = min(x_net_tmp);
+%                 k_est = -(f_dat - f_avg)./(x_dat - x_avg); 
+%                 k_est_pt = k_est(x_net_idx); 
+%                 psudoK_mat(pi-1,ti) = k_est_pt;
+%                 
+%                 plot(t_grids(x_net_idx), k_est_pt, 'marker', 'o', 'markersize', 10); 
+%                 
+%                 % There will be a force and position peak at 0~0.4s after
+%                 % the start of the perturbation 
+%                 pert_idx = find(abs(fp_dat) > 0.5); 
+%                 pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+%                 % plot out the perturbed position 
+%                 axh(2) = subplot(4,2,2);  % subtracted Fp
+%                 plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+%                 axh(4) = subplot(4,2,4); % subtracted x
+%                 plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+%                 axh(6) = subplot(4,2,6); % subtracted F
+%                 plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+%                 
+% % %                 % Find and plot on the original data point 
+% % %                 pert0idx  = find(abs(fp_dat) > 0.01);
+% % %                 pert0idx = pert0idx(1);  
+% % %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% % %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% % %                 axh(4) = subplot(3,2,4); % subtracted x
+% % %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+% % %                 axh(6) = subplot(3,2,6); % subtracted F
+% % %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+% % %                 
+% % %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+% % %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+% % %                 
+% % %                 % Find and plot on the peak data point 
+% % %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+% % %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+% % %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% % %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% % %                 axh(4) = subplot(3,2,4); % subtracted x
+% % %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+% % %                 axh(6) = subplot(3,2,6); % subtracted F
+% % %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+% % %                 
+% % %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+% % %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+% % %                 
+% % %                 psudoK = (f1-f0)/(x1-x0);
+% % %                 psudoK_mat(ti,pi-1) = psudoK;
+%             end
+            try % if has axh8, plot, ifnot, noplot 
+                linkaxes(axh(7:8), 'y'); 
+                yline(axh(8),psudo_stiffness1, 'linewidth', 2);
+            catch
+            end
+            ylim(axh(7), [0 1000]);
+            linkaxes(axh, 'x');
+            % plot notes here: 
+            xlim(axh(1), [-0.1 1.36]);
+        
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'df/dx');
+        try
+        ylabel(axh(2), 'dFp'); 
+        ylabel(axh(4), 'dx'); 
+        ylabel(axh(6), 'dF'); 
+        ylabel(axh(8), 'dF/dx'); 
+        catch
+        end
+        
+%          saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = psudoK_mat;
+%         close all;
+    end
+    
+end
+
+%%%%%%%%%%%%%%%%%
+figure(); 
+clear axh; 
+dat_mean_cc = zeros(3,3); 
+dat_std_cc  = zeros(3,3); 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoK_Mat = psudoK_cell{fce_i,dist_i};
+        % need to detect outlaiers before get mean and std
+        dat_arr = psudoK_Mat(:); 
+        dat_arr_outlairidx = isoutlier(dat_arr);
+        dat_mean_cc(fce_i,dist_i) = mean(dat_arr(~dat_arr_outlairidx));
+        dat_std_cc(fce_i,dist_i) = std(dat_arr(~dat_arr_outlairidx));
+        ifplot = 1; 
+        if (ifplot)
+            fh_tmp = figure(); hold on;
+            plot(dat_arr, '.'); 
+            plot(find(dat_arr_outlairidx), dat_arr(dat_arr_outlairidx), 'marker', 'o', 'markersize', 10, 'color', 'r');
+            title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+        end
+        try 
+            close(fh_tmp)
+        catch
+        end
+        plot(psudoK_Mat); 
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('mass estimation using dF/da');
+linkaxes(axh);
+ylim([-200 1000]);
+
+% better figure; 
+peak_time = [0.1:0.025:0.25]; % s... Need to change here! 
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = psudoK_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel('K (N/m)');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('Subject stiffness after release, dF/dx');
+linkaxes(axh);
+ylim([-200 1000]);
+
+% corss condition plot 
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([-200 1000]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+% legend(lnh, {'640N/m', '320N/m', '160N/m'});
+legend(lnh, {'2.5cm', '5.0cm', '7.5cm'});
+ylabel('stiffness (N/m)');
+% linkaxes(axh(:), 'xy');
+title('stiffness cross conditions (subject)');  
+%% a question needs to be answer (adapt code here)... The code answer 2nd of these questions
+% damping (viscosity) measurement here, use the definition dF/dv
+% 1. use the x and f, do the dF/dx to show how the stiffness works here 
+% 2. use a, v and f, do the dF/dv show how the damping works here 
+
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoD_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+        psudoD_mat = zeros(7,7); % 
+        for pi = 1:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); 
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                v_avg = v_avg + v_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+            plot(t_grids, v_avg);
+            v_settled = nanmean(v_avg(t_grids>1.0 & t_grids<1.1));
+%             plot(t_grids, x_avg - x_avg(1));
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+            axh(7) = subplot(4,2,7);
+            plot(t_grids, f_avg ./ (v_avg - v_settled));
+%             ylim([0 2000]);
+ 
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+%                 x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+%                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+                v_shift = mean(celltmp1{ti,pi}.v(2, find(t>-0.1 & t<0)));
+                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+%                 plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; 
+                plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                
+                v_net = v_dat - v_avg; 
+                [~, pert_peak_idx] = max(abs(fp_dat));
+                v_net_tmp = v_net; v_net_tmp(1:pert_peak_idx) = 0;
+                [~, v_peak_idx] = max(v_net_tmp);    % only take after perturbation part 
+                damping_est = (f_dat - f_avg)./(v_dat - v_avg);
+                damping_est_pt = damping_est(v_peak_idx); 
+                psudoD_mat(pi-1,ti) = damping_est_pt;
+                
+                plot(t_grids(v_peak_idx), damping_est_pt, 'marker', 'o', 'markersize', 10); 
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+%                 plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+                plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+% %                 % Find and plot on the original data point 
+% %                 pert0idx  = find(abs(fp_dat) > 0.01);
+% %                 pert0idx = pert0idx(1);  
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+% %                 
+% %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+% %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+% %                 
+% %                 % Find and plot on the peak data point 
+% %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+% %                 
+% %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+% %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+% %                 
+% %                 psudoK = (f1-f0)/(x1-x0);
+% %                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            try 
+                linkaxes(axh(7:8), 'y'); 
+            catch 
+            end
+            % plot the subtracted position and force, in another
+            % figure/panel
+        
+        
+        % plot notes here: 
+%         yline(axh(7), 39.5, 'linewidth', 2);
+        try 
+%             yline(axh(8), 39.5, 'linewidth', 2); % no need to have
+%             reference cause I don't know the right value. 
+        catch
+        end
+        
+        xlim(axh(1), [-0.1 1.36]);
+        ylim(axh(7), [0 200]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(7), 'origin');
+        try
+            title(axh(8), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'df/dx');
+%         saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoD_cell{fce_i,dist_i} = psudoD_mat;
+%         close all;
+    end
+    
+end
+
+%%%%%%%%%%%%%%%%%
+figure(); 
+clear axh; 
+dat_mean_cc = zeros(3,3);
+dat_std_cc  = zeros(3,3);
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoD_Mat = psudoD_cell{fce_i,dist_i};
+        plot(psudoD_Mat); 
+        dat_mean_cc(fce_i,dist_i) = mean(psudoD_Mat(:));
+        dat_std_cc(fce_i,dist_i)  = std(psudoD_Mat(:));
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('damping estimation using dF/dv');
+linkaxes(axh);
+
+% better figure; 
+peak_time = [0.1:0.025:0.25]; % s... Need to change here! 
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = psudoD_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel('D (Ns/m)');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('damping estimation using dF/dv, Subject');
+linkaxes(axh);
+ylim([-10 100]);
+
+%%corss condition plot 
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([-10 100]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+% legend(lnh, {'640N/m', '320N/m', '160N/m'});
+legend(lnh, {'2.5cm', '5.0cm', '7.5cm'});
+ylabel('damping (Ns/m)');
+% linkaxes(axh(:), 'xy');
+title('damping cross conditions (subject)');  
+
+%% a question needs to be answer (adapt code here)... The code answer 2nd of these questions
+% 1. use the x and f, do the dF/dx to show how the stiffness works here 
+% 2. use a, v and f, do the dF/dv show how the damping works here
+% (acceleration in this code block)
+% inertia measurement (mass) here, use dF/da 
+
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+% psudoK_cell = cell(3,3);
+psudoM_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+%         psudoK_mat = zeros(5,7); % 
+        psudoM_mat = zeros(7,7);
+        for pi = 1:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            a_avg = zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); 
+                fc = 15;
+                fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                
+                
+                a_dat = [0 diff(v_filter)./diff(t_grids)]; % as no a_dat here, just get the diffrerentiation of the v
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, a_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                v_avg = v_avg + v_dat;
+                a_avg = a_avg + a_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            a_avg = a_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+%             plot(t_grids, v_avg);
+%             v_settled = nanmean(v_avg(t_grids>1.0 & t_grids<1.1));
+            plot(t_grids, a_avg);
+            a_settled = nanmean(a_avg(t_grids>1.0 & t_grids<1.1));
+%             plot(t_grids, x_avg - x_avg(1));
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+            axh(7) = subplot(4,2,7);
+            plot(t_grids, f_avg ./ (a_avg - a_settled));
+%             ylim([0 2000]);
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+%                 x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+%                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                 v_shift = mean(celltmp1{ti,pi}.v(2, find(t>-0.1 & t<0)));
+                a_shift = mean(diff(celltmp1{ti,pi}.v(2, find(t>-0.1 & t<0)))./diff(celltmp1{ti,pi}.t(find(t>-0.1 & t<0))));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+                plot(t(2:end), diff(celltmp1{ti,pi}.v(2,:))./diff(celltmp1{ti,pi}.t), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+%                 plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                plot(t_grids, a_dat - a_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; 
+%                 plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                f_net = f_dat - f_avg;
+                m_est = -(f_dat - f_avg)./(a_dat - a_avg);
+                m_est_idx = find(f_net == max(f_net));
+                psudoM_Mat(pi-1,ti) = m_est(m_est_idx);
+                plot(t_grids, m_est, 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+%                 plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+%                 plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+                plot(t_grids(pert_idx), a_dat(pert_idx) - a_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(8) = subplot(4,2,8); % mass estimation
+                plot(t_grids(m_est_idx), m_est(m_est_idx), 'marker', 'o', 'markerSize', 5);
+                
+% %                 % Find and plot on the original data point 
+% %                 pert0idx  = find(abs(fp_dat) > 0.01);
+% %                 pert0idx = pert0idx(1);  
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+% %                 
+% %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+% %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+% %                 
+% %                 % Find and plot on the peak data point 
+% %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+% %                 
+% %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+% %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+% %                 
+% %                 psudoK = (f1-f0)/(x1-x0);
+% %                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            try
+                yline(axh(8), 3.15, 'linewidth', 2);
+                linkaxes(axh(7:8), 'y');
+            catch
+            end
+            ylim(axh(7), [-20 20]);
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'df/dx');
+%         saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+%         psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+%         close all;
+        psudoM_cell{fce_i,dist_i} = psudoM_Mat;
+    end
+    
+end
+
+%% %%%%%%%%%%%%%%%
+figure(); 
+clear axh; 
+dat_mean_cc = zeros(3,3);  % cross condition
+dat_std_cc = zeros(3,3); 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoM_Mat = psudoM_cell{fce_i,dist_i};
+        dat_mean_cc(fce_i, dist_i) = mean(psudoM_Mat(:)); 
+        dat_std_cc(fce_i, dist_i) = std(psudoM_Mat(:)); 
+        plot(psudoM_Mat); 
+        xlabel('pert time'); 
+        ylabel('mass estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('mass estimation using dF/da');
+linkaxes(axh);
+
+
+peak_time = [0.1:0.025:0.25]; % s
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = psudoM_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel(' I (kg)');
+        title(['fce' num2str(F_list(fce_i)) ' K' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('Subject mass after release, dF/da');
+linkaxes(axh);
+ylim([0 20]);
+
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([0 10]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+legend(lnh, {'2.5cm', '5cm', '7.5cm'});
+ylabel('mass (kg)');
+% linkaxes(axh(:), 'xy');
+title('mass cross conditions (subject)');  
+
+
+
+%% For the spring measurement data   
+% plot: 4-row * 2 -col 
+% stiffness measurement here, use dF/dx
+clear; clc;
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+k_stfcoef = 13/20;
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+for fce_i = 1:3%1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+        psudoK_mat = zeros(5,7); % 
+        for pi = 1:6%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            axh(1) = subplot(3,1,1); hold on;                     % plot PF
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,1}.ox(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;  % this f_avg might not be right as it is 'centralized' after the release.
+            
+            % A TRICK TO UPDATE F_AVG HERE
+            if_favgupdate = 1;
+            if (if_favgupdate)
+                f_avg_br_pert = 0;  % the force before released.
+                t_tmp = 0;          % the number of trials
+                for tti = 1:size(celltmp1,1)
+                    if isempty(celltmp1{tti,pi}) || pi == 1
+                        continue;
+                    end
+                    idx_release = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_tmp = find(t>=-0.1 & t<0);
+                    f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
+                    t_tmp = t_tmp + 1;
+                    f_avg_br_pert = f_avg_br_pert + f_tmp;
+                    celltmp1{tti,pi}.tshift = t;
+                end
+                f_avg_br_pert = f_avg_br_pert/t_tmp;
+                f_avg_bfr = mean(f_avg(t_grids > -0.1 & t_grids<0));    % before release
+                f_diff = f_avg_br_pert - f_avg_bfr;
+                f_avg_upd = f_avg + f_diff;         % the before-release value are same now
+                
+                if (ifplot)
+                    clf;
+                    hold on;
+                    plot(t_grids, f_avg_upd, 'r.');
+                    plot(t_grids, f_avg, 'b.');
+                    for tti = 1:size(celltmp1,1)
+                        if isempty(celltmp1{tti,pi}) || pi == 1
+                            continue;
+                        end
+                        plot(celltmp1{tti,pi}.tshift, celltmp1{tti,pi}.f(2,:), 'Color', [0.5 0.5 0.5]);
+                    end
+                    
+                end
+                if (pi~=1)
+                    f_avg = f_avg_upd;
+                end
+            end
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+            plot(t_grids, x_avg);
+%             plot(t_grids, v_avg);
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+ 
+            axh(7) = subplot(4,2,7);
+            k_avgest = f_avg ./ (x_avg - x_avg(end));
+            plot(t_grids, -k_avgest);
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+                plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                     plot(t, celltmp1{ti,pi}.ox(2,:), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,pi}.ox(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+                plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; % subtracted dF/dx
+                plot(t_grids, -(f_dat - f_avg)./(x_dat - x_avg), 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                
+                k_est = -(f_dat - f_avg)./(x_dat - x_avg); 
+                x_net = x_dat - x_avg; 
+                [~, x_net_idx] = min(x_net); 
+                k_est_pt = k_est(x_net_idx); 
+                plot(t_grids(x_net_idx), k_est_pt, 'marker', 'o', 'markersize', 10); 
+                psudoK_mat(pi-1, ti) = k_est_pt;
+                
+
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+                plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                ylim([-0.05 0.04]);
+%                 plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+                scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+                scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+                scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+                scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+%                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'K (N/m)'); subplot(axh(7));ylim(+[0 K_list(dist_i)*1.5]);
+        yline(K_list(dist_i)*k_stfcoef);
+        yline(K_list(dist_i));
+        if (pi~=1)
+            ylabel(axh(8), 'K (N/m)'); subplot(axh(8));ylim(+[0 K_list(dist_i)*1.5]);
+            yline(K_list(dist_i)*k_stfcoef); yline(K_list(dist_i));
+        end
+%           saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness300ms' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+%         close all;
+    end
+    
+end
+
+%%%%%%%%%%%%%%%%%
+figure(); 
+clear axh; 
+dat_mean_cc = zeros(3,3);
+dat_std_cc  = zeros(3,3); 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoK_Mat = -psudoK_cell{fce_i,dist_i};
+        dat_mean_cc(fce_i, dist_i) = mean(psudoK_Mat(:));
+        dat_std_cc(fce_i ,dist_i)  = std(psudoK_Mat(:));
+        plot(psudoK_Mat); 
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('stiffness estimation using dF/dx, spring');
+linkaxes(axh);
+ylim([-200 1000]);
+
+
+%%%%%%%%%%%%%%%%%%%
+peak_time = [0.15:0.1:0.55]; % s
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = -psudoK_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel(' K (N/m)');
+        title(['fce' num2str(F_list(fce_i)) ' K' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('Spring stiffness after release, dF/dx');
+linkaxes(axh);
+ylim([-200 1000]);
+
+
+% corss condition plot 
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([-200 1000]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+legend(lnh, {'640N/m', '320N/m', '160N/m'});
+% legend(lnh, {'2.5cm', '5.0cm', '7.5cm'});
+ylabel('stiffness (N/m)');
+% linkaxes(axh(:), 'xy');
+title('stiffness cross conditions (spring)');  
+
+
+%% For the spring measurement data   
+% plot: 4-row * 2 -col 
+% damping measurement (viscosity) here, use dF/dv
+clear; clc;
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+k_stfcoef = 13/20;
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 2]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoD_cell = cell(3,3);
+for fce_i = 1:3%1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+        psudoD_mat = zeros(5,7); % 
+        for pi = 1:6%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            axh(1) = subplot(3,1,1); hold on;                     % plot PF
+%             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,1}.ox(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            f_avg = f_avg/cti;  % this f_avg might not be right as it is 'centralized' after the release.
+            
+            % A TRICK TO UPDATE F_AVG HERE
+            if_favgupdate = 1;
+            if (if_favgupdate)
+                f_avg_br_pert = 0;  % the force before released.
+                t_tmp = 0;          % the number of trials
+                for tti = 1:size(celltmp1,1)
+                    if isempty(celltmp1{tti,pi}) || pi == 1
+                        continue;
+                    end
+                    idx_release = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_tmp = find(t>=-0.1 & t<0);
+                    f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
+                    t_tmp = t_tmp + 1;
+                    f_avg_br_pert = f_avg_br_pert + f_tmp;
+                    celltmp1{tti,pi}.tshift = t;
+                end
+                f_avg_br_pert = f_avg_br_pert/t_tmp;
+                f_avg_bfr = mean(f_avg(t_grids > -0.1 & t_grids<0));    % before release
+                f_diff = f_avg_br_pert - f_avg_bfr;
+                f_avg_upd = f_avg + f_diff;         % the before-release value are same now
+                
+                if (ifplot)
+                    clf;
+                    hold on;
+                    plot(t_grids, f_avg_upd, 'r.');
+                    plot(t_grids, f_avg, 'b.');
+                    for tti = 1:size(celltmp1,1)
+                        if isempty(celltmp1{tti,pi}) || pi == 1
+                            continue;
+                        end
+                        plot(celltmp1{tti,pi}.tshift, celltmp1{tti,pi}.f(2,:), 'Color', [0.5 0.5 0.5]);
+                    end
+                    
+                end
+                if (pi~=1)
+                    f_avg = f_avg_upd;
+                end
+            end
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+%             plot(t_grids, x_avg);
+            plot(t_grids, v_avg);
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+ 
+            axh(7) = subplot(4,2,7);
+%             k_avgest = f_avg ./ (x_avg - x_avg(end));
+            d_avgest = f_avg ./ (v_avg - v_avg(end));
+            plot(t_grids, -d_avgest);
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+%                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                     plot(t, celltmp1{ti,pi}.ox(2,:), 'color', color_arr(4+dist_i,:));
+                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,pi}.ox(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+%                 plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+                plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; % subtracted dF/dx
+                plot(t_grids, -(f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                
+                d_est = (f_dat - f_avg)./(v_dat - v_avg); 
+                v_net = v_dat - v_avg; 
+                [~, v_net_idx] = max(v_net); 
+                d_est_pt = d_est(v_net_idx); 
+                plot(t_grids(v_net_idx), d_est_pt, 'marker', 'o', 'markersize', 10); 
+                psudoD_mat(pi-1, ti) = d_est_pt;
+                
+
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted v
+%                 plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+%                 ylim([-0.05 0.04]);
+                plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                
+                % Find and plot on the original data point 
+                pert0idx  = find(abs(fp_dat) > 0.01);
+                pert0idx = pert0idx(1);  
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+%                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+%                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                
+                x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                
+                % Find and plot on the peak data point 
+                [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                %axh(2) = subplot(3,2,2);  % subtracted Fp
+                %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                axh(4) = subplot(4,2,4); % subtracted x
+%                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                axh(6) = subplot(4,2,6); % subtracted F
+%                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                
+                x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                
+                psudoK = (f1-f0)/(x1-x0);
+%                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            
+            % plot the subtracted position and force, in another
+            % figure/panel
+        
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'K (N/m)'); subplot(axh(7));ylim(+[0 K_list(dist_i)*1.5]);
+%         yline(K_list(dist_i)*k_stfcoef);
+%         yline(K_list(dist_i));
+        if (pi~=1)
+            ylabel(axh(8), 'K (N/m)'); subplot(axh(8));ylim(+[0 K_list(dist_i)*1.5]);
+            yline(K_list(dist_i)*k_stfcoef); yline(K_list(dist_i));
+        end
+%           saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness300ms' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoD_cell{fce_i,dist_i} = -psudoD_mat;
+%         close all;
+    end
+    
+end
+
+%%%%%%%%%%%%%%%%%
+figure(); 
+clear axh; 
+dat_mean_cc = zeros(3,3);
+dat_std_cc = zeros(3,3);
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoD_Mat = -psudoD_cell{fce_i,dist_i};
+        plot(psudoD_Mat); 
+        dat_mean_cc(fce_i,dist_i) = mean(psudoD_Mat(:));
+        dat_std_cc(fce_i,dist_i)  = std(psudoD_Mat(:));
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('damping estimation using dF/dv, spring');
+linkaxes(axh);
+ylim([-10 10]);
+
+% better figure; 
+peak_time = [0.15:0.1:0.55]; % s
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = -psudoD_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' K' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('damping estimation using dF/dv, spring');
+linkaxes(axh);
+ylim([-10 100]);
+
+
+% corss condition plot 
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([-10 100]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+legend(lnh, {'640N/m', '320N/m', '160N/m'});
+% legend(lnh, {'2.5cm', '5.0cm', '7.5cm'});
+ylabel('damping (Ns/m)');
+% linkaxes(axh(:), 'xy');
+title('damping cross conditions (spring)');  
+
+%% a question needs to be answer (adapt code here)... The code answer 2nd of these questions
+% 1. use the x and f, do the dF/dx to show how the stiffness works here 
+% 2. use a, v and f, do the dF/dv show how the damping works here
+% (acceleration in this code block)
+% inertia measurement (mass) here, use dF/da 
+clear; clc; close all; 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+% psudoK_cell = cell(3,3);
+psudoM_cell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+%         psudoK_mat = zeros(5,12); % 
+%         psudoK_mat = zeros(5,7); % 
+        psudoM_mat = zeros(7,7);
+        for pi = 1:6%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            a_avg = zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); 
+                fc = 15;
+                fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                
+                
+                a_dat = [0 diff(v_filter)./diff(t_grids)]; % as no a_dat here, just get the diffrerentiation of the v
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, a_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                v_avg = v_avg + v_dat;
+                a_avg = a_avg + a_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+%                 % also, plot out the origin
+%                 axh(1) = subplot(3,2,1); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(3) = subplot(3,2,3); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+%                 axh(5) = subplot(3,2,5); hold on;
+%                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            a_avg = a_avg/cti;
+            f_avg = f_avg/cti;
+            
+            % plot out the avg
+%             fh(pi,2) = figure();
+            axh(1) = subplot(4,2,1); 
+            plot(t_grids, fp_avg);
+            axh(3) = subplot(4,2,3);
+%             plot(t_grids, v_avg);
+%             v_settled = nanmean(v_avg(t_grids>1.0 & t_grids<1.1));
+            plot(t_grids, a_avg);
+            a_settled = nanmean(a_avg(t_grids>1.0 & t_grids<1.1));
+%             plot(t_grids, x_avg - x_avg(1));
+            axh(5) = subplot(4,2,5);
+            plot(t_grids, f_avg);
+            axh(7) = subplot(4,2,7);
+            plot(t_grids, f_avg ./ (a_avg - a_settled));
+%             ylim([0 2000]);
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                subplot(axh(1)); hold on;
+                plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(3)); hold on;
+%                 x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+%                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+%                 v_shift = mean(celltmp1{ti,pi}.v(2, find(t>-0.1 & t<0)));
+                a_shift = mean(diff(celltmp1{ti,pi}.v(2, find(t>-0.1 & t<0)))./diff(celltmp1{ti,pi}.t(find(t>-0.1 & t<0))));
+%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:));
+                plot(t(2:end), diff(celltmp1{ti,pi}.v(2,:))./diff(celltmp1{ti,pi}.t), 'color', color_arr(4+dist_i,:));
+%                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                
+                subplot(axh(5)); hold on;
+                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                   
+                % plot the subtraction in other panels 
+                axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                plot(t_grids, fp_dat - fp_avg, 'color', color_arr(4+dist_i,:));
+                axh(4) = subplot(4,2,4); hold on;% subtracted x
+%                 plot(t_grids, x_dat - x_avg, 'color', color_arr(4+dist_i,:));
+%                 plot(t_grids, v_dat - v_avg, 'color', color_arr(4+dist_i,:));
+                plot(t_grids, a_dat - a_avg, 'color', color_arr(4+dist_i,:));
+                axh(6) = subplot(4,2,6); hold on;% subtracted F
+                plot(t_grids, f_dat - f_avg, 'color', color_arr(4+dist_i,:));
+                axh(8) = subplot(4,2,8); hold on; 
+%                 plot(t_grids, (f_dat - f_avg)./(v_dat - v_avg), 'color', color_arr(4+dist_i,:));
+                f_net = f_dat - f_avg;
+                a_net = a_dat - a_avg; 
+                [~, fp_peak_idx] = max(abs(fp_dat)); 
+                a_net_tmp = a_net; a_net_tmp(1:fp_peak_idx) = 0; 
+                % pick the first peak from the a_net_tmp 
+                [PKS,LOCS]= findpeaks(abs(a_net_tmp)); 
+                a_net_peakidx = LOCS(1); 
+                m_est = -(f_dat - f_avg)./(a_dat - a_avg);
+%                 m_est_idx = find(f_net == max(f_net));
+                m_est_idx = a_net_peakidx;
+                psudoM_Mat(pi-1,ti) = m_est(m_est_idx);
+                plot(t_grids, m_est, 'color', color_arr(4+dist_i,:));
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation 
+                pert_idx = find(abs(fp_dat) > 0.5); 
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids)); 
+                % plot out the perturbed position 
+                axh(2) = subplot(4,2,2);  % subtracted Fp
+                plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(4) = subplot(4,2,4); % subtracted x
+%                 plot(t_grids(pert_idx), x_dat(pert_idx) - x_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+%                 plot(t_grids(pert_idx), v_dat(pert_idx) - v_avg(pert_idx),...
+%                     'color', color_arr(4+dist_i,:), ...
+%                     'LineWidth', 2);
+                plot(t_grids(pert_idx), a_dat(pert_idx) - a_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(6) = subplot(4,2,6); % subtracted F
+                plot(t_grids(pert_idx), f_dat(pert_idx) - f_avg(pert_idx),...
+                    'color', color_arr(4+dist_i,:), ...
+                    'LineWidth', 2);
+                axh(8) = subplot(4,2,8); % mass estimation
+                plot(t_grids(m_est_idx), m_est(m_est_idx), 'marker', 'o', 'markerSize', 5);
+                
+% %                 % Find and plot on the original data point 
+% %                 pert0idx  = find(abs(fp_dat) > 0.01);
+% %                 pert0idx = pert0idx(1);  
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+% %                 
+% %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+% %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+% %                 
+% %                 % Find and plot on the peak data point 
+% %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+% %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+% %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+% %                 axh(4) = subplot(3,2,4); % subtracted x
+% %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+% %                 axh(6) = subplot(3,2,6); % subtracted F
+% %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+% %                 
+% %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+% %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+% %                 
+% %                 psudoK = (f1-f0)/(x1-x0);
+% %                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            linkaxes(axh, 'x');
+            try
+                yline(axh(8), 3.15, 'linewidth', 2);
+                linkaxes(axh(7:8), 'y');
+            catch
+            end
+            ylim(axh(7), [-20 20]);
+        
+        % plot notes here: 
+        xlim(axh(1), [-0.1 1.36]);
+        sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]); 
+        title(axh(1), 'origin');
+        try
+            title(axh(2), 'subtracted avg');
+        catch 
+        end
+        ylabel(axh(1), 'Fp');
+        ylabel(axh(3), 'x');
+        ylabel(axh(5), 'f');
+        ylabel(axh(7), 'df/dx');
+%         saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+%         psudoK_cell{fce_i,dist_i} = -psudoK_mat;
+%         close all;
+        psudoM_cell{fce_i,dist_i} = psudoM_Mat;
+    end
+    
+end
+
+%%%%%%%%%%%%%%%%%
+figure(); 
+clear axh;
+dat_mean_cc = zeros(3,3);
+dat_std_cc = zeros(3,3); 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoM_Mat = psudoM_cell{fce_i,dist_i};
+        plot(psudoM_Mat); 
+        dat_mean_cc(fce_i, dist_i) = mean(psudoM_Mat(:)); 
+        dat_std_cc(fce_i, dist_i)  = std(psudoM_Mat(:)); 
+        xlabel('pert time'); 
+        ylabel('mass estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('mass estimation using dF/da');
+linkaxes(axh);
+
+
+peak_time = [0.15:0.1:0.55]; % s
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+clear axh; 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        dat = psudoM_cell{fce_i,dist_i};
+        dat_mean = mean(dat,2);
+        dat_std = std(dat, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel(' I (kg)');
+        title(['fce' num2str(F_list(fce_i)) ' K' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('Spring mass after release, dF/da');
+linkaxes(axh, 'xy');
+ylim([0 10]);
+
+
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([0 10]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+legend(lnh, {'640N/m', '320N/m', '160N/m'});
+ylabel('mass (kg)');
+% linkaxes(axh(:), 'xy');
+title('mass cross conditions (spring)');  

@@ -93,10 +93,11 @@ end
 
 % plot a nice figure here 
 mass_offset = [200 500 700 1000 1500 1700];
-figure('unit', 'inch', 'position',[0 0 4 4]);
+fh = figure('unit', 'inch', 'position',[0 0 3 3]);
 plot(mass_offset, stiffness_measurements, '.', 'MarkerSize', 10); 
 xlim([0 2500]); ylim([120 320]);
 yline(157.6 -8.8); yline(157.6 + 8.8);
 xlabel('added mass (g)');
 ylabel('measured stiffness (N/m)');
 title('measured stiffness at different force');
+saveas(fh, '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/stiffnessMeasurement_OPTOTRAK.png')

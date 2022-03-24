@@ -313,7 +313,7 @@ classdef (HandleCompatible)SessionScan < handle
                                         3803:3812, 3856:3860, ...
                                         3873:3884, ...
                                         3906:3912, 3925:3937, ...
-                                        3987:3999];
+                                        3987:4002];
             % in these sessions, I wrongly calibrate the force, that the
             % collected force is biased for certain value. To deal with
             % this exception, the only way is to add the force value of ts7
@@ -1813,17 +1813,24 @@ classdef (HandleCompatible)SessionScan < handle
                 % 1. find the intersect of trials
                 [trial_its, idx_msg1, idx_bk1] = intersect(t_msg_trialidx{1}, bk_trials{1}); % FT
                 [trial_its, idx_msg2, idx_bk2] = intersect(t_msg_trialidx{2}, bk_trials{2}); % FT
-                [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
+                
 %                 [trial_its, idx_msg3, idx_bk3] = intersect(bk_trials{3}, bk_trials{3}); % OPTOTRAK
                 % assuem every FT sync signal has a WAM sync signal
                 
                 % 2. change to-aligned data into certain trials
                 t_interest{1} = t_interest{1}(idx_msg1);
                 t_interest{2} = t_interest{2}(idx_msg2);
-                t_interest{3} = t_interest{3}(idx_msg3);
+                
                 bk_time{1} = bk_time{1}(idx_bk1);
                 bk_time{2} = bk_time{2}(idx_bk2);
-                bk_time{3} = bk_time{3}(idx_bk3);
+                
+                if_OPT = 0;
+                if (length(bk_trials)>=3)
+                    if_OPT = 1;
+                    [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
+                    t_interest{3} = t_interest{3}(idx_msg3);
+                    bk_time{3} = bk_time{3}(idx_bk3);
+                end
                 
                 
             else % old way to deal with the two message do not have the same length problem
@@ -1842,8 +1849,13 @@ classdef (HandleCompatible)SessionScan < handle
                 hold on;
                 plot(bk_time{1}, t_interest{1} - t_interest{1}(1), 'r*'); 
                 plot(bk_time{2}, t_interest{2} - t_interest{2}(1), 'b*');
-                plot(bk_time{3}, t_interest{3} - t_interest{3}(1), 'g*');
-                legend('FT', 'WAM', 'OPTOTRAK');
+                if (if_OPT)
+                    plot(bk_time{3}, t_interest{3} - t_interest{3}(1), 'g*');
+                    legend('FT', 'WAM', 'OPTOTRAK');
+                else 
+                    legend('FT', 'WAM');
+                end
+                
                 xlabel('BK time');
                 ylabel('each computer time (shifted)');
             end
@@ -1914,7 +1926,7 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             ifplot = 1;
-            if (ifplot)
+            if (ifplot && if_OPT)
                 clf; 
                 hold on;
                 plot(t_interest{3}, bk_time{3}, 'b*');

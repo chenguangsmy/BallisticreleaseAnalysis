@@ -87,8 +87,10 @@ save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityChe
 % Pile the data up into a matrix 
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/datatmp/Unperturbeddat.mat', 'dataMat');
 Dat_x = [];
-for fce_i = 1:3
-    for dist_i = 1:3
+% for fce_i = 1:3
+%     for dist_i = 1:3
+for fce_i = 1
+    for dist_i = 1
         dat_x = dataMat{fce_i,dist_i}.v;
         Dat_x = [Dat_x; dat_x];
     end
@@ -109,8 +111,10 @@ plot(score(:,1), score(:,2), '.');
 Dat_x = [];
 Dat_v = [];
 Dat_f = [];
-for fce_i = 1:3
-    for dist_i = 1:3
+% for fce_i = 1:3
+%     for dist_i = 1:3
+for fce_i = 1
+    for dist_i = 1
         dat_x = dataMat{fce_i,dist_i}.x;
         dat_v = dataMat{fce_i,dist_i}.v;
         dat_f = dataMat{fce_i,dist_i}.f;
@@ -127,9 +131,103 @@ subplot(1,3,3); plot(Dat_f');
 figure(2); % do the z-center 
 Dat_x0 = Dat_x - mean(Dat_x);
 Dat_x1 = Dat_x0./(ones(size(Dat_x0,1), 1) * std(Dat_x0));
+Dat_x_mean = mean(Dat_x); 
+Dat_x_std = std(Dat_x0);
+plot(Dat_x1');
 % Perform the data into this matrix 
+[coeff,score,latent] = pca(Dat_x1);
 
 % visualize its distribution use dimention reduction 
+plot(score(:,1), score(:,2), '.');
 
+% given a part of one trial, predict the other part of this trial using existing data
+% should I use all the trials or only the top 
+%% Assume Once we have a new trial, when no perturbation exists, 
 
-% given a part of one trial, predict the other trials using existing data
+% 1. Have the mean-subtracted & z-scored. 
+for trial_i = 1:50
+x_tmp = Dat_x(trial_i,:);
+x_tmp_z = (x_tmp - Dat_x_mean)./Dat_x_std;
+
+% 2. Do the regression on the top PCs, and get the prediction 
+% y = b1*x1 + b2*x2 + b3*x3 + b4*x4 + e; 
+% x_tmp_z_est = [b1, b2, b3, b4] * coeff(:,1:4)';
+y = x_tmp_z; 
+X = coeff(:,1:4)';
+b = y * X' * inv(X * X');
+
+% 3. re-construct the data using mean and std
+x_tmp_z_est = b*X;
+x_tmp_est = x_tmp_z_est .* Dat_x_std + Dat_x_mean;
+figure(); hold on;
+plot(x_tmp, 'b.');
+plot(x_tmp_est, 'r.');
+end
+
+%% Assume Once we have a new trial, when perturbation exists, (the data was blocked here)
+% block-index
+% Should be a certain time period and (even afterwards) 
+% Use PCA coefficients data to do the estimation
+t = 0:0.002:1;
+t_block = [0.35 0.65];
+% t_block_idx = t>t_block(1) & t<t_block(2);
+t_block_idx = t>t_block(1);
+t_unblock_idx = ~t_block_idx;
+% 1. Have the mean-subtracted & z-scored.
+for trial_i = 1:50
+    x_tmp = Dat_x(trial_i,:);
+    x_tmp_z = (x_tmp - Dat_x_mean)./Dat_x_std;
+    
+    % 2. Do the regression on the top PCs, and get the prediction
+    % y = b1*x1 + b2*x2 + b3*x3 + b4*x4 + e;
+    % x_tmp_z_est = [b1, b2, b3, b4] * coeff(:,1:4)';
+    y = x_tmp_z(t_unblock_idx);
+    X = coeff(:,1:4)';
+    X1 = coeff(t_unblock_idx,1:4)';
+    b = y * X1' * inv(X1 * X1');
+    
+    % 3. re-construct the data using mean and std
+    x_tmp_z_est = b*X;
+    x_tmp_est = x_tmp_z_est .* Dat_x_std + Dat_x_mean;
+    figure(); hold on;
+    plot(x_tmp, 'b.');
+    plot(x_tmp_est, 'r.');
+end
+
+%% Assume Once we have a new trial, when perturbation exists, (the data was blocked here)
+% block-index
+% Should be a certain time period and (even afterwards) 
+% Use other trials data (autoregression) to do the estimation
+t = 0:0.002:1;
+t_block = [0.35 0.65];
+% t_block_idx = t>t_block(1) & t<t_block(2); 
+t_block_idx = t>t_block(1); 
+t_unblock_idx = ~t_block_idx;
+% 1. Have the mean-subtracted & z-scored. 
+
+Dat_x0 = Dat_x - mean(Dat_x);
+Dat_x1 = Dat_x0./(ones(size(Dat_x0,1), 1) * std(Dat_x0));
+Dat_x_mean = mean(Dat_x); 
+Dat_x_std = std(Dat_x0);
+
+for trial_i = (8+1):50
+    x_basis = Dat_x(trial_i+((-8):(-1)),:)' - (Dat_x_mean' * [1 1 1 1 1 1 1 1]);
+    x_tmp = Dat_x(trial_i,:) - Dat_x_mean;
+    
+    % 2. Do the regression on the top PCs, and get the prediction
+    % y = b1*x1 + b2*x2 + b3*x3 + b4*x4 + e;
+    % x_tmp_z_est = [b1, b2, b3, b4] * coeff(:,1:4)';
+    y = x_tmp(t_unblock_idx);
+    X = x_basis';
+    X1 = x_basis(t_unblock_idx,:)';
+    b = y * X1' * inv(X1 * X1');
+    
+    % 3. re-construct the data using mean and std
+    x_tmp_est = b*X;
+    figure(); hold on;
+    plot(x_tmp + Dat_x_mean, 'b.');
+    plot(x_tmp_est + Dat_x_mean, 'r.');
+end
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% start from a dynamic model.  

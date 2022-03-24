@@ -6,14 +6,15 @@
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3471_3474.mat', 'data')  % Chenguang test it with "blind" feedback 
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3480_3482.mat', 'data')
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3334_3336.mat', 'data')  % springs
-%load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3334_3344.mat', 'data')
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3334_3344.mat', 'data')
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3334_3344_alter.mat', 'data')
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3431_3440.mat','data') %himanshu with 6D data 
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3353_3417.mat','data') % chenguang did with 6D data
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3353_3369', 'data') % chenguang did 4 directions data, less sessions
 %load('data/processedData/ss3345.mat', 'data')
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_4subj_fine.mat', 'data') % all subjects
 Data = data;
-Data = data(1,4,:,:,:,:)
+% Data = data(1,4,:,:,:,:)
 %Data = reshape(data(1,3,2,:,:,:), 1, 1, 3, 15, 3);
 tar_ALL = [0.025 0.05, 0.075];
 Freq = 500;

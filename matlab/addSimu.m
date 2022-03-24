@@ -1117,3 +1117,266 @@ for ploti = 1:6%5
     ylabel('vel (m/s)');
 
 end  
+
+%% % plot the gaussian perturbation, both origin and the subtraction over un-perturbed, plot the subtraction overlaped
+
+figure();
+coli = 1;
+for ploti = 1:6%5
+% for ploti = 1
+%    axhf(ploti) = figure(ploti); hold on;
+    
+    %simtmp = simout{ploti};       %simulation results
+    simtmp = simout{1}(ploti);       %simulation results
+    
+    axh(1) = subplot(3,2,1); title('force');    hold on;
+    axh(3) = subplot(3,2,3); title('position'); hold on;
+    axh(5) = subplot(3,2,5); title('velocity'); hold on; %title('dF / dx');  hold on;
+    axh(2) = subplot(3,2,2); title('force subtraction'); hold on;
+    axh(4) = subplot(3,2,4); title('position subtraction'); hold on;
+    axh(6) = subplot(3,2,6); title('velocity subtraction'); hold on;
+    
+    % in one plot
+    
+    
+        pos = simtmp(1).pos.Data;
+        postime= simtmp(1).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simtmp(1).vel.Data;
+        time = simtmp(1).vel.Time - 4; % 1 for pert, 4 for release
+        
+        fce = simtmp(1).fce.Data;
+        timeF= simtmp(1).fce.Time;
+        timepert_idx = find((simtmp(1).fce.Data - simout{1}(1).fce.Data) ~=0);
+        if isempty(timepert_idx)
+            timepert_idx = 1;
+        else
+            timepert_idx = timepert_idx(1);
+        end
+        
+        plot(axh(1), time, fce, 'color', colors(coli,:));
+        legend_arr{i} = ['M_r/(M_s+M_r)=' num2str(mass_list(i)) ];
+        plot(axh(3), time, pos, 'color', colors(coli,:));
+        
+        %df_dx = (fce - force_list) ./ (pos - pos0);
+        %plot(axh(3), time, df_dx, 'color', colors(i,:));
+        plot(axh(5), time, vel, 'color', colors(coli,:));
+    
+    % in one plot
+        simtmp_norm = simout{1}(1);       %simulation results
+        pos_nominal = simtmp_norm(1).pos.Data;
+%         pos = simtmp(1).pos.Data;
+        pos = simout{1}(ploti).pos.Data;
+%         postime= simtmp_norm(1).tout;
+        postime= simtmp_norm(1).tout;
+        posidx0 = postime>0.5 & postime<0.8;
+        pos0= mean(pos_nominal(posidx));
+%         vel_nominal = simtmp_norm(1).vel.Data;
+%         vel = simtmp(1).vel.Data;
+        vel = simout{1}(ploti).vel.Data;
+        time = simtmp_norm(i).vel.Time - 4; % 1 for pert, 4 for release
+        fce_nominal = simtmp_norm(1).fce.Data;
+%         fce = simtmp(1).fce.Data;
+        fce = simout{1}(ploti).fce.Data;
+        timeF= simtmp(1).fce.Time;
+        
+%         plot(axh(2), time - time(timepert_idx), fce - fce_nominal, 'color', colors(coli,:));
+        plot(axh(2), time - 0, fce - fce_nominal, 'color', colors(coli,:));
+        legend_arr{i} = ['M_r/(M_s+M_r)=' num2str(mass_list(i)) ];
+%         plot(axh(4), time- time(timepert_idx), pos - pos_nominal, 'color', colors(coli,:));
+        plot(axh(4), time - 0, pos - pos_nominal, 'color', colors(coli,:));
+%         plot(axh(6), time- time(timepert_idx), vel - vel_nominal, 'color', colors(coli,:));   
+        plot(axh(6), time - 0, vel - vel_nominal, 'color', colors(coli,:));   
+    
+    linkaxes(axh, 'x');
+    %legend(legend_arr);
+    subplot(axh(1));
+%     ylim([10, 30]); % force
+%     xlim([-3.5, -1]);
+    %yticks([-3:5]*4);
+    ylabel('censored force (N)')
+    %xlabel('time at movement (s)');
+    title('Force');
+    set(gca, 'Ygrid', 'on');
+    subplot(axh(2));
+%     ylim([-5, 20]*1e-3);
+    ylabel('censored position (m)');
+    subplot(axh(3));
+    %xlim([-3.01 -2.99]);
+    %ylim([-600, 0]);
+    %ylabel('\DeltaF / \Delta x (N/m)');
+    ylabel('vel (m/s)');
+
+        coli = coli + 1;
+end  
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%% A NEWER SIMULATION
+% simulate with translational friction: columnb friction & Viscus friction
+%% simulate with a shorter gaussian step perturbation, trying perturb during motion
+% gaussian wave 
+freq = 500;
+dur = 8;
+
+mu = 0.5;
+sigma = 0.04;
+% mag_int = 2.5;
+mag_int = 1;
+t = 0:(1/freq):1;
+pert = -(mag_int/(sigma*sqrt(2*pi)))*exp(-(t-mu).^2/(2*sigma^2));
+pert = pert/max(abs(pert)) * 12; 
+pert = pert(pert~=0);
+plot(t,pert); 
+% [~,ia] = max(pert);
+% spert(ia:end) = max(pert);
+
+
+% generate time sequence, make pulse during movement: 
+% peak at 4.2s, 4.4s, 4.6s, 4.8s and 5.0s
+% pert_t_list = 4.2:0.2:5;
+pert_t_list = [4.00 4.20:0.2:5.00];
+for perti = 1:6
+    pert_t = pert_t_list(perti);
+%     pert_t = 1;
+    t_all = 0:(1/freq):dur;
+    datavals = zeros(size(t_all));
+    pert_peak_idx = find(abs(t_all - pert_t) < 1e-10);
+    
+    pert_stt_idx = pert_peak_idx - floor(length(pert)/2);
+    pert_edn_idx = pert_peak_idx + (length(pert) - floor(length(pert)/2)) - 1;
+    datavals(pert_stt_idx:pert_edn_idx) = pert;
+    if(perti == 1)
+        datavals(pert_stt_idx:pert_edn_idx) = pert*0;
+    end
+    stim_ts = timeseries(datavals(1:end-1),t_all(1:end-1));
+    ifplot = 1;
+    if (ifplot)
+        hold on;
+        plot(t_all, datavals);
+    end
+
+
+% generate perturbed data
+force_list = [20];
+% spring_list = [ 320 ]; % N/m
+% damping_list = [10:10:50]; % Ns/m
+% damping_list = [10.0000   14.1421   17.3205   20.0000   22.3607]; % critical damping
+damping_list = [10.0000   14.1421   17.3205   20.0000   22.3607]/10; % critical damping
+spring_list = [ 160 320 480 640 800]; % N/m
+% damping_list = 10;
+mass_list = 1.6; % cause the mass of the robot end+FT is 1.6kg
+k0 = 300;
+colors = colormap('lines');
+stiffness0 = 300; % robot stiffness
+x0r = force_list(1) / stiffness0;
+% for i = 1:5
+    i = 2;  % use 320N/m spring here
+    m1 = 1/2 * mass_list(1); % fixed portion of maxx 
+    m2 = 1/2 * mass_list(1);
+    
+    fce = force_list(1);
+    dist = fce/spring_list(i);
+    x0 = dist;
+    stiffness = spring_list(i);
+   % damping = 20;
+%     damping = damping_list(i);
+    damping = 0;    % assume no damping
+    xr0 = fce/stiffness0;
+    simout{1}(perti)=sim('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/ballisticReleaseSimu/ballisticRelease_GaussianPerte_Addfriction.slx',...
+            'FixedStep','0.0002');  
+% end
+end
+
+
+% % SHOW OUT the result of the simulation contains translational friction
+
+figure();
+coli = 1;
+for ploti = 1:6%5
+% for ploti = 1
+%    axhf(ploti) = figure(ploti); hold on;
+    
+    %simtmp = simout{ploti};       %simulation results
+    simtmp = simout{1}(ploti);       %simulation results
+    
+    axh(1) = subplot(3,2,1); title('force');    hold on;
+    axh(3) = subplot(3,2,3); title('position'); hold on;
+    axh(5) = subplot(3,2,5); title('velocity'); hold on; %title('dF / dx');  hold on;
+    axh(2) = subplot(3,2,2); title('force subtraction'); hold on;
+    axh(4) = subplot(3,2,4); title('position subtraction'); hold on;
+    axh(6) = subplot(3,2,6); title('velocity subtraction'); hold on;
+    
+    % in one plot
+    
+    
+        pos = simtmp(1).pos.Data;
+        postime= simtmp(1).tout;
+        posidx = postime>0.5 & postime<0.8;
+        pos0= mean(pos(posidx));
+        vel = simtmp(1).vel.Data;
+        time = simtmp(1).vel.Time - 4; % 1 for pert, 4 for release
+        
+        fce = simtmp(1).fce.Data;
+        timeF= simtmp(1).fce.Time;
+        timepert_idx = find((simtmp(1).fce.Data - simout{1}(1).fce.Data) ~=0);
+        if isempty(timepert_idx)
+            timepert_idx = 1;
+        else
+            timepert_idx = timepert_idx(1);
+        end
+        
+        plot(axh(1), time, fce, 'color', colors(coli,:));
+        legend_arr{i} = ['M_r/(M_s+M_r)=' num2str(mass_list(1)) ];
+        plot(axh(3), time, pos, 'color', colors(coli,:));
+        
+        %df_dx = (fce - force_list) ./ (pos - pos0);
+        %plot(axh(3), time, df_dx, 'color', colors(i,:));
+        plot(axh(5), time, vel, 'color', colors(coli,:));
+    
+    % in one plot
+        simtmp_norm = simout{1}(1);       %simulation results
+        pos_nominal = simtmp_norm(1).pos.Data;
+%         pos = simtmp(1).pos.Data;
+        pos = simout{1}(ploti).pos.Data;
+%         postime= simtmp_norm(1).tout;
+        postime= simtmp_norm(1).tout;
+        posidx0 = postime>0.5 & postime<0.8;
+        pos0= mean(pos_nominal(posidx));
+        vel_nominal = simtmp_norm(1).vel.Data;
+%         vel = simtmp(1).vel.Data;
+        vel = simout{1}(ploti).vel.Data;
+        time = simtmp_norm(1).vel.Time - 4; % 1 for pert, 4 for release
+        fce_nominal = simtmp_norm(1).fce.Data;
+%         fce = simtmp(1).fce.Data;
+        fce = simout{1}(ploti).fce.Data;
+        timeF= simtmp(1).fce.Time;
+        
+%         plot(axh(2), time - time(timepert_idx), fce - fce_nominal, 'color', colors(coli,:));
+        plot(axh(2), time - 0, fce - fce_nominal, 'color', colors(coli,:));
+        legend_arr{i} = ['M_r/(M_s+M_r)=' num2str(mass_list(1)) ];
+%         plot(axh(4), time- time(timepert_idx), pos - pos_nominal, 'color', colors(coli,:));
+        plot(axh(4), time - 0, pos - pos_nominal, 'color', colors(coli,:));
+%         plot(axh(6), time- time(timepert_idx), vel - vel_nominal, 'color', colors(coli,:));   
+        plot(axh(6), time - 0, vel - vel_nominal, 'color', colors(coli,:));   
+    
+    linkaxes(axh, 'x');
+    %legend(legend_arr);
+    subplot(axh(1));
+%     ylim([10, 30]); % force
+%     xlim([-3.5, -1]);
+    %yticks([-3:5]*4);
+    ylabel('censored force (N)')
+    %xlabel('time at movement (s)');
+    title('Force');
+    set(gca, 'Ygrid', 'on');
+    subplot(axh(2));
+%     ylim([-5, 20]*1e-3);
+    ylabel('censored position (m)');
+    subplot(axh(3));
+    %xlim([-3.01 -2.99]);
+    %ylim([-600, 0]);
+    %ylabel('\DeltaF / \Delta x (N/m)');
+    ylabel('vel (m/s)');
+
+        coli = coli + 1;
+end  
