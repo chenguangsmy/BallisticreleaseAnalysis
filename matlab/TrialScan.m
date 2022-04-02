@@ -1339,7 +1339,8 @@ classdef TrialScan
         % %%% package the data into format
         
         %dat.t = obj.data.t(idx);
-        dat.t = obj.data.t(idx);
+%         dat.t = obj.data.t(idx);
+        dat.t = obj.data.t_shift(idx);
         %wamt_org= dat.t;
         %t_const = min(dat.t):2e-3:max(dat.t);
         %dat.t = t_const;
@@ -1504,7 +1505,7 @@ classdef TrialScan
 %             plot(dat.t, dat.f);
 %%%%%%%%%%%%%% condition: abs(t(dat.Fp(2,:)==-12) - 0.2) < 0.02
         end
-        ifplot = 0; 
+        ifplot = 1; 
         if (isfield(dat, 'ox'))
         if (~isempty(dat.ox))
             

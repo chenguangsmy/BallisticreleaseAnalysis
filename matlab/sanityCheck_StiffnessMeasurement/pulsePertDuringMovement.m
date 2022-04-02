@@ -11,7 +11,7 @@
 % both perturbation at hold and at release 
 
 % 1. Check if release has been perturbed, whether it influence the movement
-clear all; close all; clc;
+clear; close all; clc;
 wamtmp = SessionScanWam(3766);
 
 figure();
@@ -26,22 +26,30 @@ linkaxes(axh, 'x');
 
 % did not see change here. What about overlay the velocities?  
 
+%%%%%%%%%% If the perturbation force magnitude influence the perturbation? 
 sstmp = SessionScan(3766);
 sstmp.plotTrialfyVelocityh()
 % is the force change according to the perturbation? 
 sstmp.plotTrialfyForceh()
 
-%% A session with both perturbed and non-perturbed trials ... 
-clear all; close all; clc;
+%% A session with both perturbed and unperturbed trials ... 
+clear; close all; clc;
 
 % cpDatarg2(3767);
+%%%%%%%%%% If there are difference between perturbed and unperturbed trials
+% This data compares the perturbation during holding on different force
+% perturbations. 
 sstmp = SessionScan(3767); 
 sstmp.plotTrialfyVelocityh()
 
 %% %%%%%%%%%%%%%%%% The first try of variate spring stiffness %%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                   PULSE DURING MOVEMENT FOR FIXED TIME                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % The same parameter with the other spring tests, and have perturb during
 % release (at the 100ms of the release). 
 % Export to the format so that James is able to work 
+% Export data, spring data 
 % 
 %  ss_num = [  3774        3768        3775
 %              3773        3770        3777
@@ -52,14 +60,14 @@ sstmp.plotTrialfyVelocityh()
  ss_num = [  3787        3782        3781
              3786        3783        3780
              3785        3784        3779];     % 18N,20N cases
-
+data = cell(1,3,3,15,3);
 pert_f = 24; % only use 6N perturb
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
-        ss_tmp = SessionScan(ss_num(frc_i, dist_i));
+        ss_tmp = SessionScan(ss_num(fce_i, dist_i));
         celltmp = ss_tmp.export_as_formatted_hybridss(1);
         
-        if (ss_num(frc_i, dist_i) == 3770)
+        if (ss_num(fce_i, dist_i) == 3770)
             celltmp(12:15,1) = celltmp(1:4,1);
         end
         
@@ -81,9 +89,9 @@ for frc_i = 1:size(ss_num,1) % actually force
         celltmp1(:,3) = celltmp(:,3);
         
         if trials_num>15
-            data(1,frc_i,dist_i,:,:) = celltmp1(1:15,:);
+            data(1,fce_i,dist_i,:,:) = celltmp1(1:15,:);
         else
-            data(1,frc_i,dist_i,1:trials_num,:) = celltmp1(:,:);
+            data(1,fce_i,dist_i,1:trials_num,:) = celltmp1(:,:);
         end
     end
 end
@@ -96,8 +104,12 @@ end
  %% tidy 4 force levels in one file 
  %...TO BE FINISHED
 % load('data/processedData/ss3784_3787.mat', 'data'); % 24N perturbation
+% looks like no need to plot all of them in one figure
  
-%% display them ...
+%% display:
+% The same -6N perturbation on a single time during release, see how the
+% response is. Dsiplay them in a 3-by-1 figure when each sprign curve shows
+% as a color.
 load('data/processedData/ss3768_3770.mat', 'data');  % 6N perturbation on x, 
 % load('data/processedData/ss3769_3770.mat', 'data');  % 12N perturbation on x, 
 % load('data/processedData/ss3779_3783.mat', 'data'); % 18N perturbation
@@ -116,7 +128,8 @@ p = size(Data, 5); % perturbation type
 idx_last = 200;
 if_subtract = 0;
 epoc_type = 2;
-plot_type = 4; % 1displacement
+plot_type = 3; % 1displacement
+axh = zeros(c,r);
 for ri = 1:r % subj
     for ci = 1:c % direction
         %axh(ri, ci) = subplot(r,c,c*(ri-1) + ci);grid on;hold on;
@@ -137,7 +150,7 @@ for ri = 1:r % subj
                                 Data{ri,ci,di,ti,li}.ts==4);  % pert at y
                             idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
                             if li == 1
-                                display('ERROR: should use li == 2!!!');
+                                disp('ERROR: should use li == 2!!!');
                             end
                         case 2
                             idx = find(Data{ri,ci,di,ti,li}.ts==5 | Data{ri,ci,di,ti,li}.ts==6);
@@ -212,6 +225,7 @@ sgtitle(titlestr);
 % 2. How to isolate the perturbation results from the original one?
 
 %% plot them in 3 figures 
+% Try to plot the various perturbation time on different spring levels 
 sstmp(1) = SessionScan(3793); 
 sstmp(2) = SessionScan(3794); 
 sstmp(3) = SessionScan(3795);
@@ -226,14 +240,12 @@ xlim([-0.1 1.0])
 
 %% plot them and tidy them up in format 
 ss_num = [   3793        3794        3795];
-            % 3793        3793        3793];
-            %3785        3784        3779];     % 18N,20N cases
 pert_f = 12; % only use 6N perturb
 pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
 data = cell(size(ss_num,1), size(ss_num,2), 5, pertT_num);
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
-        ss_tmp = SessionScan(ss_num(frc_i, dist_i));
+        ss_tmp = SessionScan(ss_num(fce_i, dist_i));
         celltmp = ss_tmp.export_as_formatted_hybridss(1);
         
         % detect the pulse time after cell tmp
@@ -284,19 +296,22 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(frc_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
+        data(fce_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
     end
 end
 save('data/processedData/ss3793_3795.mat', 'data'); % 12N perturbation, various time
  
- %% plot the curve in a 2-D form and draw the video  
+ %% plot the curve in a 2-D form and draw the video
+ % A video with figure as frames. Each figure has four rows, the first one
+ % as the perturbation force, the 2,3,4 are different spring velocity
+ % contains perturbed one and un-perturbed one. 
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
 color_arr = colormap('lines');
 pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
 close all;
 v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/changing_Pert.mp4', 'MPEG-4');
 v.FrameRate = 1;
-open(v);
+% open(v);
 for fce_i = 1:size(data,1)
     fh(fce_i) = figure();
     for pi = 1:pertT_num
@@ -304,8 +319,8 @@ for fce_i = 1:size(data,1)
        clf; hold on;
        axh(1) = subplot(4,1,1); hold on;                     % plot PF
        celltmp1 = reshape(data(fce_i,1,:,:),5,pertT_num);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
         for dist_i = 1:size(data,2) % for each  
@@ -316,8 +331,8 @@ for fce_i = 1:size(data,1)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
@@ -325,9 +340,9 @@ for fce_i = 1:size(data,1)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
-                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
+                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
             end
         end
         
@@ -340,11 +355,11 @@ for fce_i = 1:size(data,1)
         subplot(4,1,4); title('velocity'); ylabel('m/s');
         xlabel('time');
         frame = getframe(gcf);
-        writeVideo(v,frame);
+%         writeVideo(v,frame);
     end
     
 end
-close(v);
+% close(v);
 
  %%
  %%%%%%%%%%%% plot the curve in a 2-D form and draw the video, the velocity subtraction 
@@ -358,7 +373,7 @@ v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matla
 data = reshape(data(1,1,:,:,:,:),3,3,10,8);
 num_trials = 10;
 v.FrameRate = 1;
-open(v);
+% open(v);
 for fce_i = 1:size(data,1)
     fh(fce_i) = figure();
     for pi = 1:pertT_num
@@ -366,8 +381,8 @@ for fce_i = 1:size(data,1)
        clf; hold on;
        axh(1) = subplot(4,1,1); hold on;                     % plot PF
        celltmp1 = reshape(data(fce_i,1,:,:),num_trials,pertT_num);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
        
@@ -427,16 +442,25 @@ for fce_i = 1:size(data,1)
         subplot(4,1,4); title('\Delta velocity'); ylabel('m/s');
         xlabel('time');
         frame = getframe(gcf);
-        writeVideo(v,frame);
+%         writeVideo(v,frame);
     end
 end
-close(v);
+% close(v);
 
  %%
  %%%%%%%%%%%% plot the curve in a 3-D form and draw the video, the velocity SUBTRACTION 
+ clear
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
 % pertT_num = 1 + 10;     % 1 without pert, and 10 perturbation time
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
+% ???????????????????????????????????????????????????????????????????????
+% QUESTION. Why it has multiple line Clusters even in the same condition?
+% Why its clustered? does it because of the perturbation before release????
+% ANSWER. The cluster is because they are in the same force pulse, the
+% seperation is because they are in different force. This figure I plotted
+% different force values in the same figure
+% ???????????????????????????????????????????????????????????????????????
+
 data = reshape(data(1,:,:,:,:), size(data, [2 3 4 5]));pertT_num = size(data,4);
 
 color_arr = colormap('lines');
@@ -449,8 +473,8 @@ for dist_i = 1:size(data,2) % for each spring
         for pi = 1:pertT_num
             % 1. get the data tobe plotted
             celltmp1 = reshape(data(fce_i,1,:,:),size(data,3),pertT_num);
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             celltmp1 = reshape(data(fce_i,dist_i,:,:),size(data,3),pertT_num);
             
             % Get the un-perturbed avg velocity
@@ -519,8 +543,8 @@ for dist_i = 1:size(data,2) % for each spring
         for pi = 1:pertT_num
             % 1. get the data tobe plotted
             celltmp1 = reshape(data(fce_i,1,:,:),size(data,3),pertT_num);
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             celltmp1 = reshape(data(fce_i,dist_i,:,:),size(data,3),pertT_num);
             
             % Get the un-perturbed avg velocity
@@ -549,7 +573,7 @@ for dist_i = 1:size(data,2) % for each spring
                 idx_aftrelease = idx_aftrelease(1:sec*freq);  
                 
 %                 plot3 (-pi*ones(size(t_mean)), t_mean, celltmp1{ti,1}.v(2,idx_aftrelease) - v_mean,  'color', [0.5 0.5 0.5]);
-                plot3 (-pi*ones(size(t_mean)), t_mean, celltmp1{ti,1}.x(2,idx_aftrelease) - v_mean,  'color', [0.5 0.5 0.5]);
+                plot3 (-pi*ones(size(t_mean)), t_mean, celltmp1{ti,1}.v(2,idx_aftrelease) - v_mean,  'color', [0.5 0.5 0.5]);
                 
                 dat_mat_unpert(ti,:) = celltmp1{ti,1}.v(2,idx_aftrelease) - v_mean;
                 
@@ -583,6 +607,7 @@ end
 
 %% plot the curve out in a 3-D form
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3793_3795.mat', 'data');
+% The data has 10 multiple perturbation time. 
 color_arr = colormap('lines');
 close all;
 for fce_i = 1:size(data,1)
@@ -596,8 +621,8 @@ for fce_i = 1:size(data,1)
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
         
@@ -608,8 +633,8 @@ for fce_i = 1:size(data,1)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
             end
             % plot the perturbed one, -perturbed
@@ -621,8 +646,8 @@ for fce_i = 1:size(data,1)
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
                     % 4, for consistant with previous color 
             end
@@ -646,10 +671,12 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %cpDatarg2(3796);
 % rough look here 
+% A single perturbation after release condition with several repetitions. 
+% It gives an idea how the data looks like 
 
 
-% ss_tmp = SessionScan(3796);
-% ss_tmp.plotTrialfyVelocityh();
+ss_tmp = SessionScan(3796);
+ss_tmp.plotTrialfyVelocityh();
 celltmp = ss_tmp.export_as_formatted(1);
 
 
@@ -678,7 +705,7 @@ celltmp_varT = reshape(celltmp(1,1,:,2), 1, size(celltmp,3));
         
         % get the index of each delay interval 
         [pertT_unq, ia, ic] = unique(pertT);
-        pertT_unq
+%         pertT_unq
         idx_trialsPertT = cell(1, length(pertT_unq));
         trials_num_max = 0;
         for pi = 1:length(pertT_unq) 
@@ -699,15 +726,16 @@ celltmp_varT = reshape(celltmp(1,1,:,2), 1, size(celltmp,3));
                     celltmp_varT(idx_trialsPertT{pi});
             end
         end
-%         data(frc_i,dist_i,1:5,1:11) = celltmp1(1:5,1:11);
+        fce_i = 1
+        data(fce_i,dist_i,1:5,1:11) = celltmp1(1:5,1:11);
 
-%% plot out on different delay
+%%%%% plot out on different delay
 
 color_arr = colormap('lines');
 close all;
 v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/changing_Pert_subj.mp4', 'MPEG-4');
 v.FrameRate = 1;
-open(v);
+% open(v);
 % for fce_i = 1:size(data,1)
     for pi = 1:11%length(pertT_unq)
 %        fh(pi) = figure(); hold on;
@@ -717,8 +745,8 @@ open(v);
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
 %         for dist_i = 1:size(data,2) % for each spring 
@@ -729,8 +757,8 @@ open(v);
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
             end
             % plot the perturbed one, -perturbed
@@ -742,8 +770,8 @@ open(v);
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
             end
             %xlim([-0.1 1]); ylim([-0.8 1.0]);
@@ -756,11 +784,11 @@ open(v);
         subplot(2,1,2); title('velocity'); ylabel('m/s');
         xlabel('time');
         frame = getframe(gcf);
-        writeVideo(v,frame);
+%         writeVideo(v,frame);
     end
     
 % end
-close(v);
+% close(v);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%  Do a multiple target distance session 
@@ -831,6 +859,12 @@ data = data1;
 save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3800_3802.mat', 'data');
 
 %% plot out on different delay
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THIS DATA IS NOT GOOD, AS THE BEFORE-RELEASE DIFFERENCE IS TOO MUCH IN
+% SUBJECTS
+% THE MAJOR REASON COULD BECAUSE I PERTURB EVEN AFTER RELEASE. HENCE
+% SUBJECT HAS A PREPARATION (INCREASE STIFFNESS) DURING RELEASE.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3800_3802.mat', 'data');
 color_arr = colormap('lines');
 close all;
@@ -844,8 +878,8 @@ v.FrameRate = 1;
        clf; hold on;
        axh(1) = subplot(4,1,1); hold on;                     % plot PF
        celltmp1 = reshape(data(1,1,1,1,:,:),5,12);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
        for dist_i = 1:size(data,4) % for each spring 
@@ -856,8 +890,8 @@ v.FrameRate = 1;
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 
 
@@ -871,8 +905,8 @@ v.FrameRate = 1;
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
             end
 %             xlim([-0.1 1]); ylim([-0.8 1.0]);
@@ -910,8 +944,8 @@ for fce_i = 1:size(data,3)
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
         
@@ -922,8 +956,8 @@ for fce_i = 1:size(data,3)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
             end
@@ -936,8 +970,8 @@ for fce_i = 1:size(data,3)
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
                     % 4, for consistant with previous color 
@@ -968,8 +1002,8 @@ open(v);
        clf; hold on;
        axh(1) = subplot(4,1,1); hold on;                     % plot PF
        celltmp1 = reshape(data(1,1,1,1,:,:),5,12);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
        for dist_i = 1:size(data,4) % for each spring 
@@ -1038,7 +1072,7 @@ open(v);
 % end
 close(v);
 
-%% % plot the velocity difference (the current velocity - the unperturbed avg) velocity SUBTRACTION
+% % plot the velocity difference (the current velocity - the unperturbed avg) velocity SUBTRACTION
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3800_3802.mat', 'data');
 color_arr = colormap('lines');
 close all;
@@ -1053,8 +1087,8 @@ for dist_i = 1:size(data,4) % for each spring
 %        clf; hold on;
 %        axh(1) = subplot(4,1,1); hold on;                     % plot PF
        celltmp1 = reshape(data(1,1,1,1,:,:),5,12);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
        
@@ -1144,14 +1178,14 @@ ss_num = {  3814        3813        3803
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 12;     % 1 without pert, and 12 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num+1); % The stochastic ones are attached at the end 
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             
             % check the size of celltmptmp
@@ -1225,8 +1259,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
-        data(1,frc_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
+        data(1,fce_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3803_3812.mat', 'data'); % 12N perturbation, various time
@@ -1241,14 +1275,14 @@ ss_num = {  3825        [3826 3827]        3828
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 12;     % 1 without pert, and 12 perturbation time
 data = cell(1, 1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % NO stochastic ones
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
             celltmptmp = ss_tmp.export_as_formatted(1);
                 % dim: ifsucess - #targets - #trials #pert
             % check the size of celltmptmp
@@ -1322,8 +1356,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1, 1,frc_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
-        %data(1,frc_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1, 1,fce_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
+        %data(1,fce_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3818_3828.mat', 'data'); % 12N perturbation, various time
@@ -1353,8 +1387,8 @@ for pi = 1:(pertT_num-1)
        
        axh(1,fce_i) = subplot(4,3,fce_i); hold on;                     % plot PF
        celltmp1 = reshape(data(1,fce_i,1,:,:),5,pertT_num);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
         for dist_i = 1:size(data,3) % for each spring 
@@ -1365,20 +1399,20 @@ for pi = 1:(pertT_num-1)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
-%                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
-                plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
+                plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
+%                 plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
             for ti = 1:size(celltmp1,1)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
-%                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
-                plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+1,:));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
+                plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
+%                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+1,:));
             end
         end
     end
@@ -1419,8 +1453,8 @@ for pi = 1:(pertT_num)
        
        axh(1,fce_i) = subplot(4,3,fce_i); hold on;                     % plot PF
        celltmp1 = reshape(data(1,1,fce_i,1,:,:),num_trials,pertT_num);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
         for dist_i = 1:size(data,4) % for each target 
@@ -1431,8 +1465,8 @@ for pi = 1:(pertT_num)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
@@ -1440,8 +1474,8 @@ for pi = 1:(pertT_num)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
             end
         end
@@ -1481,14 +1515,14 @@ ss_num = {  3873,             3881,         3882
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num+1); % The stochastic ones are attached at the end 
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
@@ -1563,8 +1597,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
-        data(1,frc_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
+        data(1,fce_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3873_3884.mat', 'data'); % 12N perturbation, various time
@@ -1579,14 +1613,14 @@ ss_num = {  3888        [3885 3886]        3887
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 5;     % 1 without pert, and 12 perturbation time
 data = cell(1, 1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % NO stochastic ones
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
                 % dim: ifsucess - #targets - #trials #pert
             % check the size of celltmptmp
@@ -1660,23 +1694,23 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1, 1,frc_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
-        %data(1,frc_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1, 1,fce_i,dist_i,1:5,1:pertT_num) = celltmp1(1:5,1:pertT_num);
+        %data(1,fce_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3885_3894.mat', 'data'); % 12N perturbation, various time
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 1. Visualize for the spring data 
-% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data');
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3925_3937.mat', 'data');
 color_arr = colormap('lines');
 pertT_num = 1 + 5 + 1;     % 1 without pert, and 12 perturbation time, and 1 stoc pert
 close all;
 % v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/SpringTimeChangingPert_3-by-3_200ms.mp4', 'MPEG-4');
 v = VideoWriter('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/dataDescriptions/ss3925_3937/v_compare.mp4', 'MPEG-4');
 v.FrameRate = 1;
-open(v);
+% open(v);
 
 fh(1) = figure();
 hold on;
@@ -1687,8 +1721,8 @@ for pi = 1:(pertT_num-1)
        trial_num = size(data,4); % 4 for spring data, 5 for human data
        axh(1,fce_i) = subplot(4,3,fce_i); hold on;                     % plot PF
        celltmp1 = reshape(data(1,fce_i,1,:,:),trial_num,pertT_num);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
         for dist_i = 1:size(data,3) % for each spring 
@@ -1699,8 +1733,8 @@ for pi = 1:(pertT_num-1)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
             end
@@ -1709,8 +1743,8 @@ for pi = 1:(pertT_num-1)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
 %                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+1,:));
             end
@@ -1735,7 +1769,7 @@ for pi = 1:(pertT_num-1)
         frame = getframe(gcf);
 %         writeVideo(v,frame);
 end
-close(v);  
+% close(v);  
 
 %% plot in 3D curve 
 figure(); 
@@ -1756,8 +1790,8 @@ for fce_i = 1:size(data,2)
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
         
@@ -1769,8 +1803,8 @@ for fce_i = 1:size(data,2)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
             end
@@ -1783,8 +1817,8 @@ for fce_i = 1:size(data,2)
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
                     % 4, for consistant with previous color 
@@ -1817,9 +1851,9 @@ load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/proc
 dist_i = 1; % the 640N/m springs
 K_est_cell = cell(3,1);
 K_est_all = [];
-for frc_i = 1:3    
+for fce_i = 1:3    
     for trial_i = 1:5
-        dattmp = data{1,frc_i,dist_i,trial_i,6};
+        dattmp = data{1,fce_i,dist_i,trial_i,6};
         dattmp.f(2,:) = smooth(dattmp.f(2,:), 20);
         
         valid_id = find(dattmp.ts >= 5 & ...    % at move
@@ -1885,9 +1919,9 @@ load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/proc
 dist_i = 2; % the 320N/m springs
 % K_est_cell = cell(3,3);
 K_est_all = [];
-for frc_i = 1:3         % I guess only force 1, 15 N sorks for 
+for fce_i = 1:3         % I guess only force 1, 15 N sorks for 
     for trial_i = 1:5
-        dattmp = data{1,frc_i,dist_i,trial_i,6};
+        dattmp = data{1,fce_i,dist_i,trial_i,6};
         dattmp.f(2,:) = smooth(dattmp.f(2,:), 20);
         
         valid_id = find(dattmp.ts >= 5 & ...    % at move
@@ -1986,8 +2020,8 @@ for pi = 1:(pertT_num)
        
        axh(1,fce_i) = subplot(4,3,fce_i); hold on;                     % plot PF
        celltmp1 = reshape(data(1,1,fce_i,1,:,:),5,pertT_num);
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        % 2. plot the perturbed velocity in the following panels 
         for dist_i = 1:size(data,4) % for each target 
@@ -1998,8 +2032,8 @@ for pi = 1:(pertT_num)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
             end
             % 2.2 plot the perturbed one, -perturbed
@@ -2007,8 +2041,8 @@ for pi = 1:(pertT_num)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+1,:));
             end
         end
@@ -2050,8 +2084,8 @@ for fce_i = 1:size(data,3)
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
         
@@ -2062,8 +2096,8 @@ for fce_i = 1:size(data,3)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
 %                   plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
@@ -2077,8 +2111,8 @@ for fce_i = 1:size(data,3)
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
 %                   plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
@@ -2140,8 +2174,8 @@ for fce_i = 1:size(data,3)
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -2154,8 +2188,8 @@ for fce_i = 1:size(data,3)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -2209,8 +2243,8 @@ for fce_i = 1:size(data,3)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -2324,12 +2358,15 @@ end
  
 %% plot psudoK_cell
 figure('unit', 'inch', 'position', [0,0,12,12]); 
-t_ppeak = 50:50:600;
+% t_ppeak = 50:50:600;
+t_peak = 1:7; % not known the exact number 
 for fce_i = 1:3
     for dist_i = 1:3
         psudoK_mat = psudoK_cell{fce_i,dist_i};
         axh((fce_i-1)*3 + dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i); 
-        var_x = repmat(t_ppeak,5,1); var_y = psudoK_mat;
+%         var_x = repmat(t_ppeak,5,1); 
+        var_x = repmat(t_peak,10,1); 
+        var_y = psudoK_mat;
         scatter(var_x(:), var_y(:), 20, 'MarkerFaceColor', 'b');
         title([num2str(F_list(fce_i)) 'N ' num2str(K_list(dist_i)) 'cm ']);
         ylabel('?N/m?');
@@ -2354,14 +2391,14 @@ ss_num = {  3898    3896    3897
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
 data = cell(1, 1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % NO stochastic ones
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
                 % dim: ifsucess - #targets - #trials #pert
             % check the size of celltmptmp
@@ -2435,8 +2472,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1, 1,frc_i,dist_i,1:10,1:pertT_num) = celltmp1(1:10,1:pertT_num);
-        %data(1,frc_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1, 1,fce_i,dist_i,1:10,1:pertT_num) = celltmp1(1:10,1:pertT_num);
+        %data(1,fce_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3896_3905.mat', 'data'); % 12N perturbation, various time
@@ -2444,7 +2481,8 @@ save('data/processedData/ss3896_3905.mat', 'data'); % 12N perturbation, various 
 
 %% plot the psudoStiffness result 
 
-load('data/processedData/ss3896_3905.mat', 'data');
+load('data/processedData/ss3896_3905.mat', 'data'); 
+% two pulses
 figure(); 
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];
@@ -2466,8 +2504,8 @@ for fce_i = 1:size(data,3)
             
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -2480,8 +2518,8 @@ for fce_i = 1:size(data,3)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -2535,8 +2573,8 @@ for fce_i = 1:size(data,3)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -2694,14 +2732,14 @@ ss_num = {  3919    3920    3921
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
 data = cell(1, 1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % NO stochastic ones
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
                 % dim: ifsucess - #targets - #trials #pert
@@ -2775,9 +2813,9 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1, 1,frc_i,dist_i,1:10,1:pertT_num) = celltmp1(1:10,1:pertT_num);
+        data(1, 1,fce_i,dist_i,1:10,1:pertT_num) = celltmp1(1:10,1:pertT_num);
         
-        %data(1,frc_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        %data(1,fce_i,dist_i,1:5,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3913_3921.mat', 'data'); % 12N perturbation, various time
@@ -2795,7 +2833,9 @@ save('data/processedData/ss3913_3921.mat', 'data'); % 12N perturbation, various 
 
 %% plot in 3D curve 
 figure(); 
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data'); pt_num = size(data,5); % 7 perturbs
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3873_3884.mat', 'data'); 
+% The data has perturbation across time and some stochastic perturbations. 
+pt_num = size(data,5); % 7 perturbs
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];
 color_arr = colormap('lines');
@@ -2816,8 +2856,8 @@ for fce_i = 1:size(data,2)
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
         
@@ -2828,8 +2868,8 @@ for fce_i = 1:size(data,2)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
                   plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
@@ -2843,8 +2883,8 @@ for fce_i = 1:size(data,2)
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
                   plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
@@ -2880,9 +2920,11 @@ end
 % Sanity Check: does the right force being generated?
 %%%%%%%%%%%%%%%%%%%%
 %% cpDatarg2([3906 3907]);
+% a test for if the perturbed command force different with the censored
+% force 
 sstmp1 = SessionScan(3908); 
 sstmp2 = SessionScan(3907);
-%%
+%
 
 t_idx = find(sstmp1.data.Fp(2,:)~=0 & ...
     (sstmp1.data.ts==4 | sstmp1.data.ts==5));
@@ -2923,6 +2965,9 @@ title('pulse of 200ms');
 legend('command x', 'command y', 'command z', 'sensor x', 'sensor x', 'sensor z');
 
 %% plot by trials 
+% The force transducer/robot force generation sanity check showing robot
+% functions normally. ALghough the force transducer sensors the static
+% friction. 
 % sstmp = sstmp1;  
 % 3910, 3909, 3912, 3911
 ss_list = [3910, 3909, 3912, 3911];
@@ -2932,7 +2977,7 @@ for session_i = 1:4
     sstmp(session_i) = SessionScan(ss_list(session_i));
 end
 
-%%
+%
 % The force exertion and censored during hold 
 fh(1) = figure();
 color_arr = colormap('lines');
@@ -2981,6 +3026,7 @@ sgtitle('Force during hold');
 % sgtitle('during move');
 
 %% The force exertion and censored during hold and release 
+% Force exertion on hold is slightly bigger than release. 
 clear axh lnh
 fh(2) = figure('Position', [0 0 600 800]);
 for ts = 4:5
@@ -3111,14 +3157,14 @@ ss_num = {  3937,           3931,        3925
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num+1); % The stochastic ones are attached at the end 
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
@@ -3193,8 +3239,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:15,1:pertT_num) = celltmp1(1:15,1:pertT_num);
-        data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:15,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:15,1:pertT_num) = celltmp1(1:15,1:pertT_num);
+        data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:15,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3925_3937.mat', 'data'); % 12N perturbation, various time
@@ -3221,8 +3267,8 @@ for fce_i = 1:size(data,2)
 %        idx_release = find(celltmp1{1,pi+1}.ts == 5);
 %        t = celltmp1{1,pi+1}.t - celltmp1{1,pi+1}.t(idx_release(1));
 %        plot(t, celltmp1{1,pi+1}.Fp(2,:), 'color', color_arr(1,:));
-       idx_release = find(celltmp1{1,pi}.ts == 5);
-       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+       idx_pert = find(celltmp1{1,pi}.ts == 5);
+       t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 %        plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
        %xlim([-0.1 1]); 
         
@@ -3233,8 +3279,8 @@ for fce_i = 1:size(data,2)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
                   plot3(-pi*ones(size(t)),t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
@@ -3249,8 +3295,8 @@ for fce_i = 1:size(data,2)
 %                 idx_release = find(celltmp1{ti,pi+1}.ts == 5);
 %                 t = celltmp1{ti,pi+1}.t - celltmp1{ti,pi+1}.t(idx_release(1));
 %                 plot(t, celltmp1{ti,pi+1}.v(2,:), 'color', color_arr(dist_i+1,:));
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(4+dist_i,:)); 
 %                 plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:)); 
 %                   plot3(-pi*ones(size(t)),t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:)); 
@@ -3302,8 +3348,8 @@ for pi = 1:(pertT_num-1)
         trial_num = size(data,4); % 4 for spring data, 5 for human data
         axh(1,dist_i) = subplot(4,3,dist_i); hold on;                     % plot PF
         celltmp1 = reshape(data(1,1,dist_i,:,:),trial_num,pertT_num);
-        idx_release = find(celltmp1{1,pi}.ts == 5);
-        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        idx_pert = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
         plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
         ylabel('command force')
         % 2. plot the perturbed velocity in the following panels
@@ -3315,8 +3361,8 @@ for pi = 1:(pertT_num-1)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
 %                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5]);
 %                 plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
                  plot(t, celltmp1{ti,1}.x(2,:), 'color', [0.5 0.5 0.5]);
@@ -3326,8 +3372,8 @@ for pi = 1:(pertT_num-1)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
 %                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
 %                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+4,:));
                 plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(dist_i+4,:));
@@ -3382,14 +3428,14 @@ ss_num = {  [3938,3939],    3931,        3925
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % The stochastic ones are not attached at the end 
-for frc_i = 1%:size(ss_num,1) % actually force 
+for fce_i = 1%:size(ss_num,1) % actually force 
     for dist_i = 1%:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
@@ -3468,8 +3514,8 @@ for frc_i = 1%:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:8,1:pertT_num) = celltmp1(1:8,1:pertT_num);
-%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:8,1:pertT_num) = celltmp1(1:8,1:pertT_num);
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3938_3939.mat', 'data'); % 12N perturbation, various time
@@ -3497,21 +3543,21 @@ for si = 1:length(ss_num)
     disp(['ss' num2str(ss_num(si)) 'delay' num2str(idx)]);
 end
 
-    %%
+%% export data to the normal form
 ss_num = {  [3938,3939],    [3944,3945],        3949 
             3940,           3943,        [3947,3948]
-            3941,           3942,       3946} 
+            3941,           3942,       3946} ;
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % The stochastic ones are not attached at the end 
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % step perts
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
@@ -3590,11 +3636,238 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
-%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
+data_tmp = cell(1,1,3,3,7,8); 
+data_tmp(1,:,:,:,:,:) = data; 
+data = data_tmp;
 save('data/processedData/ss3938_3949.mat', 'data'); % 12N perturbation, various time
+
+%% Export the data to the form there are more un-perturbed trials 
+%% export data to the normal form
+ss_num = {  [3938,3939],    [3944,3945],        3949 
+            3940,           3943,        [3947,3948]
+            3941,           3942,       3946} ;
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num); % The stochastic ones are not attached at the end 
+for fce_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % step perts
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+%         celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        celltmp1 = cell(50, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:50,1) = celltmp(1:50,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,fce_i,dist_i,1:50,1:pertT_num) = celltmp1(1:50,1:pertT_num);
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+Data = cell(1,1,3,3,50,8);
+Data(1,:,:,:,:,:) = data; 
+data = Data; 
+size(data)
+save('data/processedData/ss3938_3949_allunpert.mat', 'data'); % 12N perturbation, various time
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Export data into a new form that each perturbed trial has its nearest
+% un-perturbed counterpart. 
+
+% EXPORT DATA USING ITS NEAREST NEIGHBOUR! 
+ss_num = {  [3938,3939],    [3944,3945],        3949 
+            3940,           3943,        [3947,3948]
+            3941,           3942,       3946} ;
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 7;     % 1 without pert, and 7 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 5, pertT_num,2); % The stochastic ones are not attached at the end 
+for fce_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % step perts
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,fce_i,dist_i,1:7,1:pertT_num,1) = celltmp1(1:7,1:pertT_num);
+        % get valid un-perturb trials
+        num_valTrial = 0;
+        for ti = 1:size(celltmp,1)
+            num_valTrial = num_valTrial + isfield(celltmp{ti,1}, 'x');
+        end
+        % find nearest neighor
+        for pi = 2:pertT_num
+            for ti = 1:7
+                trial_tmp = getNearestTrial(celltmp1(ti,pi),celltmp(1:num_valTrial,1));
+                if ~isempty(trial_tmp)
+                    data(1,fce_i,dist_i,ti,pi,2) = trial_tmp;
+                end
+            end
+        end
+        
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss3938_3949_tmp.mat', 'data'); % 12N perturbation, various time
+
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3630,14 +3903,14 @@ ss_num = {  [3992,3993],    3988,        3987
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 10, pertT_num); % The stochastic ones are not attached at the end 
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % stiffness levels
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
@@ -3716,8 +3989,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
-%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss3987_3999.mat', 'data'); % 12N perturbation, various time
@@ -3728,14 +4001,14 @@ ss_num = {  [4000, 4001, 4002]};
 pert_f = 12; % only use 12N pert
 pertT_num = 1 + 5;     % 1 without pert, and 5 perturbation time
 data = cell(1, size(ss_num,1), size(ss_num,2), 10, pertT_num); % The stochastic ones are not attached at the end 
-for frc_i = 1:size(ss_num,1) % actually force 
+for fce_i = 1:size(ss_num,1) % actually force 
     for dist_i = 1:size(ss_num,2) % stiffness levels
         % if multiple sessions in it 
 %         ss_tmp = SessionScan();
         celltmp = cell(200,3);
         cell_idx_from = [0 0 0];
-        for si = 1:length(ss_num{frc_i, dist_i})
-            ss_tmp = SessionScan(ss_num{frc_i, dist_i}(si));
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
 %             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
             celltmptmp = ss_tmp.export_as_formatted_hybridss();
             
@@ -3814,8 +4087,8 @@ for frc_i = 1:size(ss_num,1) % actually force
                     celltmp(idx_trialsPertT{pi},2);
             end
         end
-        data(1,frc_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
-%         data(1,frc_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+        data(1,fce_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
     end
 end
 save('data/processedData/ss4000_4002.mat', 'data'); % 12N perturbation, various time
@@ -3840,8 +4113,8 @@ for pi = 1:(pertT_num)
         trial_num = size(data,4); % 4 for spring data, 5 for human data
         axh(1,dist_i) = subplot(4,3,dist_i); hold on;                     % plot PF
         celltmp1 = reshape(data(1,1,dist_i,:,:),trial_num,pertT_num);
-        idx_release = find(celltmp1{1,pi}.ts == 5);
-        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        idx_pert = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
         plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
         ylabel('command force')
         % 2. plot the perturbed velocity in the following panels
@@ -3853,8 +4126,8 @@ for pi = 1:(pertT_num)
                 if isempty(celltmp1{ti,1})
                     continue;
                 end
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 plot(t, celltmp1{ti,1}.v(2,:), 'color', [0.5 0.5 0.5])
                 plot(t, celltmp1{ti,1}.ov(2,:), 'color', [0.5 0.5 0.5]);
 %                plot(t, celltmp1{ti,1}.f(2,:), 'color', [0.5 0.5 0.5]);
@@ -3866,8 +4139,8 @@ for pi = 1:(pertT_num)
                 if isempty(celltmp1{ti,pi}) || pi == 1
                     continue;
                 end
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 plot(t, celltmp1{ti,pi}.v(2,:), 'color', color_arr(dist_i+4,:));
                 plot(t, celltmp1{ti,pi}.ov(2,:), 'color', [1 1 1] - color_arr(dist_i+4,:));
 %                 plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(dist_i+4,:));
@@ -3933,8 +4206,8 @@ for fce_i = 3%1:size(data,2)
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -3948,8 +4221,8 @@ for fce_i = 3%1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -4000,8 +4273,8 @@ for fce_i = 3%1:size(data,2)
                     if isempty(celltmp1{tti,pi}) || pi == 1
                         continue;
                     end
-                    idx_release = find(celltmp1{tti,pi}.ts == 5);
-                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_pert = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_pert(1));
                     idx_tmp = find(t>=-0.1 & t<0);
                     f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
                     t_tmp = t_tmp + 1;
@@ -4047,8 +4320,8 @@ for fce_i = 3%1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -4203,8 +4476,8 @@ for fce_i = 1:3%1:size(data,2)
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -4218,8 +4491,8 @@ for fce_i = 1:3%1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -4271,8 +4544,8 @@ for fce_i = 1:3%1:size(data,2)
                     if isempty(celltmp1{tti,pi}) || pi == 1
                         continue;
                     end
-                    idx_release = find(celltmp1{tti,pi}.ts == 5);
-                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_pert = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_pert(1));
                     idx_tmp = find(t>=-0.1 & t<0);
                     f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
                     t_tmp = t_tmp + 1;
@@ -4321,8 +4594,8 @@ for fce_i = 1:3%1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -4477,8 +4750,8 @@ for fce_i = 1 %1:size(data,2)
              figure(fh1); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 
             % calculate the Unperturbed situation, x and f
             x_avg = zeros(1, length(t_grids));
@@ -4491,8 +4764,8 @@ for fce_i = 1 %1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -4534,8 +4807,8 @@ for fce_i = 1 %1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
@@ -4623,8 +4896,8 @@ for fce_i = 2 %1:size(data,2)
              figure(fh1); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             % calculate the Unperturbed situation, x and f
             x_avg = zeros(1, length(t_grids));
@@ -4637,8 +4910,8 @@ for fce_i = 2 %1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -4680,8 +4953,8 @@ for fce_i = 2 %1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
@@ -4776,6 +5049,7 @@ saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityChec
 % The left column, only plot the displacement (raw) 
 % The right column, only plot displacement difference 
 
+% explains why the same perturbation will yield differnet curve 
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
 F_list = [15, 20, 25];
 K_list = [640, 320, 160];
@@ -4793,8 +5067,8 @@ for fce_i = 2 %1:size(data,2)
              figure(fh1); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             % calculate the Unperturbed situation, x and f
             x_avg = zeros(1, length(t_grids));
@@ -4807,8 +5081,8 @@ for fce_i = 2 %1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -4850,8 +5124,8 @@ for fce_i = 2 %1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
@@ -4935,7 +5209,7 @@ saveas(fh1, 'sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/sanityChec
 
 
 
-%% Compare the displacement difference at different Velocity
+% Compare the displacement difference at different Velocity
 % Also, compare the condition where there is no release (left) and with
 % release (right) 
 % Arrange the displacement difference when there is release on the velocity
@@ -4963,8 +5237,8 @@ for fce_i = 1 %1:size(data,2)
              figure(fh1); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
 
             % calculate the Unperturbed situation, x and f
             x_avg = zeros(1, length(t_grids));
@@ -4977,8 +5251,8 @@ for fce_i = 1 %1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -5020,8 +5294,8 @@ for fce_i = 1 %1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
@@ -5114,8 +5388,8 @@ for fce_i = 2 %1:size(data,2)
              figure(fh1); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             % calculate the Unperturbed situation, x and f
             x_avg = zeros(1, length(t_grids));
@@ -5128,8 +5402,8 @@ for fce_i = 2 %1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -5171,8 +5445,8 @@ for fce_i = 2 %1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
@@ -5290,8 +5564,8 @@ for fce_i = 1:size(data,2)
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:8),10,8); % 1 no -ert and 5 pert
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -5304,8 +5578,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -5360,8 +5634,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -5518,8 +5792,8 @@ for fce_i = 1:size(data,2)
 %         fh(pi,1) = figure(); hold on;
         
         celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
-        idx_release = find(celltmp1{1,pi}.ts == 5);
-        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        idx_pert = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
         
         
         % calculate the Unperturbed situation, x and f
@@ -5533,8 +5807,8 @@ for fce_i = 1:size(data,2)
                 continue;
             end
             cti = cti + 1;
-            idx_release = find(celltmp1{ti,1}.ts == 5);
-            t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+            idx_pert = find(celltmp1{ti,1}.ts == 5);
+            t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
             idx_t = find(t>=t_interest(1) & t<=t_interest(2));
             length(idx_t)
             % intropolate (x, f, Fp) to t_grids
@@ -5653,14 +5927,15 @@ ylabel('mass (kg)');
 % linkaxes(axh(:), 'xy');
 title('mass cross conditions (subject)');  
 
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % The same measurement using the spring data
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3987_3999.mat', 'data');
 figure(); 
 F_list = [15, 20, 25];
 K_list = [640, 320, 160];
+fh_tmp = figure();
 color_arr = colormap('lines');
-close all;
+close(fh_tmp);
 t_interest = [-0.1 1.3]; % s, calculate average from here 
 freq = 500; 
 t_grids = t_interest(1) : 1/freq : t_interest(2);
@@ -5675,8 +5950,8 @@ for fce_i = 1:size(data,2)
 %         fh(pi,1) = figure(); hold on;
         
         celltmp1 = reshape(data(1,fce_i,dist_i,1:7,1:6),7,6); % 1 no -ert and 5 pert
-        idx_release = find(celltmp1{1,pi}.ts == 5);
-        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+        idx_pert = find(celltmp1{1,pi}.ts == 5);
+        t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
         
         
         % calculate the Unperturbed situation, x and f
@@ -5690,8 +5965,8 @@ for fce_i = 1:size(data,2)
                 continue;
             end
             cti = cti + 1;
-            idx_release = find(celltmp1{ti,1}.ts == 5);
-            t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+            idx_pert = find(celltmp1{ti,1}.ts == 5);
+            t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
             idx_t = find(t>=t_interest(1) & t<=t_interest(2));
             length(idx_t);
             % intropolate (x, f, Fp) to t_grids
@@ -5826,6 +6101,7 @@ t_interest = [-0.1 1.3]; % s, calculate average from here
 freq = 500; 
 t_grids = t_interest(1) : 1/freq : t_interest(2);
 psudoK_cell = cell(3,3);
+psudoK_vcell = cell(3,3); 
 % for fce_i = 1:size(data,3)
 %     for dist_i = 1:size(data,4) % for each spring
 for fce_i = 1:size(data,2)
@@ -5834,13 +6110,14 @@ for fce_i = 1:size(data,2)
         %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
         %         figure; hold on;
         psudoK_mat = zeros(7,7); % 
+        psudoK_velmat = zeros(7,7);
         for pi = 1:8%13%1:length(pertT_unq)
             fh(pi,1) = figure(); hold on;
             clear axh;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             
             % calculate the Unperturbed situation, x and f
@@ -5853,8 +6130,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -5919,8 +6196,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -5937,6 +6214,7 @@ for fce_i = 1:size(data,2)
 
                 fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    % 
                 x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     % 
                 f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
 %                 linkaxes(axh(1:3:5), 'x');
                 
@@ -5969,7 +6247,7 @@ for fce_i = 1:size(data,2)
                 k_est = -(f_dat - f_avg)./(x_dat - x_avg); 
                 k_est_pt = k_est(x_net_idx); 
                 psudoK_mat(pi-1,ti) = k_est_pt;
-                
+                psudoK_velmat(pi-1,ti) = v_dat(x_net_idx);
                 plot(t_grids(x_net_idx), k_est_pt, 'marker', 'o', 'markersize', 10); 
                 
                 % There will be a force and position peak at 0~0.4s after
@@ -6050,10 +6328,47 @@ for fce_i = 1:size(data,2)
 %          saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
         end
         psudoK_cell{fce_i,dist_i} = psudoK_mat;
+        psudoK_vcell{fce_i,dist_i} = psudoK_velmat;
 %         close all;
     end
     
 end
+%%%%%%%%%%%%%%%%%
+% compare if the stiffness measurement has the relationship with the velocity 
+markers_type = 'os*';
+fh = figure(); 
+subplot(1,2,1)
+hold on; 
+for fce_i = 1:3
+    for dist_i = 1:3 
+        k_list = psudoK_cell{fce_i,dist_i}(:);
+        v_list = psudoK_vcell{fce_i,dist_i}(:);
+        k_list(k_list==0) = nan;
+        v_list(k_list==0) = nan;
+        plot(v_list, k_list, ...
+            'linestyle', 'none', ...
+            'marker', markers_type(fce_i), 'markersize', 10, ...
+            'color', color_arr(dist_i + 4, :));
+    end
+end
+subplot(1,2,2)
+hold on; 
+for fce_i = 1:3
+    for dist_i = 1:3 
+        k_list = psudoK_cell{fce_i,dist_i}(:);
+        v_list = psudoK_vcell{fce_i,dist_i}(:);
+        k_list(k_list==0) = nan;
+        v_list(k_list==0) = nan;
+        plot(v_list, k_list, ...
+            'linestyle', 'none', ...
+            'marker', markers_type(fce_i), 'markersize', 10, ...
+            'color', color_arr(dist_i + 4, :));
+    end
+end
+legend({'15N2.5cm','15N5cm','15N7.5cm','20N2.5cm','20N5cm','20N7.5cm','25N2.5cm','25N5cm','25N7.5cm'});
+ylim([-100 1000])
+
+% try fitting only the bigger velocity ones.
 
 %%%%%%%%%%%%%%%%%
 figure(); 
@@ -6130,6 +6445,1268 @@ ylabel('stiffness (N/m)');
 % linkaxes(axh(:), 'xy');
 title('stiffness cross conditions (subject)');  
 
+%% use the x and f, do the dF/dx to show how the stiffness works here
+% Stiffness measurement using definition dF/dx, have 72 figures * 8 pannels
+% assume hand is only 3kg. 
+% The variant that take the subtract data to be the nearest point instead
+% of the average
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949_tmp.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+psudoK_vcell = cell(3,3); 
+psudoK_dynamic.xcell = cell(3,3);
+psudoK_dynamic.vcell = cell(3,3);
+psudoK_dynamic.acell = cell(3,3);
+psudoK_dynamic.fcell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+    % for fce_i = 3
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+        psudoK_mat = zeros(7,7); %
+        
+        psudoK_xmat = zeros(7,7);   % save values when x at negative peak
+        psudoK_vmat = zeros(7,7);
+        psudoK_amat = zeros(7,7);
+        psudoK_fmat = zeros(7,7);
+        for pi = 1:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            clear axh;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8,1),7,8); % 1 no -ert and 5 pert
+            celltmp2 = reshape(data(1,fce_i,dist_i,:,1:8,:),7,8,2); %
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+                %                 % also, plot out the origin
+                %                 axh(1) = subplot(3,2,1); hold on;
+                %                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+                %                 axh(3) = subplot(3,2,3); hold on;
+                %                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+                %                 axh(5) = subplot(3,2,5); hold on;
+                %                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            f_avg = f_avg/cti;
+            x_settled = nanmean(x_avg(t_grids>1.0 & t_grids<1.1));
+            % plot out the avg
+            %             fh(pi,2) = figure();
+            if (ifplot)
+                axh(1) = subplot(4,2,1);
+                plot(t_grids, fp_avg);
+                axh(3) = subplot(4,2,3);
+                plot(t_grids, x_avg);
+                %             plot(t_grids, x_avg - x_avg(1));
+                axh(5) = subplot(4,2,5);
+                plot(t_grids, f_avg);
+                axh(7) = subplot(4,2,7);
+                plot(t_grids, -f_avg ./ (x_avg - x_settled));
+            end
+            
+            % find the reference value
+            psudo_stiffness = -f_avg ./ (x_avg - x_settled);
+            psudo_stiffness0= mean(psudo_stiffness(t_grids<0));
+            psudo_stiffness1= psudo_stiffness0/3.62; % after relase, the number is corresponding to 3kg hand
+            yline(psudo_stiffness1, 'linewidth', 2);
+            %             ylim([0 2000]);
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp2,1)
+                if isempty(celltmp2{ti,pi,1}) || pi == 1
+                    continue;
+                end
+                
+                idx_pert = find(celltmp2{ti,pi,1}.ts == 5);
+                idx_release0 = find(celltmp2{ti,pi,2}.ts == 5); % use the unperturbed counterpart as 0
+                t = celltmp2{ti,pi,1}.t - celltmp2{ti,pi,1}.t(idx_pert(1));
+                t0 = celltmp2{ti,pi,2}.t - celltmp2{ti,pi,2}.t(idx_release0(1));
+                if(ifplot)
+                    subplot(axh(1)); hold on;
+                    plot(t, celltmp2{ti,pi,1}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                    plot(t0, celltmp2{ti,pi,2}.Fp(2,:), 'color', color_arr(4+dist_i,:)/2, 'LineStyle', '-');
+                    
+                    subplot(axh(3)); hold on;
+                    x_shift = mean(celltmp2{ti,pi,1}.x(2, find(t>-0.1 & t<0)));
+                    plot(t, celltmp2{ti,pi,1}.x(2,:), 'color', color_arr(4+dist_i,:));
+                    plot(t0,celltmp2{ti,pi,2}.x(2,:), 'color', color_arr(4+dist_i,:)/2, 'LineStyle', '-');
+                    %                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                    
+                    subplot(axh(5)); hold on;
+                    plot(t, celltmp2{ti,pi,1}.f(2,:), 'color', color_arr(4+dist_i,:));
+                    plot(t0, celltmp2{ti,pi,2}.f(2,:), 'color', color_arr(4+dist_i,:)/2, 'LineStyle', '-');
+                end
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                idx_t0= find(t0>=t_interest(1) & t0<=t_interest(2));
+                %                 length(idx_t)
+                
+                fp_dat= interp1(t(idx_t), celltmp2{ti,pi,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    %
+                fp_dat0= interp1(t0(idx_t0), celltmp2{ti,pi,2}.Fp(2,idx_t0), t_grids, 'linear', 'extrap');    %
+                x_dat = interp1(t(idx_t), celltmp2{ti,pi,1}.x(2,idx_t), t_grids, 'linear', 'extrap');     %
+                x_dat0 = interp1(t0(idx_t0), celltmp2{ti,pi,2}.x(2,idx_t0), t_grids, 'linear', 'extrap');     %
+                v_dat = interp1(t(idx_t), celltmp2{ti,pi,1}.v(2,idx_t), t_grids, 'linear', 'extrap');     %
+                v_dat0 = interp1(t0(idx_t0), celltmp2{ti,pi,2}.v(2,idx_t0), t_grids, 'linear', 'extrap');     %
+                f_dat = interp1(t(idx_t), celltmp2{ti,pi,1}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+                f_dat0 = interp1(t0(idx_t0), celltmp2{ti,pi,2}.f(2,idx_t0), t_grids, 'linear', 'extrap');     %
+                % do that a_dat use filtered v
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                v_filter0 = filter(b,a,v_dat0);
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+                a_dat0 = [0 diff(v_filter0)./diff(t_grids)];
+                
+                
+                %                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                % plot the subtraction in other panels
+                if(ifplot)
+                    axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                    plot(t_grids, fp_dat - fp_dat0, 'color', color_arr(4+dist_i,:));
+                    axh(4) = subplot(4,2,4); hold on;% subtracted x
+                    plot(t_grids, x_dat - x_dat0, 'color', color_arr(4+dist_i,:));
+                    axh(6) = subplot(4,2,6); hold on;% subtracted F
+                    plot(t_grids, f_dat - f_dat0, 'color', color_arr(4+dist_i,:));
+                    axh(8) = subplot(4,2,8); hold on;
+                    plot(t_grids, -(f_dat - f_dat0)./(x_dat - x_dat0), 'color', color_arr(4+dist_i,:));
+                end
+                
+                [~,fp_max_idx] = max(abs(fp_dat));
+                x_net = x_dat - x_dat0;
+                v_net = v_dat - v_dat0;
+                a_net = a_dat - a_dat0;
+                f_net = f_dat - f_dat0;
+                x_net_tmp = x_net; x_net_tmp(1:fp_max_idx) = 0;
+                [~, x_net_idx] = min(x_net_tmp);
+                a_net_tmp = a_net; a_net_tmp(fp_dat==0)=0;
+                [~, a_net_idx] = min(a_net_tmp);    % the peak of acceleration 
+                k_est = -(f_dat - f_dat0)./(x_dat - x_dat0);
+                k_est_pt = k_est(x_net_idx);
+                psudoK_mat(pi-1,ti) = k_est_pt;
+                psudoK_velmat(pi-1,ti) = v_dat(x_net_idx);
+                plot(t_grids(x_net_idx), k_est_pt, 'marker', 'o', 'markersize', 10);
+%                 psudoK_xmat(pi-1,ti) = x_net(x_net_idx);
+%                 psudoK_vmat(pi-1,ti) = v_net(x_net_idx);
+%                 psudoK_amat(pi-1,ti) = a_net(x_net_idx);
+%                 psudoK_fmat(pi-1,ti) = f_net(x_net_idx);
+                psudoK_xmat(pi-1,ti) = x_net(a_net_idx);
+                psudoK_vmat(pi-1,ti) = v_net(a_net_idx);
+                psudoK_amat(pi-1,ti) = a_net(a_net_idx);
+                psudoK_fmat(pi-1,ti) = f_net(a_net_idx);
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation
+                pert_idx = find(abs(fp_dat) > 0.5);
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids));
+                % plot out the perturbed position
+                if(ifplot)
+                    axh(2) = subplot(4,2,2);  % subtracted Fp
+                    plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_dat0(pert_idx),...
+                        'color', color_arr(4+dist_i,:), ...
+                        'LineWidth', 2);
+                    axh(4) = subplot(4,2,4); % subtracted x
+                    plot(t_grids(pert_idx), x_dat(pert_idx) - x_dat0(pert_idx),...
+                        'color', color_arr(4+dist_i,:), ...
+                        'LineWidth', 2);
+                    axh(6) = subplot(4,2,6); % subtracted F
+                    plot(t_grids(pert_idx), f_dat(pert_idx) - f_dat0(pert_idx),...
+                        'color', color_arr(4+dist_i,:), ...
+                        'LineWidth', 2);
+                end
+                % %                 % Find and plot on the original data point
+                % %                 pert0idx  = find(abs(fp_dat) > 0.01);
+                % %                 pert0idx = pert0idx(1);
+                % %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+                % %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                % %                 axh(4) = subplot(3,2,4); % subtracted x
+                % %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                % %                 axh(6) = subplot(3,2,6); % subtracted F
+                % %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                % %
+                % %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                % %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                % %
+                % %                 % Find and plot on the peak data point
+                % %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                % %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                % %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+                % %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                % %                 axh(4) = subplot(3,2,4); % subtracted x
+                % %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                % %                 axh(6) = subplot(3,2,6); % subtracted F
+                % %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                % %
+                % %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                % %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                % %
+                % %                 psudoK = (f1-f0)/(x1-x0);
+                % %                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            
+            if(ifplot)
+                try % if has axh8, plot, ifnot, noplot
+                    linkaxes(axh(7:8), 'y');
+                    yline(axh(8),psudo_stiffness1, 'linewidth', 2);
+                catch
+                end
+                ylim(axh(7), [0 1000]);
+                linkaxes(axh, 'x');
+                % plot notes here:
+                xlim(axh(1), [-0.1 1.36]);
+                
+                sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]);
+                title(axh(1), 'origin');
+                try
+                    title(axh(2), 'subtracted ctp');
+                catch
+                end
+                ylabel(axh(1), 'Fp');
+                ylabel(axh(3), 'x');
+                ylabel(axh(5), 'f');
+                ylabel(axh(7), 'df/dx');
+                try
+                    ylabel(axh(2), 'dFp');
+                    ylabel(axh(4), 'dx');
+                    ylabel(axh(6), 'dF');
+                    ylabel(axh(8), 'dF/dx');
+                catch
+                end
+            end
+            
+            %          saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = psudoK_mat;
+        psudoK_vcell{fce_i,dist_i} = psudoK_velmat;
+%         psudoK_dynamic.xcell{fce_i,dist_i} = psudoK_xmat;
+%         psudoK_dynamic.vcell{fce_i,dist_i} = psudoK_vmat;
+%         psudoK_dynamic.acell{fce_i,dist_i} = psudoK_amat;
+%         psudoK_dynamic.fcell{fce_i,dist_i} = psudoK_fmat;
+        psudoK_dynamica.xcell{fce_i,dist_i} = psudoK_xmat;
+        psudoK_dynamica.vcell{fce_i,dist_i} = psudoK_vmat;
+        psudoK_dynamica.acell{fce_i,dist_i} = psudoK_amat;
+        psudoK_dynamica.fcell{fce_i,dist_i} = psudoK_fmat;
+
+        %         close all;
+    end
+    
+end
+% save('psudoDynamics.mat', 'psudoK_dynamic'); % the first code block, should not
+% have '-append'
+save('psudoDynamics.mat', 'psudoK_dynamica', '-append');
+
+
+%% %%%%%%%%%%%%%%%% 
+% Use the dF = f - avg(f), but not the "nearest counterpart" here 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+psudoK_vcell = cell(3,3); 
+psudoK_dynamic.xcell = cell(3,3);
+psudoK_dynamic.vcell = cell(3,3);
+psudoK_dynamic.acell = cell(3,3);
+psudoK_dynamic.fcell = cell(3,3);
+% for fce_i = 1:size(data,3)
+%     for dist_i = 1:size(data,4) % for each spring
+for fce_i = 1:size(data,2)
+    % for fce_i = 3
+    for dist_i = 1:size(data,3) % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        %         figure; hold on;
+        psudoK_mat = zeros(7,7); %
+        
+        psudoK_xmat = zeros(7,7);   % save values when x at negative peak
+        psudoK_vmat = zeros(7,7);
+        psudoK_amat = zeros(7,7);
+        psudoK_fmat = zeros(7,7);
+        for pi = 1:8%13%1:length(pertT_unq)
+            fh(pi,1) = figure(); hold on;
+            clear axh;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
+%             celltmp2 = reshape(data(1,fce_i,dist_i,:,1:8,:),7,8,2); %
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
+            
+            
+            % calculate the Unperturbed situation, x and f
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            a_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                length(idx_t)
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap');     %
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+                
+                
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                f_avg = f_avg + f_dat;
+                v_avg = v_avg + v_dat; 
+                a_avg = a_avg + a_dat; 
+                fp_avg = fp_avg + fp_dat;
+                %                 % also, plot out the origin
+                %                 axh(1) = subplot(3,2,1); hold on;
+                %                 plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'color', [0.5 0.5 0.5]);
+                %                 axh(3) = subplot(3,2,3); hold on;
+                %                 plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'color', [0.5 0.5 0.5]);
+                %                 axh(5) = subplot(3,2,5); hold on;
+                %                 plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'color', [0.5 0.5 0.5]);
+            end
+            x_avg = x_avg/cti;
+            f_avg = f_avg/cti;
+            v_avg = v_avg/cti; 
+            a_avg = a_avg/cti;
+            x_settled = nanmean(x_avg(t_grids>1.0 & t_grids<1.1));
+            % plot out the avg
+            %             fh(pi,2) = figure();
+            if (ifplot)
+                axh(1) = subplot(4,2,1);
+                plot(t_grids, fp_avg);
+                axh(3) = subplot(4,2,3);
+                plot(t_grids, x_avg);
+                %             plot(t_grids, x_avg - x_avg(1));
+                axh(5) = subplot(4,2,5);
+                plot(t_grids, f_avg);
+                axh(7) = subplot(4,2,7);
+                plot(t_grids, -f_avg ./ (x_avg - x_settled));
+            end
+            
+            % find the reference value
+            psudo_stiffness = -f_avg ./ (x_avg - x_settled);
+            psudo_stiffness0= mean(psudo_stiffness(t_grids<0));
+            psudo_stiffness1= psudo_stiffness0/3.62; % after relase, the number is corresponding to 3kg hand
+            yline(psudo_stiffness1, 'linewidth', 2);
+            %             ylim([0 2000]);
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi,1}) || pi == 1
+                    continue;
+                end
+                
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+%                 idx_release0 = find(celltmp1{ti,pi,2}.ts == 5); % use the unperturbed counterpart as 0
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
+%                 t0 = celltmp2{ti,pi,2}.t - celltmp2{ti,pi,2}.t(idx_release0(1));
+                if(ifplot)
+                    subplot(axh(1)); hold on;
+                    plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
+                    plot(t0, celltmp2{ti,pi,2}.Fp(2,:), 'color', color_arr(4+dist_i,:)/2, 'LineStyle', '-');
+                    
+                    subplot(axh(3)); hold on;
+                    x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+                    plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+dist_i,:));
+                    plot(t0,celltmp2{ti,pi,2}.x(2,:), 'color', color_arr(4+dist_i,:)/2, 'LineStyle', '-');
+                    %                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+dist_i,:));
+                    
+                    subplot(axh(5)); hold on;
+                    plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+dist_i,:));
+                    plot(t0, celltmp2{ti,pi,2}.f(2,:), 'color', color_arr(4+dist_i,:)/2, 'LineStyle', '-');
+                end
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+%                 idx_t0= find(t0>=t_interest(1) & t0<=t_interest(2));
+                %                 length(idx_t)
+                
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    %
+%                 fp_dat0= interp1(t0(idx_t0), celltmp2{ti,pi,2}.Fp(2,idx_t0), t_grids, 'linear', 'extrap');    %
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     %
+%                 x_dat0 = interp1(t0(idx_t0), celltmp2{ti,pi,2}.x(2,idx_t0), t_grids, 'linear', 'extrap');     %
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     %
+%                 v_dat0 = interp1(t0(idx_t0), celltmp2{ti,pi,2}.v(2,idx_t0), t_grids, 'linear', 'extrap');     %
+                f_dat = interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % ...
+%                 f_dat0 = interp1(t0(idx_t0), celltmp2{ti,pi,2}.f(2,idx_t0), t_grids, 'linear', 'extrap');     %
+                % do that a_dat use filtered v
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+%                 a_dat0 = [0 diff(v_filter0)./diff(t_grids)];
+                
+                
+                %                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                % plot the subtraction in other panels
+                if(ifplot)
+                    axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                    plot(t_grids, fp_dat - fp_dat0, 'color', color_arr(4+dist_i,:));
+                    axh(4) = subplot(4,2,4); hold on;% subtracted x
+                    plot(t_grids, x_dat - x_dat0, 'color', color_arr(4+dist_i,:));
+                    axh(6) = subplot(4,2,6); hold on;% subtracted F
+                    plot(t_grids, f_dat - f_dat0, 'color', color_arr(4+dist_i,:));
+                    axh(8) = subplot(4,2,8); hold on;
+                    plot(t_grids, -(f_dat - f_dat0)./(x_dat - x_dat0), 'color', color_arr(4+dist_i,:));
+                end
+                
+                [~,fp_max_idx] = max(abs(fp_dat));
+%                 x_net = x_dat - x_dat0;
+%                 v_net = v_dat - v_dat0;
+%                 a_net = a_dat - a_dat0;
+%                 f_net = f_dat - f_dat0;
+                x_net = x_dat - x_avg;
+                v_net = v_dat - v_avg;
+                a_net = a_dat - a_avg;
+                f_net = f_dat - f_avg;
+                x_net_tmp = x_net; x_net_tmp(1:fp_max_idx) = 0;
+                [~, x_net_idx] = min(x_net_tmp);
+                a_net_tmp = a_net; a_net_tmp(fp_dat==0)=0;
+                [~, a_net_idx] = min(a_net_tmp);    % the peak of acceleration 
+                k_est = -(f_dat - f_avg)./(x_dat - x_avg);
+                k_est_pt = k_est(x_net_idx);
+                psudoK_mat(pi-1,ti) = k_est_pt;
+                psudoK_velmat(pi-1,ti) = v_dat(x_net_idx);
+                plot(t_grids(x_net_idx), k_est_pt, 'marker', 'o', 'markersize', 10);
+                psudoK_xmat(pi-1,ti) = x_net(x_net_idx);
+                psudoK_vmat(pi-1,ti) = v_net(x_net_idx);
+                psudoK_amat(pi-1,ti) = a_net(x_net_idx);
+                psudoK_fmat(pi-1,ti) = f_net(x_net_idx);
+%                 psudoK_xmat(pi-1,ti) = x_net(a_net_idx);
+%                 psudoK_vmat(pi-1,ti) = v_net(a_net_idx);
+%                 psudoK_amat(pi-1,ti) = a_net(a_net_idx);
+%                 psudoK_fmat(pi-1,ti) = f_net(a_net_idx);
+                
+                % There will be a force and position peak at 0~0.4s after
+                % the start of the perturbation
+                pert_idx = find(abs(fp_dat) > 0.5);
+                pert_idx = pert_idx(1): min((pert_idx(1) + 0.4*freq), length(t_grids));
+                % plot out the perturbed position
+                if(ifplot)
+                    axh(2) = subplot(4,2,2);  % subtracted Fp
+                    plot(t_grids(pert_idx), fp_dat(pert_idx) - fp_dat0(pert_idx),...
+                        'color', color_arr(4+dist_i,:), ...
+                        'LineWidth', 2);
+                    axh(4) = subplot(4,2,4); % subtracted x
+                    plot(t_grids(pert_idx), x_dat(pert_idx) - x_dat0(pert_idx),...
+                        'color', color_arr(4+dist_i,:), ...
+                        'LineWidth', 2);
+                    axh(6) = subplot(4,2,6); % subtracted F
+                    plot(t_grids(pert_idx), f_dat(pert_idx) - f_dat0(pert_idx),...
+                        'color', color_arr(4+dist_i,:), ...
+                        'LineWidth', 2);
+                end
+                % %                 % Find and plot on the original data point
+                % %                 pert0idx  = find(abs(fp_dat) > 0.01);
+                % %                 pert0idx = pert0idx(1);
+                % %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+                % %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                % %                 axh(4) = subplot(3,2,4); % subtracted x
+                % %                 scatter(t_grids(pert0idx), x_dat(pert0idx) - x_avg(pert0idx), 10);
+                % %                 axh(6) = subplot(3,2,6); % subtracted F
+                % %                 scatter(t_grids(pert0idx), f_dat(pert0idx) - f_avg(pert0idx), 10);
+                % %
+                % %                 x0 = x_dat(pert0idx) - x_avg(pert0idx);
+                % %                 f0 = f_dat(pert0idx) - f_avg(pert0idx);
+                % %
+                % %                 % Find and plot on the peak data point
+                % %                 [pksx,locsx]=findpeaks(-(x_dat(pert_idx) - x_avg(pert_idx)), 'MinPeakDistance', 100);
+                % %                 [pksf,locsf]=findpeaks((f_dat(pert_idx) - f_avg(pert_idx)), 'MinPeakDistance', 100);
+                % %                 %axh(2) = subplot(3,2,2);  % subtracted Fp
+                % %                 %scatter(t_grids(pert0idx), fp_dat(pert0idx) - fp_avg(pert0idx), 10);
+                % %                 axh(4) = subplot(3,2,4); % subtracted x
+                % %                 scatter(t_grids(pert_idx(locsx(1))), x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1))), 10);
+                % %                 axh(6) = subplot(3,2,6); % subtracted F
+                % %                 scatter(t_grids(pert_idx(locsf(1))), f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1))), 10);
+                % %
+                % %                 x1 = x_dat(pert_idx(locsx(1))) - x_avg(pert_idx(locsx(1)));
+                % %                 f1 = f_dat(pert_idx(locsf(1))) - f_avg(pert_idx(locsf(1)));
+                % %
+                % %                 psudoK = (f1-f0)/(x1-x0);
+                % %                 psudoK_mat(ti,pi-1) = psudoK;
+            end
+            
+            if(ifplot)
+                try % if has axh8, plot, ifnot, noplot
+                    linkaxes(axh(7:8), 'y');
+                    yline(axh(8),psudo_stiffness1, 'linewidth', 2);
+                catch
+                end
+                ylim(axh(7), [0 1000]);
+                linkaxes(axh, 'x');
+                % plot notes here:
+                xlim(axh(1), [-0.1 1.36]);
+                
+                sgtitle(['Force ' num2str(F_list(fce_i)) ' dist ' num2str(K_list(dist_i)) 'pulse ' num2str(pi-1)]);
+                title(axh(1), 'origin');
+                try
+                    title(axh(2), 'subtracted ctp');
+                catch
+                end
+                ylabel(axh(1), 'Fp');
+                ylabel(axh(3), 'x');
+                ylabel(axh(5), 'f');
+                ylabel(axh(7), 'df/dx');
+                try
+                    ylabel(axh(2), 'dFp');
+                    ylabel(axh(4), 'dx');
+                    ylabel(axh(6), 'dF');
+                    ylabel(axh(8), 'dF/dx');
+                catch
+                end
+            end
+            
+            %          saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/psudoStiffness200ms_subj' num2str(F_list(fce_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+        psudoK_cell{fce_i,dist_i} = psudoK_mat;
+        psudoK_vcell{fce_i,dist_i} = psudoK_velmat;
+        psudoK_dynamic.xcell{fce_i,dist_i} = psudoK_xmat;
+        psudoK_dynamic.vcell{fce_i,dist_i} = psudoK_vmat;
+        psudoK_dynamic.acell{fce_i,dist_i} = psudoK_amat;
+        psudoK_dynamic.fcell{fce_i,dist_i} = psudoK_fmat;
+%         psudoK_dynamica.xcell{fce_i,dist_i} = psudoK_xmat;
+%         psudoK_dynamica.vcell{fce_i,dist_i} = psudoK_vmat;
+%         psudoK_dynamica.acell{fce_i,dist_i} = psudoK_amat;
+%         psudoK_dynamica.fcell{fce_i,dist_i} = psudoK_fmat;
+
+        %         close all;
+    end
+    
+end
+psudoK_dynamic_mavg = psudoK_dynamic;
+% save('psudoDynamics.mat', 'psudoK_dynamic'); % the first code block, should not
+% have '-append'
+save('psudoDynamics.mat', 'psudoK_dynamic_mavg', '-append');
+
+
+%% %%%%%%%%%%%%%%%
+% compare if the stiffness measurement has the relationship with the velocity 
+markers_type = 'os*';
+fh = figure(); 
+subplot(1,2,1)
+hold on; 
+for fce_i = 1:3
+    for dist_i = 1:3 
+        k_list = psudoK_cell{fce_i,dist_i}(:);
+        v_list = psudoK_vcell{fce_i,dist_i}(:);
+        k_list(k_list==0) = nan;
+        v_list(k_list==0) = nan;
+        plot(v_list, k_list, ...
+            'linestyle', 'none', ...
+            'marker', markers_type(fce_i), 'markersize', 10, ...
+            'color', color_arr(dist_i + 4, :));
+    end
+end
+subplot(1,2,2)
+hold on; 
+for fce_i = 1:3
+    for dist_i = 1:3 
+        k_list = psudoK_cell{fce_i,dist_i}(:);
+        v_list = psudoK_vcell{fce_i,dist_i}(:);
+        k_list(k_list==0) = nan;
+        v_list(k_list==0) = nan;
+        plot(v_list, k_list, ...
+            'linestyle', 'none', ...
+            'marker', markers_type(fce_i), 'markersize', 10, ...
+            'color', color_arr(dist_i + 4, :));
+    end
+end
+legend({'15N2.5cm','15N5cm','15N7.5cm','20N2.5cm','20N5cm','20N7.5cm','25N2.5cm','25N5cm','25N7.5cm'});
+ylim([-100 1000])
+
+% try fitting only the bigger velocity ones.
+
+%%%%%%%%%%%%%%%%%
+fh = figure(); 
+set(fh,'name', 'raw df/dx');
+clear axh; 
+dat_mean_cc = zeros(3,3); 
+dat_std_cc  = zeros(3,3); 
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        psudoK_Mat = psudoK_cell{fce_i,dist_i};
+        % need to detect outlaiers before get mean and std
+        dat_arr = psudoK_Mat(:); 
+        dat_arr_outlairidx = isoutlier(dat_arr);
+        dat_mean_cc(fce_i,dist_i) = mean(dat_arr(~dat_arr_outlairidx));
+        dat_std_cc(fce_i,dist_i) = std(dat_arr(~dat_arr_outlairidx));
+        ifplot = 1; 
+        if (ifplot)
+            fh_tmp = figure(); hold on;
+            plot(dat_arr, '.'); 
+            plot(find(dat_arr_outlairidx), dat_arr(dat_arr_outlairidx), 'marker', 'o', 'markersize', 10, 'color', 'r');
+            title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+        end
+        try 
+            close(fh_tmp)
+        catch
+        end
+        plot(psudoK_Mat); 
+        xlabel('pert time'); 
+        ylabel('damping estimation');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('mass estimation using dF/da');
+linkaxes(axh);
+ylim([-200 1000]);
+
+% better figure; 
+% peak_time = [0.1:0.025:0.25]; % s... Need to change here! 
+% fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+% clear axh; 
+% for fce_i = 1:3
+%     for dist_i = 1:3
+%         axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+%         dat = psudoK_cell{fce_i,dist_i};
+%         dat_mean = mean(dat,2);
+%         dat_std = std(dat, [], 2);
+%         plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+%         errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+%         xlabel('pert time'); 
+%         ylabel('K (N/m)');
+%         title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+%     end
+% end
+% sgtitle('Subject stiffness after release, dF/dx');
+% linkaxes(axh);
+% ylim([-200 1000]);
+
+% the line and error figure deal with outlaier
+
+% %%%%%%%%% good plot this chuck! 
+peak_time = [0.1:0.025:0.25]; % s... Need to change here! 
+fh = figure('unit', 'inch', 'position', [0 0 5 5]); 
+set(fh, 'name', 'errorbar (outlair removed)');
+clear axh; 
+outlairmask_cell = cell(3,3);
+for fce_i = 1:3
+    for dist_i = 1:3
+        axh(fce_i,dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+        hold on;
+        dat = psudoK_cell{fce_i,dist_i};
+        
+        dat_arr = dat(:); 
+        dat_arr_outlairidx = isoutlier(dat_arr);
+        dat_arr(dat_arr_outlairidx) = nan; 
+        dat_arr(dat_arr==0) = nan;
+        dat_nanoutlair = reshape(dat_arr, size(dat,1), size(dat,2));
+        dat_outlairmask = isnan(dat_nanoutlair);
+        outlairmask_cell{fce_i,dist_i} = dat_outlairmask;
+        dat_mean = nanmean(dat_nanoutlair,2);
+        dat_std = nanstd(dat_nanoutlair, [], 2);
+        plot(peak_time, dat_mean', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        plot(peak_time-0.003, dat_nanoutlair, 'LineStyle', 'none', ...
+            'Marker', 'o', 'MarkerSize', 3, ...
+            'MarkerFaceColor', color_arr(4+dist_i,:)*4/5, ...
+            'MarkerEdgeColor', color_arr(4+dist_i,:)*4/5);
+            
+        errorbar(peak_time, dat_mean', dat_std', 'lineWidth', 2, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+        ylabel('K (N/m)');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+sgtitle('Subject stiffness after release, dF/dx');
+linkaxes(axh);
+ylim([-200 500]);
+save('psudoDynamics.mat', 'outlairmask_cell', '-append');
+
+
+% corss condition plot 
+fh = figure('unit', 'inch', 'position', [0 0 3 3]); 
+hold on;
+clear lnh
+for dist_i = 1:3
+    lnh(dist_i) = plot(15:5:25, dat_mean_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+    errorbar(15:5:25, dat_mean_cc(:,dist_i), dat_std_cc(:,dist_i), 'linewidth', 2, 'color', color_arr(4+dist_i,:));
+end
+ylim([-200 1000]);
+xlim([13 27])
+
+% title(['fce' num2str(fce_i) 'dist' num2str(dist_i)]);
+xlabel('force threshold');
+% legend(lnh, {'640N/m', '320N/m', '160N/m'});
+legend(lnh, {'2.5cm', '5.0cm', '7.5cm'});
+ylabel('stiffness (N/m)');
+% linkaxes(axh(:), 'xy');
+title('stiffness cross conditions (subject)');  
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%
+% Use James' regression idea to calculate each impedance term 
+clear; clc; 
+peak_time = [0.1:0.025:0.25];
+color_arr = colormap('lines');
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+close all;
+% load('psudoDynamics.mat', 'psudoK_dynamic', 'outlairmask_cell'); % The minus nearest neighbour one 
+
+% load('psudoDynamics.mat', 'psudoK_dynamica', 'outlairmask_cell');
+% psudoK_dynamic = psudoK_dynamica; % the point at a-peak
+
+load('psudoDynamics.mat', 'psudoK_dynamic_mavg', 'outlairmask_cell'); % The minus average one
+psudoK_dynamic = psudoK_dynamic_mavg; % the point at a-peak
+
+m_est = zeros(3,3,7);
+d_est = zeros(3,3,7);
+k_est = zeros(3,3,7);
+r2_mdk = zeros(3,3,7); 
+r2_mk = zeros(3,3,7);
+fh_test = figure(); % test figures
+fh_fce = figure(); 
+for fce_i = 1:3
+     for dist_i = 1:3 
+         axh(fce_i, dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+         for pi = 1:7
+             outlairmask = outlairmask_cell{fce_i,dist_i}(pi,:);
+             x_arr = psudoK_dynamic.xcell{fce_i,dist_i}(pi,:);
+             v_arr = psudoK_dynamic.vcell{fce_i,dist_i}(pi,:);
+             a_arr = psudoK_dynamic.acell{fce_i,dist_i}(pi,:);
+             f_arr = psudoK_dynamic.fcell{fce_i,dist_i}(pi,:);
+             
+%              x_arrnanidx = x_arr==0;   % due to lack of trial, some components in x_arr==0
+             x_arr = x_arr(~outlairmask);
+             v_arr = v_arr(~outlairmask);
+             a_arr = a_arr(~outlairmask);
+             f_arr = f_arr(~outlairmask);
+             
+             % F = [X'' X' X]* [m d k]^T
+             
+             % this part the v takes part in
+             if (1)
+             X = [a_arr', v_arr', x_arr']; 
+             F = f_arr';
+             ifplot = 1;
+             if (ifplot)
+                figure(fh_test); 
+%                 clf
+                subplot(3,1,1); hold on;
+                plot(x_arr, f_arr, 'o'); 
+                xlabel('x'); ylabel('f');
+                subplot(3,1,2); hold on;
+                plot(v_arr, f_arr, 'o'); 
+                xlabel('v'); ylabel('f');
+                subplot(3,1,3); hold on;
+                plot(a_arr, f_arr, 'o'); 
+                xlabel('a'); ylabel('f');
+                sgtitle(['fce' F_list(fce_i) ' dist' K_list(dist_i)]);
+             end
+             
+             imp = inv(X'*X)*X'*F;
+             m_est(fce_i,dist_i,pi) = imp(1);
+             d_est(fce_i,dist_i,pi) =-imp(2);
+             k_est(fce_i,dist_i,pi) = imp(3);
+             
+             F_pred = X*imp;
+             r2 = mean((F_pred-F).^2);
+             r2_mdk(fce_i, dist_i, pi) = r2;
+             end
+             
+             % this part the v does not takes part in
+             if (1)
+             X = [a_arr', x_arr']; 
+             F = f_arr';
+             imp = inv(X'*X)*X'*F;
+             m_est(fce_i,dist_i,pi) = imp(1);
+             k_est(fce_i,dist_i,pi) = imp(2);
+             
+             figure(fh_fce);
+             subplot(axh(fce_i,dist_i)) % plot as row and predicted 
+             hold on; 
+             F_pred = X*imp;
+             scatter(X(:,2)+pi, F, 10, 'r')
+             scatter(X(:,2)+pi, F_pred, 10, 'g')
+             
+             r2 = mean((F_pred-F).^2);
+             r2_mk(fce_i, dist_i, pi) = r2;
+             end
+
+         end
+     end
+end
+
+
+% %
+% plot the residual plot r2;
+fh = figure();
+set(fh, 'name', 'residual plot, mdk')
+for fce_i = 1:3 
+    for dist_i = 1:3
+        axh(fce_i, dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);  hold on;
+        dattmp = reshape(r2_mk(fce_i, dist_i, :), 1,7);
+        plot(peak_time, dattmp, 'color', color_arr(4+dist_i,:));
+        
+        dattmp = reshape(r2_mdk(fce_i, dist_i, :), 1,7);
+        plot(peak_time, dattmp, 'color', color_arr(4+dist_i,:)/2, 'linestyle', ':');
+        
+        xlabel('pert time'); 
+         ylabel('r2 (N^2)');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+        
+        if (fce_i == 1 && dist_i == 1)
+            legend('mk model', 'mdk model');
+        end
+    end
+end
+linkaxes(axh(:), 'xy')
+sgtitle('residuals use dynamic model, single point');
+
+% plot in panels 
+peak_time = [0.1:0.025:0.25]; 
+name_list = 'mdk';
+for mdk = 1:3
+    fh = figure();
+    switch mdk 
+        case 1
+            dat = m_est;
+        case 2 
+            dat = d_est; 
+        case 3 
+            dat = k_est;
+    end
+for fce_i = 1:3 
+    for dist_i = 1:3
+        axh(fce_i, dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i); 
+        dattmp = reshape(dat(fce_i, dist_i, :), 1,7);
+        r2_mdk_norm = r2_mdk./max(r2_mdk(:));
+        dattmp_max = max(dattmp(:));
+        datastd = reshape(r2_mdk_norm(fce_i,dist_i,:)*dattmp_max, 1,7); 
+        plot(peak_time, dattmp, 'color', color_arr(4+dist_i,:));
+%         errorbar(peak_time, dattmp, datastd, 'color', color_arr(4+dist_i,:));
+        xlabel('pert time'); 
+%         ylabel('K (N/m)');
+        title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+    end
+end
+linkaxes(axh(:), 'xy');
+sgtitle(fh,name_list(mdk));
+end
+
+%% compare the perturbed after release and the perturbed before release 
+% perturb before release 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3353_3417.mat', 'data');     %chenguang
+psudo_dynamic_hold.x = zeros(3,3,15);
+psudo_dynamic_hold.v = zeros(3,3,15);
+psudo_dynamic_hold.a = zeros(3,3,15);
+psudo_dynamic_hold.f = zeros(3,3,15);
+figure(); 
+F_list = [15, 20, 25];
+K_list = [2.5, 5.0, 7.5];
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.5 0.5]; % s, calculate average from here 
+t_static = [-0.5 0];
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_dat = zeros(3,3,15);
+psudoD_dat = zeros(3,3,15);
+psudoI_dat = zeros(3,3,15);
+
+for fce_i = 1:size(data,3)
+    for dist_i = 1:size(data,4) % for each spring
+        psudoK_mat = zeros(1,15); % 
+%         for pi = 2:8%13%1:length(pertT_unq)
+        fh(fce_i,dist_i) = figure(); hold on;
+%             fh(pi,1) = figure(); hold on;
+            clear axh;
+            
+            celltmp1 = reshape(data(1,1,fce_i,dist_i,:,2),15,1); % 1 no -ert and 5 pert
+
+            
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+%                 if isempty(celltmp1{ti,1})
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                pert_signal = celltmp1{ti,1}.Fp(2,:);
+                pert_signal(abs(pert_signal)<max(abs(pert_signal))*0.05) = 0;
+                idx_pert = find(pert_signal);
+                
+                
+                
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+                idx_static= find(t_grids> t_static(1) & t_grids < t_static(2));
+                % intropolate (x, f, Fp) to t_grids
+                
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap'); 
+                f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+                
+                % get the static error terms here 
+                x_avg0 = mean(x_dat(idx_static));
+                f_avg0 = mean(f_dat(idx_static)); 
+                
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
+                idx_tp = find(t>=t_interest(1) & t<=t_interest(2));
+               
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    plot(t_grids, fp_dat_pert, 'g', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    plot(t_grids, x_dat_pert, 'g', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                    plot(t_grids, f_dat_pert, 'g', 'Marker', '.');
+                end
+                
+%                 % also, plot out the origin
+                axh(1) = subplot(6,1,1); hold on;
+                plot(t_grids, fp_dat, 'color', [0.5 0.5 0.5]);
+                axh(2) = subplot(6,1,2); hold on;
+                f_net = -(f_dat - f_avg0);
+                plot(t_grids,f_net, 'color', [0.5 0.5 0.5]);
+                axh(3) = subplot(6,1,3); hold on;
+                x_net = x_dat - x_avg0;
+                plot(t_grids, x_net, 'color', [0.5 0.5 0.5]);
+                axh(4) = subplot(6,1,4); hold on;
+                plot(t_grids, v_dat, 'color', [0.5 0.5 0.5]);
+                axh(5) = subplot(6,1,5); hold on;
+                plot(t_grids, a_dat, 'color', [0.5 0.5 0.5]);
+                axh(6) = subplot(6,1,6); hold on;
+                plot(t_grids, (f_dat - f_avg0)./(x_dat - x_avg0), 'color', [0.5 0.5 0.5]);
+                
+                % 
+                [~,idx_k] = min(x_dat - x_avg0);
+                [~,idx_b] = max(v_dat);
+                min_acc = min(a_dat(fp_dat < min(fp_dat)*0.05));
+                [~,idx_i] = find(a_dat == min_acc);
+                
+                % get the "psudo-stiffness" values 
+                psudo_stiffness =-(f_dat - f_avg0)./(x_dat - x_avg0); 
+                psudo_damping = (f_dat - f_avg0)./(v_dat); 
+                psudo_inertia = -(f_dat - f_avg0)./(a_dat); 
+                
+                subplot(axh(2)); 
+                plot(t_grids(idx_k), f_net(idx_k), '*');
+                plot(t_grids(idx_b), f_net(idx_b), 'o');
+                plot(t_grids(idx_i), f_net(idx_i), 's');
+                
+                subplot(axh(3));
+                plot(t_grids(idx_k), x_net(idx_k), '*');
+                subplot(axh(6));
+                plot(t_grids(idx_k), psudo_stiffness(idx_k), '*');
+                
+                subplot(axh(4));
+                plot(t_grids(idx_b), v_dat(idx_b), 'o');
+                
+                subplot(axh(5));
+                plot(t_grids(idx_i), a_dat(idx_i), 's');
+                
+                psudoK_dat(fce_i, dist_i, ti) = psudo_stiffness(idx_k);
+                psudoD_dat(fce_i, dist_i, ti) = psudo_damping(idx_b);
+                psudoI_dat(fce_i, dist_i, ti) = psudo_inertia(idx_i);
+                
+%                 psudo_dynamic_hold.x(fce_i,dist_i,ti) = x_net(idx_k);
+%                 psudo_dynamic_hold.v(fce_i,dist_i,ti) = v_dat(idx_k);
+%                 psudo_dynamic_hold.a(fce_i,dist_i,ti) = a_dat(idx_k);
+%                 psudo_dynamic_hold.f(fce_i,dist_i,ti) = f_net(idx_k);
+
+                psudo_dynamic_hold.x(fce_i,dist_i,ti) = x_net(idx_i);
+                psudo_dynamic_hold.v(fce_i,dist_i,ti) = v_dat(idx_i);
+                psudo_dynamic_hold.a(fce_i,dist_i,ti) = a_dat(idx_i);
+                psudo_dynamic_hold.f(fce_i,dist_i,ti) = f_net(idx_i);
+
+                
+                sgtitle(['force' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+            end
+            
+            ylim(axh(6), [-1000 1000]);
+            ylabel(axh(1), 'Fp');
+            ylabel(axh(2), 'f');
+            ylabel(axh(3), 'x');
+            ylabel(axh(4), 'v');
+            ylabel(axh(5), 'a');
+            ylabel(axh(6), 'df/dx');
+    end
+    
+end
+psudo_dynamic_holda = psudo_dynamic_hold;
+save('psudoDynamics.mat', 'psudo_dynamic_holda', '-append');
+% save('psudoDynamics.mat', 'psudo_dynamic_hold', '-append');
+
+% plot the K, i d individually
+%%%%%%%%%% k, stiffness
+fh_k = figure();
+clear axh;
+dist_list = [2.5 5 7.5];
+for fce_i = 1:3
+    axh(fce_i) = subplot(1,3,fce_i);
+    k_mat = reshape(psudoK_dat(fce_i,:,:), size(psudoK_dat,[2,3]));
+    plot(dist_list', k_mat, 'o');
+end
+linkaxes(axh(:));  
+
+fh_k = figure('unit', 'inch', 'position', [0 0 3 3]); hold on;
+clear axh;
+dist_list = [2.5 5 7.5];
+fce_list = [15 20 25];
+for dist_i = 1:3 
+    k_mat = reshape(psudoK_dat(:,dist_i,:), size(psudoK_dat,[1,3]))';
+    k_mat_avg = mean(k_mat); 
+    k_mat_std = std(k_mat); 
+    errorbar(fce_list, k_mat_avg, k_mat_std, 'LineWidth', 2, 'Color', color_arr(dist_i+4,:));
+end
+xlim([13 27]); 
+xlabel('fore threshold');
+ylabel('K (N/m)');
+sgtitle('perturb before release'); % check the signal! 
+
+%%%%%%%%%% b, damping 
+fh_b = figure();
+clear axh;
+dist_list = [2.5 5 7.5];
+for fce_i = 1:3
+    axh(fce_i) = subplot(1,3,fce_i);
+    d_mat = reshape(psudoD_dat(fce_i,:,:), size(psudoD_dat,[2,3]));
+    plot(dist_list', d_mat, 'o');
+end
+linkaxes(axh(:));
+
+fh_b = figure('unit', 'inch', 'position', [0 0 3 3]); hold on;
+clear axh;
+dist_list = [2.5 5 7.5];
+fce_list = [15 20 25];
+for dist_i = 1:3 
+    d_mat = reshape(psudoD_dat(:,dist_i,:), size(psudoD_dat,[1,3]))';
+    d_mat_avg = mean(d_mat); 
+    d_mat_std = std(d_mat); 
+    errorbar(fce_list, d_mat_avg, d_mat_std, 'LineWidth', 2, 'Color', color_arr(dist_i+4,:));
+end
+xlim([13 27]); 
+xlabel('fore threshold');
+ylabel('D (Ns/m)');
+sgtitle('perturb before release'); % check the signal! 
+
+%%%%%%%%% i, mass
+fh_i = figure();
+clear axh;
+dist_list = [2.5 5 7.5];
+for fce_i = 1:3
+    axh(fce_i) = subplot(1,3,fce_i);
+    i_mat = reshape(psudoI_dat(fce_i,:,:), size(psudoI_dat,[2,3]));
+    plot(dist_list', i_mat, 'o');
+end
+linkaxes(axh(:));
+
+fh_i = figure('unit', 'inch', 'position', [0 0 3 3]); hold on;
+clear axh;
+dist_list = [2.5 5 7.5];
+fce_list = [15 20 25];
+for dist_i = 1:3 
+    i_mat = reshape(psudoI_dat(:,dist_i,:), size(psudoI_dat,[1,3]))';
+    i_mat_avg = mean(i_mat); 
+    i_mat_std = std(i_mat); 
+    errorbar(fce_list, i_mat_avg, i_mat_std, 'LineWidth', 2, 'Color', color_arr(dist_i+4,:));
+end
+xlim([13 27]); 
+xlabel('fore threshold');
+ylabel('I (kg)');
+sgtitle('perturb before release'); % check the signal! 
+
+%% use regression to test if the K, D, I are consistent
+load('psudoDynamics.mat', 'psudo_dynamic_hold'); % the regression to get the impedance during hold period
+% load('psudoDynamics.mat', 'psudo_dynamic_holda'); psudo_dynamic_hold = psudo_dynamic_holda;
+m_est = zeros(3,3);
+d_est = zeros(3,3);
+k_est = zeros(3,3);
+r2_mk = zeros(3,3);
+fh_test = figure(); % test figures
+fh_fce = figure(); 
+for fce_i = 1:3
+     for dist_i = 1:3 
+         figure(fh_fce)
+         axh(fce_i, dist_i) = subplot(3,3,(fce_i-1)*3 + dist_i);
+%          outlairmask = outlairmask_cell{fce_i,dist_i}(pi,:);
+         x_arr = reshape(psudo_dynamic_hold.x(fce_i,dist_i,:), 1,15);
+         v_arr = reshape(psudo_dynamic_hold.v(fce_i,dist_i,:), 1,15);
+         a_arr = reshape(psudo_dynamic_hold.a(fce_i,dist_i,:), 1,15);
+         f_arr = reshape(psudo_dynamic_hold.f(fce_i,dist_i,:), 1,15);
+             
+% %              x_arrnanidx = x_arr==0;   % due to lack of trial, some components in x_arr==0
+%              x_arr = x_arr(~outlairmask);
+%              v_arr = v_arr(~outlairmask);
+%              a_arr = a_arr(~outlairmask);
+%              f_arr = f_arr(~outlairmask);
+             
+             % F = [X'' X' X]* [m d k]^T
+             
+             % this part the v takes part in
+             if (1)
+             X = [a_arr', v_arr', x_arr']; 
+             F = f_arr';
+             ifplot = 1;
+             if (ifplot)
+                figure(fh_test); 
+%                 clf
+                subplot(3,1,1); hold on;
+                plot(x_arr, f_arr, 'o'); 
+                xlabel('x'); ylabel('f');
+                subplot(3,1,2); hold on;
+                plot(v_arr, f_arr, 'o'); 
+                xlabel('v'); ylabel('f');
+                subplot(3,1,3); hold on;
+                plot(a_arr, f_arr, 'o'); 
+                xlabel('a'); ylabel('f');
+                sgtitle(['fce' F_list(fce_i) ' dist' K_list(dist_i)]);
+             end
+             
+             imp = inv(X'*X)*X'*F;
+             m_est(fce_i,dist_i) = imp(1);
+             d_est(fce_i,dist_i) =-imp(2);
+             k_est(fce_i,dist_i) = imp(3);
+             
+             F_pred = X*imp;
+             r2 = mean((F_pred-F).^2);
+             r2_mdk(fce_i, dist_i, pi) = r2;
+             end
+             
+             % this part the v does not takes part in
+             if (0)
+             X = [a_arr', x_arr']; 
+             F = f_arr';
+             imp = inv(X'*X)*X'*F;
+             m_est(fce_i,dist_i,pi) = imp(1);
+             k_est(fce_i,dist_i,pi) = imp(2);
+             end
+             
+             
+             figure(fh_fce);
+             subplot(axh(fce_i,dist_i)) % plot as row and predicted 
+             title(['fce' num2str(F_list(fce_i)) ' dist' num2str(K_list(dist_i))]);
+             xlabel('x'); ylabel('F');
+             hold on; 
+             F_pred = X*imp;
+             scatter(X(:,3), F, 10, 'r')
+             scatter(X(:,3), F_pred, 10, 'g')
+             
+             r2 = mean((F_pred-F).^2);
+             r2_mk(fce_i, dist_i, pi) = r2;
+
+         
+     end
+end
+sgtitle(fh_fce, 'measured and predicted fce');
 
 %% use the x and f, do the dF/dx to show how the stiffness works here
 % Stiffness measurement using definition dF/dx, have 72 figures * 8 pannels
@@ -6158,8 +7735,8 @@ for fce_i = 1:size(data,2)
             clear axh;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             
             % calculate the Unperturbed situation, x and f
@@ -6178,8 +7755,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 % intropolate (x, f, Fp) to t_grids
                 
@@ -6187,8 +7764,8 @@ for fce_i = 1:size(data,2)
                 f_dat = interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
                 fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 idx_tp = find(t>=t_interest(1) & t<=t_interest(2));
                 x_dat_pert = interp1(t(idx_tp), celltmp1{ti,pi}.x(2,idx_tp), t_grids, 'linear', 'extrap'); % check...
                 f_dat_pert = interp1(t(idx_tp), celltmp1{ti,pi}.f(2,idx_tp), t_grids, 'linear', 'extrap'); % check...
@@ -6537,8 +8114,8 @@ for fce_i = 1:size(data,2)
             fh(pi,1) = figure(); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             
             % calculate the Unperturbed situation, x and f
@@ -6552,8 +8129,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -6615,8 +8192,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -6848,8 +8425,8 @@ for fce_i = 1:size(data,2)
             fh(pi,1) = figure(); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:8),7,8); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             
             % calculate the Unperturbed situation, x and f
@@ -6864,8 +8441,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -6937,8 +8514,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -7169,8 +8746,8 @@ for fce_i = 1:3%1:size(data,2)
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -7184,8 +8761,8 @@ for fce_i = 1:3%1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -7237,8 +8814,8 @@ for fce_i = 1:3%1:size(data,2)
                     if isempty(celltmp1{tti,pi}) || pi == 1
                         continue;
                     end
-                    idx_release = find(celltmp1{tti,pi}.ts == 5);
-                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_pert = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_pert(1));
                     idx_tmp = find(t>=-0.1 & t<0);
                     f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
                     t_tmp = t_tmp + 1;
@@ -7287,8 +8864,8 @@ for fce_i = 1:3%1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -7516,8 +9093,8 @@ for fce_i = 1:3%1:size(data,2)
             axh(1) = subplot(3,1,1); hold on;                     % plot PF
 %             celltmp1 = reshape(data(1,1,fce_i,dist_i,:,1:13),5,13); % 1 no -ert and 5 pert
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             plot(t, celltmp1{1,pi}.Fp(2,:), 'color', color_arr(1,:));
             
             % calculate the Unperturbed situation, x and f
@@ -7531,8 +9108,8 @@ for fce_i = 1:3%1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -7584,8 +9161,8 @@ for fce_i = 1:3%1:size(data,2)
                     if isempty(celltmp1{tti,pi}) || pi == 1
                         continue;
                     end
-                    idx_release = find(celltmp1{tti,pi}.ts == 5);
-                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_release(1));
+                    idx_pert = find(celltmp1{tti,pi}.ts == 5);
+                    t = celltmp1{tti,pi}.t - celltmp1{tti,pi}.t(idx_pert(1));
                     idx_tmp = find(t>=-0.1 & t<0);
                     f_tmp = mean(celltmp1{tti,pi}.f(2,idx_tmp));
                     t_tmp = t_tmp + 1;
@@ -7635,8 +9212,8 @@ for fce_i = 1:3%1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -7865,8 +9442,8 @@ for fce_i = 1:size(data,2)
             fh(pi,1) = figure(); hold on;
             
             celltmp1 = reshape(data(1,fce_i,dist_i,:,1:6),10,6); % 1 no -ert and 5 pert
-            idx_release = find(celltmp1{1,pi}.ts == 5);
-            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            idx_pert = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_pert(1));
             
             
             % calculate the Unperturbed situation, x and f
@@ -7881,8 +9458,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 cti = cti + 1;
-                idx_release = find(celltmp1{ti,1}.ts == 5);
-                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_pert(1));
                 idx_t = find(t>=t_interest(1) & t<=t_interest(2));
                 length(idx_t)
                 % intropolate (x, f, Fp) to t_grids
@@ -7954,8 +9531,8 @@ for fce_i = 1:size(data,2)
                     continue;
                 end
                 
-                idx_release = find(celltmp1{ti,pi}.ts == 5);
-                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+                idx_pert = find(celltmp1{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_pert(1));
                 subplot(axh(1)); hold on;
                 plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+dist_i,:));
                 
@@ -8164,3 +9741,601 @@ legend(lnh, {'640N/m', '320N/m', '160N/m'});
 ylabel('mass (kg)');
 % linkaxes(axh(:), 'xy');
 title('mass cross conditions (spring)');  
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+% Check the pulse during motion: optotrak & WAM 
+
+ss_num = [4007,    4008];
+not_working_list = [];
+for si = 1:length(ss_num)
+    try
+        SessionScan(ss_num(si));
+    catch
+        disp(['NOT WORK ss' num2str(ss_num(si))]);
+        not_working_list = [not_working_list ss_num(si)];
+    end
+end
+    
+not_working_list
+%%
+for si = 1:length(ss_num)
+    sstmp = SessionScan(ss_num(si));
+    idx = sstmp.getDelayedTrialIdx;
+    disp(['ss' num2str(ss_num(si)) 'delay' num2str(idx)]);
+end
+
+    %% export data when there are optotrak message recorded. 
+clear; clc; close all; 
+ss_num = {  4007, 4007, 4008};
+pert_f = 12; % only use 12N pert
+pertT_num = 1 + 2;     % 1 without pert, and 5 perturbation time
+data = cell(1, size(ss_num,1), size(ss_num,2), 10, pertT_num); % The stochastic ones are not attached at the end 
+for fce_i = 1:size(ss_num,1) % actually force 
+    for dist_i = 1:size(ss_num,2) % stiffness levels
+        % if multiple sessions in it 
+%         ss_tmp = SessionScan();
+        celltmp = cell(200,3);
+        cell_idx_from = [0 0 0];
+        for si = 1:length(ss_num{fce_i, dist_i})
+            ss_tmp = SessionScan(ss_num{fce_i, dist_i}(si));
+%             celltmptmp = ss_tmp.export_as_formatted_hybridss(1);
+            celltmptmp = ss_tmp.export_as_formatted_hybridss();
+            
+            % check the size of celltmptmp
+            cell_avail_num = zeros(1,3);
+            for i = 1:size(celltmptmp,1)
+                for j = 1:size(celltmptmp,2)
+                    if ~isempty(celltmptmp{i,j})
+                        cell_avail_num(j) = cell_avail_num(j) + 1;
+                    end
+                end
+            end
+            
+            for j = 1:size(celltmptmp,2)
+            celltmp(cell_idx_from(j)+(1:cell_avail_num(j)),j) = ...
+                celltmptmp(1:cell_avail_num(j),j);
+            end
+            cell_idx_from = cell_idx_from + cell_avail_num;
+            % save data in celltmp;
+            
+        end
+        
+        
+        % detect the pulse time after cell tmp
+            % 
+        celltmp_varT = celltmp(:,2);
+        clear pertT
+        for ti = 1:length(celltmp_varT)
+            if isempty(celltmp_varT{ti})
+                continue;
+            end
+            pertT(ti) = 0;
+            idx_PF_peak = nan;
+            ifplot = 1;
+            if (ifplot) 
+                clf;
+                axh(1) = subplot(2,1,1); 
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.ts);
+                axh(2) = subplot(2,1,2);
+                plot(celltmp_varT{ti}.t, celltmp_varT{ti}.Fp);
+            end
+            if max(abs(celltmp_varT{ti}.Fp(2,:))) ~= 0
+                idx_ts5 = celltmp_varT{ti}.ts == 5 | celltmp_varT{ti}.ts == 6;
+                idx_PF_peak = find([abs(celltmp_varT{ti}.Fp(2,idx_ts5)) == max(abs(celltmp_varT{ti}.Fp(2,idx_ts5)))]);
+                ifplot = 0;
+                if (ifplot)
+                    plot(celltmp_varT{ti}.Fp(2,idx_ts5));
+                end
+                 idx_PF_peak = floor(idx_PF_peak/12.5)*12.5;
+            end
+            pertT(ti) = idx_PF_peak * 0.002; % 500Hz
+        end
+        % classify the pulse time into cells that have different time
+        
+        % get the index of each delay interval 
+        [pertT_unq, ia, ic] = unique(pertT);
+        pertT_unq
+        idx_trialsPertT = cell(1, length(pertT_unq));
+        trials_num_max = 0;
+        for pi = 1:length(pertT_unq) 
+            idx_trialsPertT{pi} = find(pertT == pertT_unq(pi));
+            trials_num_max = max(trials_num_max, length(idx_trialsPertT{pi}));
+        end
+        
+        % put the trials in a new cell mat, n_trials * n_pertT
+        celltmp1 = cell(trials_num_max, length(pertT_unq) + 1);
+        % save the 1st column as un-perturbed 
+        celltmp1(1:trials_num_max,1) = celltmp(1:trials_num_max,1);
+        % save the other columns as perturbation according to the pert Time
+        for pi = 1:length(pertT_unq)
+            if trials_num_max == length(idx_trialsPertT{pi})
+            celltmp1(1:trials_num_max,pi+1) = ...
+                celltmp(idx_trialsPertT{pi},2);
+            else 
+                celltmp1(1:length(idx_trialsPertT{pi}),pi+1) = ...
+                    celltmp(idx_trialsPertT{pi},2);
+            end
+        end
+        data(1,fce_i,dist_i,1:7,1:pertT_num) = celltmp1(1:7,1:pertT_num);
+%         data(1,fce_i,dist_i,1:15,pertT_num+1) = celltmp(1:5,3); % The stochastic ones pert
+    end
+end
+save('data/processedData/ss4007_4008.mat', 'data'); % 12N perturbation, various time
+
+%% display:
+% The same -6N perturbation on a single time during release, see how the
+% response is. Dsiplay them in a 3-by-1 figure when each sprign curve shows
+% as a color.
+load('data/processedData/ss4007_4008.mat', 'data');  % 12N perturbation on x, 
+Data = data;
+Freq = 500;
+t_step = 1/500;
+clear axh
+fh = figure(2); 
+colors = colormap('lines');
+r = size(Data, 1); % subj
+c = size(Data, 2); % force
+d = size(Data, 3); % target
+l = size(Data, 4); % trials
+p = size(Data, 5); % perturbation type
+idx_last = 200;
+if_subtract = 0;
+epoc_type = 2;
+plot_type = 1; % 1displacement
+axh = zeros(c,r);
+% for ri = 1:r % subj
+ri = 1;
+    for ci = 1:c % direction
+        %axh(ri, ci) = subplot(r,c,c*(ri-1) + ci);grid on;hold on;
+%         axh(ri, ci) = subplot(1,1,1);grid on;hold on;
+        for di = 1:d % target distance
+            axh(ri, ci) = subplot(d,c,d*(ci-1) + di);grid on;hold on;
+        %for di = 3 % target distance
+            for li = 2%1:p % perturbation
+                trial_num = length(Data(ri,ci,di,:,li));
+                for ti = 1:trial_num % each trial
+                    if (isempty(Data{ri,ci,di,ti,li}))
+                        continue;
+                    end
+                    
+                    switch epoc_type
+                        case 1
+                            idx = find(Data{ri,ci,di,ti,li}.Fp(2,:)~=0 & ...  
+                                Data{ri,ci,di,ti,li}.ts==4);  % pert at y
+                            idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
+                            if li == 1
+                                disp('ERROR: should use li == 2!!!');
+                            end
+                        case 2
+                            idx = find(Data{ri,ci,di,ti,li}.ts==5 | Data{ri,ci,di,ti,li}.ts==6);
+                            idx = (idx(1)-100):idx(end);
+                            %idx = (idx(1)):idx(end);
+                    end
+                    %plot(Data{ri,ci,di,ti,li}.Fp(2,:));
+                    %idx = find(Data{ri,ci,di,ti,li}.Fp(2,:)~=0);
+                    %idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
+                    %idx = find(Data{ri,ci,di,ti,li}.ts==5 | Data{ri,ci,di,ti,li}.ts==6);
+                    %idx = (idx-9):idx(end);
+                    %idx = (idx(1)):(idx(end)+100);
+                    time = t_step*(idx-idx(1));
+                    %time = idx-idx(1);
+                    switch plot_type
+                        case 2
+                            dat = Data{ri,ci,di,ti,li}.f(2,idx);
+                            titlestr = 'force';
+                        case 1
+                            dat = Data{ri,ci,di,ti,li}.x(2,idx);
+                            dato =Data{ri,ci,di,ti,li}.ox(2,idx);
+                            %dat = dat - dat(1);
+                            titlestr = 'displacement';
+                        case 3
+                            dat = Data{ri,ci,di,ti,li}.Fp(2,idx);
+                            titlestr = 'Fp';
+                        case 4
+                            dat = Data{ri,ci,di,ti,li}.v(2,idx);
+                            titlestr = 'velocity';
+                        case 5
+                            dat = Data{ri,ci,di,ti,li}.tq(3,idx);
+                            titlestr = 'torque3';
+                        case 6
+                            dat = Data{ri,ci,di,ti,li}.x(:,idx);
+                            dat_submean = dat - mean(dat(:,1:50),2);
+                            dat_norm = sqrt(dat_submean(1,:).^2 + dat_submean(2,:).^2 + dat_submean(3,:).^2);
+                            dat = dat_norm .* sign(dat_submean(2,:));
+                            titlestr = 'norm displacement';
+                        case 7 % the force mode
+                            dat = Data{ri,ci,di,ti,li}.f(:,idx);
+                            dat_submean = dat - mean(dat(:,1:50),2);
+                            dat_norm = sqrt(dat_submean(1,:).^2 + dat_submean(2,:).^2 + dat_submean(3,:).^2);
+                            dat = dat_norm .* sign(dat_submean(2,:));
+                            titlestr = 'norm force';
+                        
+                    end
+                    if (if_subtract)
+                        dat = dat - mean(dat(1:50));
+                    end
+%                     plot(time, dat, 'Color', colors(4*(li-1)+di, :));
+%                     plot(time, dato, 'Color', colors(4*(li-1)+di, :));
+                    plot(time, dat, 'Color', 'r');
+                    plot(time, dato, 'Color', 'b');
+%                     plot(time, dat, 'Color', [0.7 0.7 0.7]);
+                end
+            end
+        end
+    end
+% end
+%xlim([0 0.7])
+linkaxes(axh(:), 'xy');
+%xlim([0 0.5]);
+xlim([0 1.0])
+sgtitle(titlestr);
+
+%% need to calculate the displaceemnt difference 
+
+%% Show the similarity between the optotrak recording and the WAM recording
+% As the recording have the difference only when it has the biggest force
+% exerted. Here I plan to plot the biggst force, with the highest stiffness
+% of the springs. 
+
+fh = figure(); 
+
+clear;
+color_arr = colormap('lines');
+close all; clc;
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4007_4008.mat', 'data');
+fh = figure('unit', 'inch', 'position', [0 0 6 3]); 
+F_list = [15, 20, 25];
+K_list = [640, 320, 160];
+k_stfcoef = 13/20;
+lw = 1; % pixels
+fs_big = 15;
+fs_small = 12;
+fs_mini = 8;
+t_interest = [-0.1 2]; % s, calculate average from here
+freq = 500;
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+fce_i = 3;
+dist_i = 1;
+psudoK_mat = zeros(5,7); %
+pi = 1;
+for panel_i = 1:2
+    switch panel_i 
+        case 1
+            fce_i = 1; 
+            dist_i = 1;
+        case 2
+            fce_i = 1;
+            dist_i = 3;
+    end
+    
+axh(panel_i) = subplot(1,2,panel_i);
+% axh(1) = subplot(3,1,1); hold on;                     % plot PF
+celltmp1 = reshape(data(1,fce_i,dist_i,:,1:3),10,3); % 1 no -ert and 5 pert
+idx_release = find(celltmp1{1,pi}.ts == 5);
+t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+
+% calculate the Unperturbed situation, x and f
+x_avg = zeros(1, length(t_grids));
+v_avg = zeros(1, length(t_grids));
+f_avg = zeros(1, length(t_grids));
+fp_avg= zeros(1, length(t_grids));
+cti = 0; % count how many trials are added up
+% fh = figure(); hold on;
+hold on;
+for ti = 1:1:size(celltmp1,1)
+    if isempty(celltmp1{ti,1})
+        continue;
+    end
+    cti = cti + 1;
+    idx_release = find(celltmp1{ti,pi}.ts == 5);
+    t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+    idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+    length(idx_t);
+    
+    lnh(ti,1) = plot(t(idx_t), celltmp1{ti,pi}.ox(2,idx_t), 'color', 'b', 'linewidth', 2);
+    lnh(ti,2) = plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'color', 'r', 'linewidth', 2);
+    title_str = ['Force' num2str(F_list(fce_i)) 'N Stiffness' num2str(K_list(dist_i)) 'N/m pert' num2str(pi)];
+    title(title_str);
+end
+xlabel('time (s)'); 
+ylabel('position (m)')
+if (panel_i == 1)
+legend(lnh(1,:), {'OPTOTRAK', 'WAM'});
+end
+grid on;
+end
+linkaxes(axh, 'y'); 
+ylim([0.465 0.58]);
+
+% saveas(fh, '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/dataCommuPlots/dataCommu20220309/Figure4.png');
+
+%% plot on pannels differences 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4007_4008.mat', 'data'); %Average subtracted
+fh1 = figure(); 
+F_list = [15, 15, 25];
+% K_list = [2.5, 5.0, 7.5];
+K_list = [7.5, 7., 2.5];
+mk_big = 10;
+color_arr = colormap('lines');
+close all;
+t_interest = [-0.1 1.3]; % s, calculate average from here 
+freq = 500; 
+t_grids = t_interest(1) : 1/freq : t_interest(2);
+psudoK_cell = cell(3,3);
+psudoD_cell = cell(3,3);
+psudoI_cell = cell(3,3);
+to_plot.fce_i = 1; 
+to_plot.dist_i = 1;
+to_plot.pi = 2;
+to_plot.ifplot = 1;
+% for fce_i = 1:size(data,2)
+for fce_i = 1
+%     for dist_i = 1:size(data,3) % for each spring
+for dist_i = [1:3] % for each spring
+        %         subplot(3,3, (fce_i-1)*3+dist_i); hold on;
+        psudoK_mat = zeros(7,7);
+        psudoD_mat = zeros(7,7);
+        psudoI_mat = zeros(7,7);
+        for pi = 1:3
+%             fh(pi,1) = figure(); hold on;
+%             to_plot.ifplot = (fce_i == to_plot.fce_i && ...
+%                 dist_i == to_plot.dist_i && ...
+%                 pi == to_plot.pi);
+            t0_plot.ifplot = 1;
+            if (to_plot.ifplot)
+                fh1 = figure('unit', 'inch', 'position', [0 0 6 5]);
+            end
+            clear axh;
+            
+            celltmp1 = reshape(data(1,fce_i,dist_i,:,1:3),10,3); % 1 no -ert and 5 pert
+            idx_release = find(celltmp1{1,pi}.ts == 5);
+            t = celltmp1{1,pi}.t - celltmp1{1,pi}.t(idx_release(1));
+            
+            % calculate the Unperturbed situation: f, x, v, a
+            x_avg = zeros(1, length(t_grids));
+            f_avg = zeros(1, length(t_grids));
+            fp_avg= zeros(1, length(t_grids));
+            v_avg = zeros(1, length(t_grids));
+            a_avg = zeros(1, length(t_grids));
+            cti = 0; % count how many trials are added up
+            for ti = 1:1:size(celltmp1,1)
+                if isempty(celltmp1{ti,1})
+                    continue;
+                end
+                cti = cti + 1;
+                idx_release = find(celltmp1{ti,1}.ts == 5);
+                t = celltmp1{ti,1}.t - celltmp1{ti,1}.t(idx_release(1));
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+%                 length(idx_t);
+                % intropolate (x, f, Fp) to t_grids
+                
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,1}.x(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                x_dat = interp1(t(idx_t), celltmp1{ti,1}.ox(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                f_dat =-interp1(t(idx_t), celltmp1{ti,1}.f(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                fp_dat= interp1(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), t_grids, 'linear', 'extrap'); % check...
+                v_dat = interp1(t(idx_t), celltmp1{ti,1}.v(2,idx_t), t_grids, 'linear', 'extrap');
+                % build up a filter to get a cleaner acceleration
+                fc = 15;
+                fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                % end of the filter
+                a_dat = [0 diff(v_filter)./diff(t_grids)]; % as no a_dat here, just get the diffrerentiation of the v
+                
+                ifplot = 0; % controls whether plot or not
+                if (ifplot)
+                    clf;
+                    subplot(3,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.Fp(2,idx_t), 'b');
+                    plot(t_grids, fp_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,2);  hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.x(2,idx_t), 'b');
+%                     plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    plot(t_grids, ox_dat, 'r', 'Marker', '.');
+                    
+                    subplot(3,1,3); hold on;
+                    plot(t(idx_t), celltmp1{ti,1}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                x_avg = x_avg + x_dat;
+                v_avg = v_avg + v_dat;
+                a_avg = a_avg + a_dat;
+                f_avg = f_avg + f_dat;
+                fp_avg = fp_avg + fp_dat;
+            end
+            x_avg = x_avg/cti;
+            v_avg = v_avg/cti;
+            a_avg = a_avg/cti;
+            f_avg = f_avg/cti;
+            fp_avg = fp_avg/cti;
+            
+            x_settled = nanmean(x_avg(t_grids>1.0 & t_grids<1.1));
+            % find the reference value
+            psudo_stiffness = -f_avg ./ (x_avg - x_settled);
+            psudo_stiffness0= mean(psudo_stiffness(t_grids<0));
+            psudo_stiffness1= psudo_stiffness0/3.62; % after relase, the number is corresponding to 3kg hand
+            
+            if (to_plot.ifplot)
+                % plot out the avg
+                %             fh(pi,2) = figure();
+                axh(1) = subplot(4,2,1);
+                plot(t_grids, fp_avg);
+                axh(3) = subplot(4,2,3);
+                plot(t_grids,-f_avg);
+                %             plot(t_grids, x_avg - x_avg(1));
+                axh(5) = subplot(4,2,5);
+                plot(t_grids, x_avg);
+                axh(7) = subplot(4,2,7);
+                plot(t_grids, f_avg ./ (x_avg - x_settled));
+                yline(psudo_stiffness1, 'linewidth', 2);
+                %             ylim([0 2000]);
+            end
+            
+            % plot the perturbed one, -perturbed
+            for ti = 1:size(celltmp1,1)
+                if isempty(celltmp1{ti,pi}) || pi == 1
+                    continue;
+                end
+                
+                idx_release = find(celltmp1{ti,pi}.ts == 5);
+%                 idx_release0= find(celltmp2{ti,pi}.ts == 5);
+                t = celltmp1{ti,pi}.t - celltmp1{ti,pi}.t(idx_release(1));
+%                 t0= celltmp2{ti,pi}.t - celltmp2{ti,pi}.t(idx_release0(1));
+                
+                if (to_plot.ifplot)
+                    subplot(axh(1)); hold on;
+                    plot(t, celltmp1{ti,pi}.Fp(2,:), 'color', color_arr(4+(4-dist_i),:));
+%                     plot(t0, celltmp2{ti,pi}.Fp(2,:), 'color', color_arr(4+(4-dist_i),:)/1.5, 'LineStyle', ':');
+                    plot(t_grids, fp_avg, 'color', color_arr(4+(4-dist_i),:)/1.5, 'LineStyle', ':');
+                    
+                    subplot(axh(3)); hold on;
+                    plot(t, celltmp1{ti,pi}.f(2,:), 'color', color_arr(4+(4-dist_i),:));
+                    plot(t_grids,-f_avg, 'color', color_arr(4+(4-dist_i),:)/1.5, 'LineStyle', ':');
+%                     plot(t0, celltmp2{ti,pi}.f(2,:), 'color', color_arr(4+(4-dist_i),:)/1.5, 'LineStyle', ':');
+                    %                 plot(t, celltmp1{ti,pi}.x(2,:) - x_shift, 'color', color_arr(4+(4-dist_i),:));
+                    
+                    subplot(axh(5)); hold on;
+                    x_shift = mean(celltmp1{ti,pi}.x(2, find(t>-0.1 & t<0)));
+%                     plot(t, celltmp1{ti,pi}.x(2,:), 'color', color_arr(4+(4-dist_i),:));
+                    x_shift = mean(celltmp1{ti,pi}.ox(2, find(t>-0.1 & t<0)));
+                    plot(t, celltmp1{ti,pi}.ox(2,:), 'color', color_arr(4+(4-dist_i),:));
+%                     plot(t0, celltmp2{ti,pi}.x(2,:), 'color', color_arr(4+(4-dist_i),:)/1.5, 'LineStyle', ':');
+                    plot(t_grids, x_avg, 'color', color_arr(4+(4-dist_i),:)/1.5, 'LineStyle', ':');
+                end
+                
+                idx_t = find(t>=t_interest(1) & t<=t_interest(2));
+%                 length(idx_t);
+                
+                fp_dat= interp1(t(idx_t), celltmp1{ti,pi}.Fp(2,idx_t), t_grids, 'linear', 'extrap');    %
+%                 x_dat = interp1(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), t_grids, 'linear', 'extrap');     %
+                x_dat = interp1(t(idx_t), celltmp1{ti,pi}.ox(2,idx_t), t_grids, 'linear', 'extrap');     %
+                v_dat = interp1(t(idx_t), celltmp1{ti,pi}.v(2,idx_t), t_grids, 'linear', 'extrap');     %
+                f_dat =-interp1(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), t_grids, 'linear', 'extrap');     % 
+                fp_dat0 = fp_avg;
+                x_dat0 = x_avg;
+                v_dat0 = v_avg;
+                f_dat0 = f_avg;
+                
+                fc = 15;    fs = 500;
+                [b,a] = butter(2,fc/(fs/2)); % 2nd-order, %? What is cut-off frequency?
+                v_filter = filter(b,a,v_dat);
+                v_filter0= filter(b,a,v_dat0);
+                a_dat = [0 diff(v_filter)./diff(t_grids)];
+                a_dat0= [0 diff(v_filter0)./diff(t_grids)];
+                
+                %                 linkaxes(axh(1:3:5), 'x');
+                
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    subplot(2,1,1);  hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.x(2,idx_t), 'b');
+                    plot(t_grids, x_dat, 'r', 'Marker', '.');
+                    
+                    subplot(2,1,2); hold on;
+                    plot(t(idx_t), celltmp1{ti,pi}.f(2,idx_t), 'b');
+                    plot(t_grids, f_dat, 'r', 'Marker', '.');
+                end
+                
+                [~,fp_max_idx] = max(abs(fp_dat));
+                x_net = x_dat - x_dat0;
+                v_net = v_dat - v_dat0;
+                a_net = a_dat - a_dat0; 
+                fp_net = fp_dat - fp_dat0;
+                f_net = f_dat - f_dat0;
+                
+                % get the K here
+                x_net_tmp = x_net; x_net_tmp(1:fp_max_idx) = nan;
+                [~, x_net_idx] = nanmin(x_net_tmp);
+                k_est = (f_dat - f_dat0)./(x_dat - x_dat0);
+                k_est_pt = k_est(x_net_idx);
+                psudoK_mat(pi-1,ti) = k_est_pt;
+                
+                % get the D here
+                v_net_tmp = v_net; v_net_tmp(1:fp_max_idx) = 0;
+                [~, v_peak_idx] = max(v_net_tmp);    % only take after perturbation part
+                d_est =-(f_dat - f_dat0)./(v_dat - v_dat0);
+                d_est_pt = d_est(v_peak_idx);
+                psudoD_mat(pi-1,ti) = d_est_pt;
+                
+                % get the I here
+%                 a_net_tmp = a_dat0; a_net_tmp(1:fp_max_idx) = 0;
+                a_net_tmp = a_dat0; a_net_tmp(fp_dat==0) = 0;
+%                 [~, a_peak_idx] = min(a_net_tmp);    % only take after perturbation part
+                [~, a_peak_idx] = min(a_net);    % only take after perturbation part
+%                 m_est = (f_dat - f_dat0)./(a_dat - a_dat0);
+                m_est = f_net./a_net;
+                m_est_pt = m_est(a_peak_idx);
+                psudoI_mat(pi-1,ti) = m_est_pt;
+                
+                
+                % plot the subtraction in other panels
+                if (to_plot.ifplot)
+                    axh(2) = subplot(4,2,2); hold on; % subtracted Fp
+                    plot(t_grids, fp_dat - fp_dat0, 'color', color_arr(4+(4-dist_i),:));
+                    axh(4) = subplot(4,2,4); hold on;% subtracted x
+                    plot(t_grids, -(f_dat - f_dat0), 'color', color_arr(4+(4-dist_i),:));
+                    plot(t_grids(x_net_idx),-f_net(x_net_idx), 'marker', '.', 'markersize', mk_big);
+%                     plot(t_grids(a_peak_idx),-f_net(a_peak_idx), 'marker', '.', 'markersize', mk_big);
+                    axh(6) = subplot(4,2,6); hold on;% subtracted F
+                    plot(t_grids, x_dat - x_dat0, 'color', color_arr(4+(4-dist_i),:));
+%                     plot(t_grids, a_net, 'color', color_arr(4+(4-dist_i),:));
+                    plot(t_grids(x_net_idx), x_net(x_net_idx), 'marker', '.', 'markersize', mk_big);
+%                     plot(t_grids(a_peak_idx), a_net(a_peak_idx), 'marker', '.', 'markersize', mk_big);
+                    axh(8) = subplot(4,2,8); hold on;
+                    plot(t_grids, (f_dat - f_dat0)./(x_dat - x_dat0), 'color', color_arr(4+(4-dist_i),:));
+%                     plot(t_grids, f_net./a_net, 'color', color_arr(4+(4-dist_i),:));
+%                     plot(t_grids(a_peak_idx), m_est_pt, 'marker', '.', 'markersize', mk_big);
+                    plot(t_grids(x_net_idx), k_est_pt, 'marker', '.', 'markersize', mk_big);
+                end
+            end
+            
+            if (to_plot.ifplot)
+                try % if has axh8, plot, ifnot, noplot
+                    linkaxes(axh(7:8), 'y');
+                    yline(axh(8),psudo_stiffness1, 'linewidth', 2);
+                catch
+                end
+                ylim(axh(7), [0 1000]);
+                linkaxes(axh, 'x');
+                % plot notes here:
+                xlim(axh(1), [-0.1 1.36]);
+                
+%                 sgtitle(['Force ' num2str(F_list(fce_i)) 'N dist ' num2str(K_list(dist_i)) 'cm pulse ' num2str(pi-1)]);
+            sgtitle(['Force ' num2str(F_list(dist_i)) 'N dist ' num2str(K_list(dist_i)) 'cm pulse ' num2str(pi-1) 'OPT']);
+%                 sgtitle(['Force 15N dist 2.5cm, 1st pulse']);
+                title(axh(1), 'origin');
+                try
+                    title(axh(2), 'subtracted avg');
+                catch
+                end
+                ylabel(axh(1), 'Fp');
+                ylabel(axh(3), '-f');
+                ylabel(axh(5), 'x');
+                ylabel(axh(7), 'df/dx');
+                try
+                    ylabel(axh(2), 'dFp');
+                    ylabel(axh(4), '-df');
+                    ylabel(axh(6), 'dx');
+                    ylabel(axh(8), 'df/dx');
+                catch
+                end
+            end
+            saveas(gcf, ['sanityCheck_StiffnessMeasurement/pulsePertDuringMovement/compareWAMOPT_O_psudoStiffness200ms_subj' num2str(F_list(dist_i)) 'dist' num2str(K_list(dist_i)) 'pert' num2str(pi-1) '.png']);
+        end
+%         psudoK_cellO{fce_i,dist_i} = psudoK_mat;
+        psudoK_cell{fce_i,dist_i} = psudoK_mat;
+%         psudoD_cell{fce_i,dist_i} = psudoD_mat;
+%         psudoI_cell{fce_i,dist_i} = psudoI_mat;
+        %         close all;
+        
+    end
+    
+end
+% saveas(fh1, '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/dataCommuPlots/techrept20220322/figure1.png');
+
