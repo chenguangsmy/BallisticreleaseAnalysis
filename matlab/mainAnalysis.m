@@ -5,8 +5,7 @@ classdef mainAnalysis < handle
     %estimates (step, stochastic, and release) in one data structure.
     
     properties
-        
-        
+                
     end
     
     methods
@@ -15,8 +14,8 @@ classdef mainAnalysis < handle
             dbstop if error
             addpath('func/');
 
-%              % Spring Test
-%             load('data/ss3334_3344.mat');
+            % Spring Test
+%             load('data/ss3334_3344_alter.mat');
 %             dexForce_spring = 1:3; % [15N, 20N, 25N]
 %             data_spring = data;
 %             for force = dexForce_spring
@@ -45,9 +44,9 @@ classdef mainAnalysis < handle
 %             load('data/prelimData_6subj_fine.mat');
 %             data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
 %             clear data
-%             dexSubject = 1:6;
-%             dexForce = 1:3; % [15N, 20N, 25N]
-%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             dexSubject = 1;%:6;
+%             dexForce = 1%:3; % [15N, 20N, 25N]
+%             dexDistance = 1%:3; % [2.5cm, 5cm, 7.5cm]
 %             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
          
 %             % Human 12N 100ms to late
@@ -93,20 +92,45 @@ classdef mainAnalysis < handle
 % %             save('/Users/jhermus/Desktop/Spring_12N_200ms_ss3873_3884.mat');
 
              % Human 12N 200 ms 
-            load('data/ss3913_3921.mat');
-            data_human = reshape(data(1,1,:,:,:,:),1,3,3,10,8); % Elliminate direction
-            clear data
-            dexSubject = 1;
-            dexForce = 1:3 ; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human'); 
+%             load('data/ss3913_3921.mat');
+%             data_human = reshape(data(1,1,:,:,:,:),1,3,3,10,8); % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3 ; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
 % %             save('/Users/jhermus/Desktop/Human_12N_200ms_ss3913_3921.mat');
 
-            
+%             %% New data after Motion Pulse meeting (2/14/2022)
+%             % Force data better aligned not pulse before release
+%             % Springs 12N 200 ms
+%             load('data/ss3925_3937.mat');
+%             data_spring = reshape(data(1,:,:,:,1:6),1,3,3,15,6); % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+% %             save('/Users/jhermus/Desktop/Spring_12N_200ms_ss3925_3937.mat');  
+
+            % Check new postions with stocstic method
+            load('data/ss4010_4013.mat');
+            for force = 2
+                for posture = 1:2
+                    trial = 1;
+                    X = data(1,1,force,posture,1,3);
+                    X = X{1};
+                    dex = find(X.ts == 4);
+                    dex = dex(1000:end);
+                    this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+                end
+            end
             %% Run from here to plot
 
 %             save('/Users/jhermus/Desktop/test2022-2-4NoConstraint_noPrior.mat');
 %             load('/Users/jhermus/Desktop/test2022-2-4.mat');
+
+%               save('/Users/jhermus/Desktop/test2022-4-1.mat');
              
 %             load('/Users/jhermus/Desktop/Spring_12N_100ms_ss3803_3812.mat');
 %             load('/Users/jhermus/Desktop/Human_12N_100ms_ss3896_3905.mat');
@@ -134,7 +158,6 @@ classdef mainAnalysis < handle
              disp('test');
             
         end
-        
         
     end
 end

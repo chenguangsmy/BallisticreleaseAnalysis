@@ -27,9 +27,9 @@ classdef crossTrialAnalysis < handle
 
             
             if(strcmp(subjectType,'human'))
-                this.m = 2.15;
+                this.m = 2.15; %-1.15
             elseif(strcmp(subjectType,'spring'))
-                this.m = 1.15;
+                this.m = 1.15; %0.85;
             else
                 error('Spesify subjectType');
             end
@@ -39,9 +39,9 @@ classdef crossTrialAnalysis < handle
 %             this.plot_force();
             
             % Estimate stiffnesses
-%             this.trial_norm = this.get_trial_norm(data,f_target,distVal,subjectType);
+            this.trial_norm = this.get_trial_norm(data,f_target,distVal,subjectType);
             this.trial_catch = this.get_trial_catch(data,f_target,distVal,subjectType);
-%             this.trial_stocastic = this.get_trial_stocastic(data,f_target,distVal,subjectType);
+            this.trial_stocastic = this.get_trial_stocastic(data,f_target,distVal,subjectType);
             
         end
         
@@ -63,17 +63,16 @@ classdef crossTrialAnalysis < handle
             % get_est_trial createst a data strucutre with an estimate of pulse
             % and release using data from the 
             
-%             trialType = 2;
-%             [trial_catch.est_release] = this.get_k_hat_release(data,subjectType,trialType,distVal);
-%             [trial_catch.est_pulse] = this.get_k_hat_pulse(data,f_target,subjectType,trialType);
+            trialType = 2;
+            [trial_catch.est_release] = this.get_k_hat_release(data,subjectType,trialType,distVal);
+            [trial_catch.est_pulse] = this.get_k_hat_pulse(data,f_target,subjectType,trialType);
 
             % Pulse motion
-            trialType = 2;
+%             trialType = 2;
 %             [trial_catch.est_pulse] = this.get_k_hat_pulse(data,f_target,subjectType,trialType);
-            [trial_catch.est_pulseMotion] = this.get_k_hat_pulseMotion(data,f_target,subjectType,trialType);
-
-
-            
+%             [trial_catch.est_pulseMotion] = this.get_k_hat_pulseMotion(data,f_target,subjectType,trialType);
+%             [trial_catch.est_pulseMotionDiff] = this.get_k_hat_pulseMotionDiff(data,f_target,subjectType,trialType);
+  
         end
         
         function [trial_stocastic] = get_trial_stocastic(this,data,f_target,distVal,subjectType)
@@ -126,7 +125,7 @@ classdef crossTrialAnalysis < handle
         
         function [est_pulseMotion] = get_k_hat_pulseMotion(this,data,f_target,subjectType,trialType)
             
-            for trialType = 1:12 % CHECK THIS HARD CODE LATER
+            for trialType = 1:size(data,2)-1 % 6 % CHECK THIS HARD CODE LATER
                 tmpData = data{1,trialType+1};
                 est_pulseMotion{1,trialType} = get_singleTrial_k_hat_pulseMotion(this,tmpData.f(2,:),...
                     tmpData.Fp(2,:),...
@@ -134,7 +133,7 @@ classdef crossTrialAnalysis < handle
                     tmpData.ts,...
                     f_target,subjectType);
                 
-                for i = 2:4
+                for i = 2:size(data,1) % 15
                     clear tmpData
                     tmpData = data{i,trialType+1};
                     X0_param_usingPrior = this.get_informedX0Param(est_pulseMotion,trialType);
@@ -147,6 +146,48 @@ classdef crossTrialAnalysis < handle
             end
                         
         end
+        
+        function [est_pulseMotionDiff] = get_k_hat_pulseMotionDiff(this,data,f_target,subjectType,trialType)
+            
+            for trialType = 1:size(data,2)%-1
+                clear f_tmp Fp_tmp x_tmp ts_tmp f_target_tmp
+                
+                % Get min for averageing
+                Nprior = 1000;
+                Npost = 2000;
+                for i = 1:size(data,1)
+                    dexRelease(i) = max(find(data{i,trialType}.ts==4));
+                    dexRange(i,:) = dexRelease(i) + [-Nprior:Npost];
+                end
+                
+                for i = 1:size(data,1) % replications
+                    clear tmpData
+                    tmpData = data{i,trialType};
+                    f_tmp(i,:) = tmpData.f(2,dexRange(i,:));
+                    Fp_tmp(i,:) = tmpData.Fp(2,dexRange(i,:));
+                    x_tmp(i,:) = tmpData.x(2,dexRange(i,:));
+                    ts_tmp(i,:) = tmpData.ts(dexRange(i,:));
+                end
+                
+                % Average over replications
+                f = mean(f_tmp);
+                Fp = mean(Fp_tmp);
+                x = mean(x_tmp);
+                ts = mean(ts_tmp);
+                
+                % If first trials consider it the nominal
+                if(trialType == 1)
+                    f_nom = mean(f_tmp);
+                    Fp_nom = mean(Fp_tmp);
+                    x_nom = mean(x_tmp);
+                    ts_nom = mean(ts_tmp);
+                else
+                    est_pulseMotionDiff(trialType) = get_singleTrial_k_hat_pulseMotionDiff(this,x,x_nom,f,f_nom,Fp,ts);
+                end
+            end
+                         
+        end
+
         
         function [est_stocastic] = get_k_hat_stocastic(this,data,trialType)
             
@@ -242,6 +283,7 @@ classdef crossTrialAnalysis < handle
                 cf = 25; % cutoff freqnency
                 [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
                 x = filtfilt(b,a,x); % apply fitler
+                f = filtfilt(b,a,f);
                                 
                 x_dot = this.sfrq*diff(x);
                 x_dot(end+1) = x_dot(end);
@@ -283,10 +325,12 @@ classdef crossTrialAnalysis < handle
                 x_dot_old = x_dot;
                 x_ddot_old = x_ddot;
                 Fp_old = Fp;
+                f_old = f;
                 x = x(dexRange);
                 x_dot = x_dot(dexRange);
                 x_ddot = x_ddot(dexRange);
                 Fp = Fp(dexRange);
+                f = f(dexRange);
                 
                 % Decision Variables
                 k_h = 300;
@@ -313,6 +357,11 @@ classdef crossTrialAnalysis < handle
                                        'DiffMinChange', 0.001, 'Algorithm', 'sqp');
                                    
                 [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x_dot,X_hat),X0,A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse(x,x_dot,x_ddot,Fp,X_hat),options);
+                
+%                 options = optimoptions('ga','Display', 'iter','Generations',1000,'UseParallel', false);
+%                 [X_hat,FVAL,EXITFLAG,OUTPUT,population,scores] = ga(@(X_hat)this.costFunc(x_dot,X_hat),length(X0),A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse(x,x_dot,x_ddot,Fp,X_hat),options);
+
+                %                 [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x_dot,X_hat),X0,A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse_Motion(x,x_dot,x_ddot,-f,X_hat),options);
 
                 t_plot = t(dexRange)-t(dexRange(1));
                 t_old = t-t(dexRange(1));
@@ -326,8 +375,7 @@ classdef crossTrialAnalysis < handle
                     B = X_hat(3);
                     x_hat = X_hat(4:4+length(x)-1); % CHECK
                     x_dot_hat = X_hat(end-length(x)+1:end);
-                    
-                                        
+              
                     [VAF] = get_VAF(this,x_dot,x_dot_hat);
         
                     colorVec = {[0.9290, 0.6940, 0.1250],...
@@ -358,9 +406,10 @@ classdef crossTrialAnalysis < handle
 %                     plot(t_old(locFound),x_ddot_old(locFound),'ok');hold on;
 %                     xlabel('Time (s)'); ylabel('Acc (m/s^2)'); set(gca,'fontsize',16);
 %                     
-%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old,'color',colorVec{1},'linewidth',2);
+%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old,t_old,f_old,'color',colorVec{1},'linewidth',2);
 %                     xlabel('Time (s)'); ylabel('Force Pret (N)'); set(gca,'fontsize',16);
 %                     linkaxes([ax1,ax2,ax3,ax4],'x'); %xlim([t_plot(dexRange(1)) t_(dexRange(2))]);
+%                      disp('test');
 
                 else % Did not converge
                      k_hat = NaN;
@@ -436,7 +485,7 @@ classdef crossTrialAnalysis < handle
                 cf = 30; % cutoff freqnency
                 [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
                 x = filtfilt(b,a,x); % apply fitler
-                                
+                
                 x_dot = this.sfrq*diff(x);
                 x_dot(end+1) = x_dot(end);
                 x_ddot = this.sfrq*diff(x_dot);
@@ -492,10 +541,12 @@ classdef crossTrialAnalysis < handle
                 x_dot_old = x_dot;
                 x_ddot_old = x_ddot;
                 Fp_old = Fp;
+                f_old = f;
                 x = x(dexRange);
                 x_dot = x_dot(dexRange);
                 x_ddot = x_ddot(dexRange);
                 Fp = Fp(dexRange);
+                f = f(dexRange);
                 
                 % Decision Variables
                 k_h = 300;
@@ -520,10 +571,14 @@ classdef crossTrialAnalysis < handle
                 options = optimoptions('fmincon','TolFun', 1e-6, 'MaxIter', 10000, ...
                                        'MaxFunEvals', 100000, 'Display', 'off' , ...
                                        'DiffMinChange', 0.001, 'Algorithm', 'sqp');
-                                   
-                [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x_dot,X_hat),X0,A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse(x,x_dot,x_ddot,Fp,X_hat),options);
                  
-                L = 300;
+                % Use commanded force
+                [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x_dot,X_hat),X0,A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse(x,x_dot,x_ddot,Fp,X_hat),options);
+                
+                % Use force measured pulse insted                
+                %[X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(x_dot,X_hat),X0,A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse_Fraw(x,x_dot,x_ddot,f,X_hat),options);
+
+                L = 700;
 
                 t_plot = t(dexRange)-t(dexRange(1));
                 t_old = t(dexEndState4:dexEndState4+L)-t(dexEndState4);
@@ -544,7 +599,7 @@ classdef crossTrialAnalysis < handle
                     colorVec = {[0.9290, 0.6940, 0.1250],...
                         [0, 0.4470, 0.7410],...
                         [0.8500, 0.3250, 0.0980]};
-                    
+%                     
 %                     figure('Position',[1 62 1440 735]); %[771 305 560 420]);
 %                     ax1 = subplot(4,1,1);
 %                     plot(t_old,x_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2);hold on;
@@ -568,7 +623,7 @@ classdef crossTrialAnalysis < handle
 %                     %                     plot(t_old(locFound),x_ddot_old(locFound),'ok');hold on;
 %                     xlabel('Time (s)'); ylabel('Acc (m/s^2)'); set(gca,'fontsize',16);
 %                     
-%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2);
+%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old(dexEndState4:dexEndState4+L),t_old,f_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2);
 %                     xlabel('Time (s)'); ylabel('Force Pret (N)'); set(gca,'fontsize',16);
 %                     linkaxes([ax1,ax2,ax3,ax4],'x'); %xlim([t_plot(dexRange(1)) t_(dexRange(2))]);
 %                     
@@ -635,7 +690,226 @@ classdef crossTrialAnalysis < handle
 %                 disp('test');
                 
             
+        end
+                
+        function [est_pulseMotionDiff] = get_singleTrial_k_hat_pulseMotionDiff(this,x,x_nom,f,f_nom,Fp,ts)
+            % [delta_x_hat]
+            % Take average of last 15 measuremnts before the pulse ends
+            t = 0:1/this.sfrq:(length(x)*(1/this.sfrq))-1/this.sfrq;
+                
+                % New crop data to use only up till peak
+                dexPulseStart = min(find(Fp~=0));
+                dexPulseEnd = max(find(Fp~=0));
+                dexRange = dexPulseStart:dexPulseStart+500;
+                
+                cf = 25; % cutoff freqnency
+                [b,a] = butter(4,cf/(this.sfrq/2)); % make filter
+                x = filtfilt(b,a,x); % apply fitler
+                x_nom = filtfilt(b,a,x_nom); % apply fitler
+
+                x_dot = this.sfrq*diff(x);
+                x_dot(end+1) = x_dot(end);
+                x_ddot = this.sfrq*diff(x_dot);
+                
+                x_nom_dot = this.sfrq*diff(x_nom);
+                x_nom_dot(end+1) = x_nom_dot(end);
+                x_nom_ddot = this.sfrq*diff(x_nom_dot);
+                
+                figure('Position',[210 305 560 420]);
+                ax1 = subplot(4,1,1); plot(x); hold on; plot(x_nom);ylabel('x (m)');set(gca,'fontsize',16);
+
+                ax2 = subplot(4,1,2); plot(x_dot); hold on; plot(x_nom_dot); ylabel('v (m/s)');set(gca,'fontsize',16);
+
+                ax3 = subplot(4,1,3); plot(x_ddot);hold on; ylabel('a (m/s^2)');set(gca,'fontsize',16);
+
+                ax4 = subplot(4,1,4); plot(Fp); hold on; plot(f); plot(f_nom); ylabel('F (N)');
+                linkaxes([ax1,ax2,ax3,ax4],'x'); xlabel('Sample'); set(gca,'fontsize',16);
+                
+                delta_x_dot = x_dot-x_nom_dot;
+                delta_f = f-f_nom;
+
+                delta_x_hat = (1/this.sfrq)*sum(abs(delta_x_dot),2);
+                
+                figure; 
+                subplot(2,1,1); plot(delta_x_dot);
+                subplot(2,1,2); plot(delta_f);
+%                  
+%                   disp('Test');
+                
+%                 if(isempty(dexRange))
+%                     error('Cutting failed: Look for peak finding error');
+%                 end
+% 
+
+
+                x_old = x;
+                x_dot_old = x_dot;
+                x_ddot_old = x_ddot;
+                Fp_old = Fp;
+                f_old = f;
+                x = x(dexRange);
+                x_dot = x_dot(dexRange);
+                x_ddot = x_ddot(dexRange);
+                Fp = Fp(dexRange);
+                f = f(dexRange);
+                
+                x_nom = x_nom(dexRange);
+                x_nom_dot = x_nom_dot(dexRange);
+                x_nom_ddot = x_nom_ddot(dexRange);
+                f_nom = f_nom(dexRange);
+%                 
+                % Decision Variables
+                k_h = 300;
+%                 x_h = f(1)/k_h + x(1);
+                B = 1;
+                
+                                
+                delta_x = x_dot-x_nom;
+                delta_x_dot = x_dot-x_nom_dot;
+                delta_x_ddot = x_dot-x_nom_ddot;
+                delta_f = f-f_nom;
+
+                
+                if(~exist('X0_param_usingPrior','var') || (sum(isnan(X0_param_usingPrior))>1) )
+                    X0 = [k_h,B,delta_x,delta_x_dot]; %zeros(size(x_dot))];
+                else
+                    X0 = [X0_param_usingPrior,x,x_dot];
                 end
+                                
+                A = [];
+                b = [];
+                Aeq = [];
+                beq = [];
+                lb = [0,0,-10*ones(size(x)),-10*ones(size(x_dot))];
+                ub = [5000,500,10*ones(size(x)),10*ones(size(x_dot))];
+
+                % options = optimoptions('fmincon','Display','off');
+                                
+                options = optimoptions('fmincon','TolFun', 1e-6, 'MaxIter', 10000, ...
+                                       'MaxFunEvals', 100000, 'Display', 'off' , ...
+                                       'DiffMinChange', 0.001, 'Algorithm', 'sqp');
+                  
+                % Use commanded force
+                [X_hat,FVAL,EXITFLAG,OUTPUT] = fmincon(@(X_hat)this.costFunc(delta_x_dot,X_hat),X0,A,b,Aeq,beq,lb,ub,@(X_hat)this.nl_con_pulse_MotionDiff(delta_x,delta_x_dot,delta_x_ddot,Fp,X_hat),options);
+
+                L = 700;
+
+                t_plot = t(dexRange)-t(dexRange(1));
+%                 t_old = t(dexEndState4:dexEndState4+L)-t(dexEndState4);
+%                                     
+%                 if(EXITFLAG >= 1) % Local minimum successfully found
+%                     %                 m = X_hat(1);
+%                     %                 f_s = X_hat(2);
+%                     %                 f_d = X_hat(1);
+                    k_hat = X_hat(1);
+%                     x_h = X_hat(2)-this.x_handelStart;
+                    B = X_hat(2);
+                    x_hat = X_hat(3:3+length(x)-1); % CHECK
+                    x_dot_hat = X_hat(end-length(x)+1:end);
+                    
+                    figure; 
+                    subplot(2,1,1); plot(x_hat); hold on; plot(delta_x);
+                    subplot(2,1,2); plot(x_dot_hat); hold on; plot(delta_x_dot);
+                    
+%                                         
+                    [VAF] = get_VAF(this,x_dot,x_dot_hat);
+        
+                    colorVec = {[0.9290, 0.6940, 0.1250],...
+                        [0, 0.4470, 0.7410],...
+                        [0.8500, 0.3250, 0.0980]};
+                     
+%                     figure('Position',[1 62 1440 735]); %[771 305 560 420]);
+%                     ax1 = subplot(4,1,1);
+%                     plot(t_old,x_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2);hold on;
+%                     plot(t_old(dexFpStart+1:dexFpStart+pulseWidth),x,'linewidth',3,'color',colorVec{2}); hold on;
+%                     plot(t_old(dexFpStart+1:dexFpStart+pulseWidth),x_hat,'.','markersize',10,'color',colorVec{3});
+%                     title(['k_{hat} = ',num2str(k_hat),...
+%                         ', x_{hat} = ',num2str(x_h),...
+%                         ', B = ',num2str(B)]);
+%                     xlabel('Time (s)'); ylabel('Postion (m)');
+%                     set(gca,'fontsize',16);
+%                     
+%                     ax2 = subplot(4,1,2);
+%                     plot(t_old,x_dot_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2); hold on;
+%                     plot(t_old(dexFpStart+1:dexFpStart+pulseWidth),x_dot,'linewidth',3,'color',colorVec{2}); hold on;
+%                     plot(t_old(dexFpStart+1:dexFpStart+pulseWidth),x_dot_hat,'.','markersize',10,'color',colorVec{3});
+%                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
+%                     title(f_target);
+%                     set(gca,'fontsize',16);
+%                     
+%                     ax3 = subplot(4,1,3); plot(t_old(1:end),x_ddot_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2);hold on;
+%                     %                     plot(t_old(locFound),x_ddot_old(locFound),'ok');hold on;
+%                     xlabel('Time (s)'); ylabel('Acc (m/s^2)'); set(gca,'fontsize',16);
+%                     
+%                     ax4 = subplot(4,1,4); plot(t_old,Fp_old(dexEndState4:dexEndState4+L),t_old,f_old(dexEndState4:dexEndState4+L),'color',colorVec{1},'linewidth',2);
+%                     xlabel('Time (s)'); ylabel('Force Pret (N)'); set(gca,'fontsize',16);
+%                     linkaxes([ax1,ax2,ax3,ax4],'x'); %xlim([t_plot(dexRange(1)) t_(dexRange(2))]);
+                    
+%                     disp('test');
+%                     
+%                 else % Did not converge
+%                      k_hat = NaN;
+%                      x_h = NaN;
+%                      B = NaN;
+%                      VAF = NaN;
+%                      x_dot_hat = NaN;
+%                      
+% %                     figure;
+% %                     
+% %                     subplot(2,1,1);
+% %                     plot(t_plot,x,'linewidth',3); hold on;
+% %                     title('Failed to converge');
+% %                     xlabel('Time (s)'); ylabel('Postion (m)');
+% %                     set(gca,'fontsize',16);
+% %                     
+% %                     subplot(2,1,2);
+% %                     plot(t_plot,x_dot,'linewidth',3); hold on;
+% %                     plot(t_plot,f_threshold*max(x_dot),':k','linewidth',3);
+% %                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
+% %                     title(f_target);
+% %                     set(gca,'fontsize',16);
+%                     
+%                 end
+                
+                
+                
+%                     figure(1);
+%                     subplot(2,1,1);
+%                     plot(t_plot,x,'-b'); hold on;
+%                     if(EXITFLAG == 1)
+%                         plot(t_plot,x_hat,':r');
+%                     end
+%                     xlabel('Time (s)'); ylabel('Postion (m)');
+%                     set(gca,'fontsize',16);
+%                     
+%                     subplot(2,1,2);
+%                     plot(t_plot,x_dot,'-b'); hold on;
+%                     if(EXITFLAG == 1)
+%                         plot(t_plot,x_dot_hat,':r');
+% %                         plot(t_plot(f_threshold_dex),0,'.g','markersize',10);
+%                     else
+% %                         plot(t_plot(f_threshold_dex),0,'.k','markersize',10);
+%                     end
+%                     xlabel('Time (s)'); ylabel('Velocity (m/s)');
+%                     set(gca,'fontsize',16); grid on;
+                
+
+                est_pulseMotionDiff.k_hat = k_hat;
+                est_pulseMotionDiff.b_hat = B;
+%                 est_pulseMotionDiff.x_h = x_h;
+                est_pulseMotionDiff.x_dot = x_dot;
+%                 est_pulseMotionDiff.x_dot_plot = x_dot_old(dexEndState4:dexEndState4+700); % New
+%                 est_pulseMotionDiff.t = t_old;
+%                 est_pulseMotionDiff.dexFpStart = dexFpStart; % New
+                est_pulseMotionDiff.dexRange = dexRange;
+                est_pulseMotionDiff.x_dot_hat = x_dot_hat;
+                est_pulseMotionDiff.VAF = VAF;
+                
+%                 disp('test');
+                
+            
+                end
+
         
         function [cost] = costFunc(this,x_dot,X_hat)
             
@@ -688,6 +962,124 @@ classdef crossTrialAnalysis < handle
             c = 0;
             
         end
+        
+        function [c,ceq] = nl_con_pulse_Motion(this,x,x_dot,x_ddot,Fp,X_hat)
+            
+            % Start at the measured postion
+            k_h = X_hat(1);
+            x_h = X_hat(2);
+            B = X_hat(3);
+            x_hat = X_hat(4:4+length(x)-1); % CHECK
+            x_dot_hat = X_hat(end-length(x)+1:end);
+            m = this.m;
+            x_r = this.x_r;
+                        
+            for i = 1:length(x)-1
+                
+                % Get forces at a spesific step
+                x_ddot_hat = (1/m)*( k_h*(x_h-x_hat(i)) + Fp(i) - B*x_dot_hat(i) );
+                
+                % Dyanmic contraint
+                x_dot_hat_Plus = x_dot_hat(i) + (1/this.sfrq)*x_ddot_hat;
+                x_hat_Plus = x_hat(i) + (1/this.sfrq)*x_dot_hat(i);
+                
+                ceq1(i) = x_dot_hat_Plus - x_dot_hat(i+1);
+                ceq2(i) = x_hat_Plus - x_hat(i+1);
+                
+            end
+
+            % Force initial conditions to be equal to start x and x_dot
+            ceq3 = x_dot_hat(1) - x_dot(1);
+            ceq4 = x_hat(1) - x(1);
+%             ceq5 = x_hat(end) - x(end);
+%             ceq6 = x_dot_hat(end) - x_dot(end);
+            
+            x_ddot_hat_init = (1/m)*( k_h*(x_h-x_hat(1)) + Fp(1) );
+            x_ddot_hat_final = (1/m)*( k_h*(x_h-x_hat(end)) + Fp(end) );
+
+%             ceq7 = x_ddot_hat_init - x_ddot(1);
+%             ceq8 = x_ddot_hat_final - x_ddot(end);
+
+            ceq = [ceq1,ceq2,ceq3,ceq4];
+            c = 0;
+            
+        end
+        
+        function [c,ceq] = nl_con_pulse_MotionDiff(this,x,x_dot,x_ddot,Fp,X_hat)
+            
+            % Start at the measured postion
+            k_h = X_hat(1);
+            B = X_hat(2);
+            x_hat = X_hat(3:3+length(x)-1); % CHECK
+            x_dot_hat = X_hat(end-length(x)+1:end);
+            m = this.m;
+                        
+            for i = 1:length(x)-1
+                
+                % Get forces at a spesific step
+                x_ddot_hat = (1/m)*( k_h*(-x(i)) + B*(-x_dot(i)) + Fp(i));
+                
+                % Dyanmic contraint
+                x_dot_hat_Plus = x_dot_hat(i) + (1/this.sfrq)*x_ddot_hat;
+                x_hat_Plus = x_hat(i) + (1/this.sfrq)*x_dot_hat(i);
+                
+                ceq1(i) = x_dot_hat_Plus - x_dot_hat(i+1);
+                ceq2(i) = x_hat_Plus - x_hat(i+1);
+                
+            end
+
+            % Force initial conditions to be equal to start x and x_dot
+            ceq3 = x_dot_hat(1) - x_dot(1);
+            ceq4 = x_hat(1) - x(1);
+
+            ceq = [ceq1,ceq2,ceq3,ceq4];
+            c = 0;
+            
+        end
+        
+        function [c,ceq] = nl_con_pulse_Fraw(this,x,x_dot,x_ddot,f,X_hat)
+            
+            % Start at the measured postion
+            k_h = X_hat(1);
+            x_h = X_hat(2);
+            B = X_hat(3);
+            x_hat = X_hat(4:4+length(x)-1); % CHECK
+            x_dot_hat = X_hat(end-length(x)+1:end);
+            m = this.m;
+            k_r = this.k_r;
+            x_r = this.x_r;
+                        
+            for i = 1:length(x)-1
+                
+                % Get forces at a spesific step
+                x_ddot_hat = (1/m)*( k_h*(x_h-x_hat(i)) - f(i) - B*x_dot_hat(i) );
+                
+                % Dyanmic contraint
+                x_dot_hat_Plus = x_dot_hat(i) + (1/this.sfrq)*x_ddot_hat;
+                x_hat_Plus = x_hat(i) + (1/this.sfrq)*x_dot_hat(i);
+                
+                ceq1(i) = x_dot_hat_Plus - x_dot_hat(i+1);
+                ceq2(i) = x_hat_Plus - x_hat(i+1);
+                
+            end
+
+            % Force initial conditions to be equal to start x and x_dot
+            ceq3 = x_dot_hat(1) - x_dot(1);
+            ceq4 = x_hat(1) - x(1);
+%             ceq5 = x_hat(end) - x(end);
+%             ceq6 = x_dot_hat(end) - x_dot(end);
+            
+            x_ddot_hat_init = (1/m)*( k_h*(x_h-x_hat(1)) - f(1) );
+            x_ddot_hat_final = (1/m)*( k_h*(x_h-x_hat(end)) - f(end) );
+
+%             ceq7 = x_ddot_hat_init - x_ddot(1);
+%             ceq8 = x_ddot_hat_final - x_ddot(end);
+
+            ceq = [ceq1,ceq2,ceq3,ceq4];
+            c = 0;
+            
+        end
+
                 
         function [c,ceq] = mycon(this,x)
             c = 0;     % Compute nonlinear inequalities at x.

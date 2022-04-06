@@ -115,6 +115,45 @@ classdef crossConditionAnalysis < handle
             end
             clear subj
             
+            lineTypee = {'-','--',':'};
+            lineColorr = {[0.9290, 0.6940, 0.1250],...
+                [0, 0.4470, 0.7410],...
+                [0.8500, 0.3250, 0.0980]};
+                    
+%             figure; 
+%             subj = 1;
+%             for force = this.dexForce
+%                 for dist = this.dexDistance
+%                     delta_x_hat(force,dist,:) = [this.depMeasures{subj,force,dist}.trial_catch.est_pulseMotionDiff.k_hat];
+%                     plot(squeeze(delta_x_hat(force,dist,2:end)),'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5); hold on;
+%                 end
+%             end
+% % 
+%            
+%             subj = 1;
+%             for force = this.dexForce
+%                 for dist = 1%this.dexDistance
+%                     tmp = this.depMeasures{subj,force,dist}.trial_catch.est_pulseMotionDiff;
+%                     for pretType = 2:size(tmp,2)
+%                         figure;
+%                         plot(squeeze(tmp(pretType).x_dot),'-','linewidth',2.5); hold on;
+%                         plot(squeeze(tmp(pretType).x_dot_hat),'--','linewidth',2.5); hold on;
+%                         title([]);
+%                     end
+%                     
+%                 end
+%             end
+
+%             subj = 1;
+%             figure;
+%             for force = this.dexForce
+%                 for dist = this.dexDistance
+%                     tmp = this.depMeasures{subj,force,dist}.trial_catch.est_pulseMotionDiff;
+%                         plot(tmp,'Color',lineColorr{dist},'lineStyle',lineTypee{force},'linewidth',2.5,'linewidth',2.5); hold on;
+%                 end
+%             end
+            
+                   
             % **Pause here to run Pulse motion plots later on
             
             %Summary Across conditions
@@ -306,38 +345,38 @@ classdef crossConditionAnalysis < handle
             axes(ax1); legend(forceVal,'location','south');
             saveas(gcf,[pathh,fileName,'_VAF'],'png');
 
-            figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
-            count = 1;
-            for force = this.dexForce
-                for dist = this.dexDistance
-                ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
-                
-                axes(ax(count)); title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
-                if(1==mod(count,length(this.dexDistance)))
-                    ylabel('Velocity (m/s)'); %ylim([0 100]);
-                end
-                if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
-                    xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
-                end
-                set(gca,'fontsize',16);grid on;
-                                
-                for triall = 1:length(this.depMeasures{subNum,force,dist}.trial_norm.est_release)
-                    structt = this.depMeasures{subNum,force,dist}.trial_norm.est_release{triall};
-                    N = length(structt.x_dot);
-                    plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structt.x_dot,'b');
-                end
-                
-                % Plot mean model
-                N = length(structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave);
-                plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave,'r','linewidth',2.5);
-
-                
-                ylim([-0.2 0.6]);
-%                 xlim([0 0.25]);
-                count = count + 1;
-                end
-            end
-            saveas(gcf,[pathh,fileName,'_rawRelease'],'png');
+%             figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%             count = 1;
+%             for force = this.dexForce
+%                 for dist = this.dexDistance
+%                 ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+%                 
+%                 axes(ax(count)); title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(distVal(dist))]);
+%                 if(1==mod(count,length(this.dexDistance)))
+%                     ylabel('Velocity (m/s)'); %ylim([0 100]);
+%                 end
+%                 if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                     xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                 end
+%                 set(gca,'fontsize',16);grid on;
+%                                 
+%                 for triall = 1:length(this.depMeasures{subNum,force,dist}.trial_norm.est_release)
+%                     structt = this.depMeasures{subNum,force,dist}.trial_norm.est_release{triall};
+%                     N = length(structt.x_dot);
+%                     plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structt.x_dot,'b');
+%                 end
+%                 
+%                 % Plot mean model
+%                 N = length(structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave);
+%                 plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave,'r','linewidth',2.5);
+% 
+%                 
+%                 ylim([-0.2 0.6]);
+% %                 xlim([0 0.25]);
+%                 count = count + 1;
+%                 end
+%             end
+%             saveas(gcf,[pathh,fileName,'_rawRelease'],'png');
 
             
             % Plot summary figure for pulse fitting
@@ -372,7 +411,7 @@ classdef crossConditionAnalysis < handle
                 count = count + 1;
                 end
             end
-            saveas(gcf,[pathh,fileName,'_rawPulse'],'png');
+%             saveas(gcf,[pathh,fileName,'_rawPulse'],'png');
             
 %             %% Pulse during Motion
 %             
@@ -505,7 +544,7 @@ classdef crossConditionAnalysis < handle
 %              pulseWidth = 100;
 %              figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
 %              count = 1;
-%              L = 251;% 701
+%              L = 701;%251;% 701
 %              for force = this.dexForce
 %                  for dist = this.dexDistance
 %                      ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
@@ -540,7 +579,7 @@ classdef crossConditionAnalysis < handle
 %                  end
 %              end
 %              saveas(gcf,[pathh,fileName,'_rawPulse_Motion'],'png');
-            
+%             
 %             axes(ax(1)); legend(forceVal,'location','south');
 
 %             % Check learning
@@ -565,23 +604,23 @@ classdef crossConditionAnalysis < handle
             for subj = subNum
                 for force = this.dexForce
                     for dist = this.dexDistance
-                        structPlotTrial{subj,force,dist}.est_norm_release = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_norm.est_release);
-                        structPlotTrial{subj,force,dist}.est_catch_release = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_catch.est_release);
+%                         structPlotTrial{subj,force,dist}.est_norm_release = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_norm.est_release);
+%                         structPlotTrial{subj,force,dist}.est_catch_release = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_catch.est_release);
                         structPlotTrial{subj,force,dist}.est_catch_pulse  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_catch.est_pulse);
-                        structPlotTrial{subj,force,dist}.est_stocastic_release  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_stocastic.est_release);
-                        structPlotTrial{subj,force,dist}.est_stocastic_stocastic  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_stocastic.est_stocastic);
+%                         structPlotTrial{subj,force,dist}.est_stocastic_release  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_stocastic.est_release);
+%                         structPlotTrial{subj,force,dist}.est_stocastic_stocastic  = this.get_estStructCellTrial(this.depMeasures{subj,force,dist}.trial_stocastic.est_stocastic);
                     end
                 end
             end
             clear subj
             
             %Summary Across conditions
-            plotCon_norm_release = this.get_estStructCondition(structPlotTrial,'est_norm_release');
-            plotCon_catch_release = this.get_estStructCondition(structPlotTrial,'est_catch_release');
+%             plotCon_norm_release = this.get_estStructCondition(structPlotTrial,'est_norm_release');
+%             plotCon_catch_release = this.get_estStructCondition(structPlotTrial,'est_catch_release');
             plotCon_catch_pulse = this.get_estStructCondition(structPlotTrial,'est_catch_pulse');
-            plotCon_stocastic_release = this.get_estStructCondition(structPlotTrial,'est_stocastic_release');
-            plotCon_stocastic_stocastic = this.get_estStructCondition(structPlotTrial,'est_stocastic_stocastic');
-                
+%             plotCon_stocastic_release = this.get_estStructCondition(structPlotTrial,'est_stocastic_release');
+%             plotCon_stocastic_stocastic = this.get_estStructCondition(structPlotTrial,'est_stocastic_stocastic');
+                 
             % Stiffness Plot
             figure('Position',figPosition);%,[300 314 929 420]);
             ax(1) = subplot(1,5,1); hold on;
@@ -616,18 +655,18 @@ classdef crossConditionAnalysis < handle
             set(gca,'fontsize',16);grid on;
 
             for i = this.dexForce
-               axes(ax(1)); errorbar(springVal(2:end),squeeze(plotCon_norm_release.k_hat_ave(subNum,i,(2:end))),squeeze(plotCon_norm_release.k_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
-               axes(ax(2)); errorbar(springVal(2:end),squeeze(plotCon_catch_release.k_hat_ave(subNum,i,(2:end))),squeeze(plotCon_catch_release.k_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                axes(ax(1)); errorbar(springVal(2:end),squeeze(plotCon_norm_release.k_hat_ave(subNum,i,(2:end))),squeeze(plotCon_norm_release.k_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                axes(ax(2)); errorbar(springVal(2:end),squeeze(plotCon_catch_release.k_hat_ave(subNum,i,(2:end))),squeeze(plotCon_catch_release.k_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
                axes(ax(3)); errorbar(springVal,squeeze(plotCon_catch_pulse.k_hat_ave(subNum,i,:)),squeeze(plotCon_catch_pulse.k_hat_std(subNum,i,:)),'linewidth',2.5); hold on;
-               axes(ax(4)); errorbar(springVal(2:end),squeeze(plotCon_stocastic_release.k_hat_ave(subNum,i,(2:end))),squeeze(plotCon_stocastic_release.k_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
-               axes(ax(5)); errorbar(springVal,squeeze(plotCon_stocastic_stocastic.k_hat_ave(subNum,i,:)),squeeze(plotCon_stocastic_stocastic.k_hat_std(subNum,i,:)),'linewidth',2.5); hold on;
+%                axes(ax(4)); errorbar(springVal(2:end),squeeze(plotCon_stocastic_release.k_hat_ave(subNum,i,(2:end))),squeeze(plotCon_stocastic_release.k_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                axes(ax(5)); errorbar(springVal,squeeze(plotCon_stocastic_stocastic.k_hat_ave(subNum,i,:)),squeeze(plotCon_stocastic_stocastic.k_hat_std(subNum,i,:)),'linewidth',2.5); hold on;
             end
             for i = 1:5
                 axes(ax(i)); plot(xRange,springVal.*ones(2,1),'--k','linewidth',2.5); hold on;
             end
             axes(ax(1)); legend(forceVal);
             
-            saveas(gcf,[pathh,fileName,'_k'],'png');
+%             saveas(gcf,[pathh,fileName,'_k'],'png');
             
             % Damping Plot
             figure('Position',figPosition);%,[300 314 929 420]);
@@ -663,10 +702,10 @@ classdef crossConditionAnalysis < handle
             set(gca,'fontsize',16); grid on;
 
             for i = this.dexForce
-               axes(ax(1)); errorbar(springVal(2:end),squeeze(plotCon_norm_release.b_hat_ave(subNum,i,(2:end))),squeeze(plotCon_norm_release.b_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
-               axes(ax(2)); errorbar(springVal(2:end),squeeze(plotCon_catch_release.b_hat_ave(subNum,i,(2:end))),squeeze(plotCon_catch_release.b_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                axes(ax(1)); errorbar(springVal(2:end),squeeze(plotCon_norm_release.b_hat_ave(subNum,i,(2:end))),squeeze(plotCon_norm_release.b_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                axes(ax(2)); errorbar(springVal(2:end),squeeze(plotCon_catch_release.b_hat_ave(subNum,i,(2:end))),squeeze(plotCon_catch_release.b_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
                axes(ax(3)); errorbar(springVal,squeeze(plotCon_catch_pulse.b_hat_ave(subNum,i,:)),squeeze(plotCon_catch_pulse.b_hat_std(subNum,i,:)),'linewidth',2.5); hold on;
-               axes(ax(4)); errorbar(springVal(2:end),squeeze(plotCon_stocastic_release.b_hat_ave(subNum,i,(2:end))),squeeze(plotCon_stocastic_release.b_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                axes(ax(4)); errorbar(springVal(2:end),squeeze(plotCon_stocastic_release.b_hat_ave(subNum,i,(2:end))),squeeze(plotCon_stocastic_release.b_hat_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
 %                axes(ax5); errorbar(this.distVal(this.dexDistance),squeeze(plotCon_stocastic_stocastic.b_hat_ave(subNum,i,:)),squeeze(plotCon_stocastic_stocastic.b_hat_ave(subNum,i,:)),'linewidth',2.5); hold on;
             end
             axes(ax(1)); legend(forceVal);
@@ -682,7 +721,7 @@ classdef crossConditionAnalysis < handle
             ax5 = subplot(1,5,5); hold on;
             
             axes(ax1); title('Release (normal)');
-            ylabel('x_0 (m)');ylim([0 18]);
+            ylabel('x_0 (cm)');ylim([0 18]);
             xlabel('Spring Stiffness(N/m)'); xticks(springVal); xlim(xRange);
             set(gca,'fontsize',16);grid on;
             
@@ -704,9 +743,9 @@ classdef crossConditionAnalysis < handle
             axes(ax4); title('Stocastic (stocastic)');
 
             for i = this.dexForce
-                    axes(ax1); errorbar(this.xAxisVal(this.dexDistance(2:end)),100*squeeze(plotCon_norm_release.x_h_ave(subNum,i,2:end)),100*squeeze(plotCon_norm_release.x_h_std(subNum,i,2:end)),'linewidth',2.5); hold on;
-                    axes(ax2); errorbar(this.xAxisVal(this.dexDistance(2:end)),100*squeeze(plotCon_catch_release.x_h_ave(subNum,i,2:end)),100*squeeze(plotCon_catch_release.x_h_std(subNum,i,2:end)),'linewidth',2.5); hold on;
-                    axes(ax4); errorbar(this.xAxisVal(this.dexDistance(2:end)),100*squeeze(plotCon_stocastic_release.x_h_ave(subNum,i,2:end)),100*squeeze(plotCon_stocastic_release.x_h_std(subNum,i,2:end)),'linewidth',2.5); hold on;
+%                     axes(ax1); errorbar(this.xAxisVal(this.dexDistance(2:end)),100*squeeze(plotCon_norm_release.x_h_ave(subNum,i,2:end)),100*squeeze(plotCon_norm_release.x_h_std(subNum,i,2:end)),'linewidth',2.5); hold on;
+%                     axes(ax2); errorbar(this.xAxisVal(this.dexDistance(2:end)),100*squeeze(plotCon_catch_release.x_h_ave(subNum,i,2:end)),100*squeeze(plotCon_catch_release.x_h_std(subNum,i,2:end)),'linewidth',2.5); hold on;
+%                     axes(ax4); errorbar(this.xAxisVal(this.dexDistance(2:end)),100*squeeze(plotCon_stocastic_release.x_h_ave(subNum,i,2:end)),100*squeeze(plotCon_stocastic_release.x_h_std(subNum,i,2:end)),'linewidth',2.5); hold on;
                     
                     axes(ax3); errorbar(this.xAxisVal(this.dexDistance),100*squeeze(plotCon_catch_pulse.x_h_ave(subNum,i,:)),100*squeeze(plotCon_catch_pulse.x_h_std(subNum,i,:)),'linewidth',2.5); hold on;
             end
@@ -748,48 +787,48 @@ classdef crossConditionAnalysis < handle
             set(gca,'fontsize',16);grid on;
             
             for i = this.dexForce
-                axes(ax1); errorbar(springVal(2:end),squeeze(plotCon_norm_release.VAF_ave(subNum,i,(2:end))),squeeze(plotCon_norm_release.VAF_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
-                axes(ax2); errorbar(springVal(2:end),squeeze(plotCon_catch_release.VAF_ave(subNum,i,(2:end))),squeeze(plotCon_catch_release.VAF_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                 axes(ax1); errorbar(springVal(2:end),squeeze(plotCon_norm_release.VAF_ave(subNum,i,(2:end))),squeeze(plotCon_norm_release.VAF_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                 axes(ax2); errorbar(springVal(2:end),squeeze(plotCon_catch_release.VAF_ave(subNum,i,(2:end))),squeeze(plotCon_catch_release.VAF_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
                 axes(ax3); errorbar(springVal,squeeze(plotCon_catch_pulse.VAF_ave(subNum,i,:)),squeeze(plotCon_catch_pulse.VAF_std(subNum,i,:)),'linewidth',2.5); hold on;
-                axes(ax4); errorbar(springVal(2:end),squeeze(plotCon_stocastic_release.VAF_ave(subNum,i,(2:end))),squeeze(plotCon_stocastic_release.VAF_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
-                axes(ax5); errorbar(springVal,squeeze(plotCon_stocastic_stocastic.OC_hat_ave(subNum,i,:)),squeeze(plotCon_stocastic_stocastic.OC_hat_std(subNum,i,:)),'linewidth',2.5); hold on;
+%                 axes(ax4); errorbar(springVal(2:end),squeeze(plotCon_stocastic_release.VAF_ave(subNum,i,(2:end))),squeeze(plotCon_stocastic_release.VAF_std(subNum,i,(2:end))),'linewidth',2.5); hold on;
+%                 axes(ax5); errorbar(springVal,squeeze(plotCon_stocastic_stocastic.OC_hat_ave(subNum,i,:)),squeeze(plotCon_stocastic_stocastic.OC_hat_std(subNum,i,:)),'linewidth',2.5); hold on;
             end
             axes(ax1); legend(forceVal,'location','south');
             
             saveas(gcf,[pathh,fileName,'_VAF'],'png');
             
-            figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
-            count = 1;
-            for force = this.dexForce
-                for dist = this.dexDistance
-                ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
-                
-                axes(ax(count)); title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(springVal(dist))]);
-                if(1==mod(count,length(this.dexDistance)))
-                    ylabel('Velocity (m/s)'); %ylim([0 100]);
-                end
-                if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
-                    xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
-                end
-                set(gca,'fontsize',16);grid on;
-                                
-                for triall = 1:length(this.depMeasures{subNum,force,dist}.trial_norm.est_release)
-                    structt = this.depMeasures{subNum,force,dist}.trial_norm.est_release{triall};
-                    N = length(structt.x_dot);
-                    plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structt.x_dot,'b');
-                end
-                
-                % Plot mean model
-                N = length(structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave);
-                plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave,'r','linewidth',2.5);
-
-                
-                ylim([-1 1.5]);
-                xlim([0 0.5]);
-                count = count + 1;
-                end
-            end
-            saveas(gcf,[pathh,fileName,'_rawRelease'],'png');
+%             figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
+%             count = 1;
+%             for force = this.dexForce
+%                 for dist = this.dexDistance
+%                 ax(count) = subplot(length(this.dexForce),length(this.dexDistance),count); hold on;
+%                 
+%                 axes(ax(count)); title(['Force: ',num2str(this.f_target_vec(force)), ', Dist: ',num2str(springVal(dist))]);
+%                 if(1==mod(count,length(this.dexDistance)))
+%                     ylabel('Velocity (m/s)'); %ylim([0 100]);
+%                 end
+%                 if(count>(length(this.dexForce)*length(this.dexDistance))-length(this.dexDistance))
+%                     xlabel('Time (s)'); %xticks(this.distVal); xlim(xRange);
+%                 end
+%                 set(gca,'fontsize',16);grid on;
+%                                 
+%                 for triall = 1:length(this.depMeasures{subNum,force,dist}.trial_norm.est_release)
+%                     structt = this.depMeasures{subNum,force,dist}.trial_norm.est_release{triall};
+%                     N = length(structt.x_dot);
+%                     plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structt.x_dot,'b');
+%                 end
+%                 
+%                 % Plot mean model
+%                 N = length(structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave);
+%                 plot(0:(1/this.sfrq):(N-1)*(1/this.sfrq), structPlotTrial{subNum,force,dist}.est_norm_release.x_dot_hat_ave,'r','linewidth',2.5);
+% 
+%                 
+%                 ylim([-1 1.5]);
+%                 xlim([0 0.5]);
+%                 count = count + 1;
+%                 end
+%             end
+%             saveas(gcf,[pathh,fileName,'_rawRelease'],'png');
             
             % Plot summary figure for pulse fitting
             figure('Position',[1 62 1440 735]);%,[300 314 929 420]);
@@ -823,7 +862,7 @@ classdef crossConditionAnalysis < handle
                 count = count + 1;
                 end
             end
-            saveas(gcf,[pathh,fileName,'_rawPulse'],'png');
+%             saveas(gcf,[pathh,fileName,'_rawPulse'],'png');
 
 %             x_s_known = 100*[0.0938, 0.0469, 0.0234,...
 %                 0.1250, 0.0625, 0.0312 ,...
