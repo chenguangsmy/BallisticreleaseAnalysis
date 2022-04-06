@@ -3,6 +3,8 @@ classdef mainAnalysis_federico < handle
     %withInSubjectAnalysis This class takes in all the trials for a
     %specific subject and a condition. It outputs three different stiffness
     %estimates (step, stochastic, and release) in one data structure.
+
+    %My first line of comment
     
     properties
                 
