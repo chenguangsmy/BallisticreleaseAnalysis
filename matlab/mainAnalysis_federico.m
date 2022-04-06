@@ -64,8 +64,6 @@ classdef mainAnalysis_federico < handle
             for i = 1
                depMeasures_human.get_mainPlot('human',i,pathh);
             end
-                        
-             disp('test');
             
         end
         
