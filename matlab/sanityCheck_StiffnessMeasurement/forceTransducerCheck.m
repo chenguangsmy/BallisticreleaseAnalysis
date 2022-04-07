@@ -1,3 +1,15 @@
+% This script is a SanityCheck to test the force transducer functional or
+% not. 
+
+% The important part is: 
+%                       ln137-226   force measure at -Y
+%                       ln233-313   force measure at -Z
+%
+
+% It contains using force transducer to measure different mass levels (mass
+% standards). According to the measured mass, tha accuracy of force
+% transducer was decided.  
+
 % as 1) The stiffness measured from the forceTransducer and OPTOTRAK
 % greater than the marked value; 2) The stiffness measured from the
 % OPTOTRAK is on the marked value. I'm guessing the forceTransducer read
@@ -5,7 +17,7 @@
 
 % Now I'm testing it use standard mass. The g is 9.80665???
 
-% % % fttmp = SessionScanFT(3957,'KingKongFT03957.forceTest500g.csv');
+fttmp = SessionScanFT(3957,'KingKongFT03957.forceTest500g.csv');
 fttmp.plotForceOrigin()
 
 t_shift = fttmp.elapse - fttmp.elapse(1);
@@ -32,7 +44,7 @@ for epoc_i = 1:size(t_load,1)
     dF = sqrt(sum(Favg_load - Favg_unload).^2);
     F_measures(epoc_i) = dF;
 end
-%%
+%
 mass_measures = F_measures/9.8 * 1000
 
 %% multiple sessions 
@@ -118,7 +130,8 @@ xlim([0 2500]); ylim([0 2500]);
 legend([lh1, lh2], {'measured weight', 'known weight'});
 xlabel('known weight (g)');
 ylabel('measured weight (g)');
-title('force transducer measure known mass X');
+title({'force transducer measure known mass X', ...
+    'with bearing'});
         
 
 %% multiple sessions 
@@ -209,7 +222,8 @@ xlim([0 2500]); ylim([0 2500]);
 legend([lh1, lh2], {'measured weight', 'known weight'});
 xlabel('known weight (g)');
 ylabel('measured weight (g)');
-title('force transducer measure known mass -Y');
+title({'force transducer measure known mass -Y', ...
+    'no bearing'});
         
         
 %% multiple sessions 

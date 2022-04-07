@@ -1812,8 +1812,13 @@ classdef (HandleCompatible)SessionScan < handle
             if (exist('t_msg_trialidx', 'var') && exist('bk_trials', 'var'))
                 % 1. find the intersect of trials
                 [trial_its, idx_msg1, idx_bk1] = intersect(t_msg_trialidx{1}, bk_trials{1}); % FT
+                try
                 [trial_its, idx_msg2, idx_bk2] = intersect(t_msg_trialidx{2}, bk_trials{2}); % FT
-                
+                catch 
+                    disp('force time sync ERROR! use erroneous time');
+                    idx_msg2 = []; 
+                    idx_bk2 = []; 
+                end
 %                 [trial_its, idx_msg3, idx_bk3] = intersect(bk_trials{3}, bk_trials{3}); % OPTOTRAK
                 % assuem every FT sync signal has a WAM sync signal
                 
@@ -1822,7 +1827,11 @@ classdef (HandleCompatible)SessionScan < handle
                 t_interest{2} = t_interest{2}(idx_msg2);
                 
                 bk_time{1} = bk_time{1}(idx_bk1);
-                bk_time{2} = bk_time{2}(idx_bk2);
+                if ~isempty(idx_bk2)
+                    bk_time{2} = bk_time{2}(idx_bk2);
+                else
+                    bk_time{2} = [];
+                end
                 
                 if_OPT = 0;
                 if (length(bk_trials)>=3)

@@ -83,8 +83,15 @@ classdef TrialScan
             
             obj.tNo = trialNo;
             idx = find(sessionScanObj.Data.TrialNo == trialNo);
+            if ~isempty(idx)
             obj.bgn = idx(1);
             obj.edn = idx(end);                             % end_idx, avlid confliction
+            else    % when one trial was not recorded, use the previous one and the after one
+                idx_prev = find(sessionScanObj.Data.TrialNo == (trialNo-1));
+                idx_post = find(sessionScanObj.Data.TrialNo == (trialNo+1));
+                obj.bgn = idx_prev(end); 
+                obj.edn = idx_post(1);
+            end
             obj.bgn_t = sessionScanObj.time(obj.bgn);  % time for high_sample
             obj.edn_t = sessionScanObj.time(obj.edn);
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
@@ -1447,7 +1454,7 @@ classdef TrialScan
         %    dat.Fp = zeros(size(dat.Fp));
         %end
         
-        ifplot = 0;
+        ifplot = 1;
         outcome_name = 'sf';
         if (ifplot)
 %             subplot(2,1,1); 
