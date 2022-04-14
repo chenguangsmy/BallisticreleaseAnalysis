@@ -313,7 +313,7 @@ classdef (HandleCompatible)SessionScan < handle
                                         3803:3812, 3856:3860, ...
                                         3873:3884, ...
                                         3906:3912, 3925:3937, ...
-                                        3987:4002];
+                                        3987:4002, 4046:4053];
             % in these sessions, I wrongly calibrate the force, that the
             % collected force is biased for certain value. To deal with
             % this exception, the only way is to add the force value of ts7
@@ -1835,7 +1835,11 @@ classdef (HandleCompatible)SessionScan < handle
                 
                 if_OPT = 0;
                 if (length(bk_trials)>=3)
-                    if_OPT = 1;
+                    if obj.ssnum < 3957 
+                        if_OPT = 0;
+                    else
+                        if_OPT = 1;
+                    end
                     [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
                     t_interest{3} = t_interest{3}(idx_msg3);
                     bk_time{3} = bk_time{3}(idx_bk3);

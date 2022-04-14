@@ -11,6 +11,16 @@ classdef SessionScanFT
             [0          0           cosd(180)
             -sind(45)   cosd(45)    0
             cosd(45)    sind(45)    0];
+        FTrot_M1 = ...  % another position"raise-hand" 
+                   ...  % global: x-right, y-front, z-up, FT_base x-rightback, y-rightfront, z-up
+            [cosd(315) -sind(315)    0
+             sind(315)  cosd(315)    0
+                    0          0     1];
+        FTrot_M2 = ... % another position "joystick", "raise-hand horizontal mount"
+                    ... % global: x-right, y-front, z-up, FT_base x-rightfront, y-leftfront, z-up
+            [cosd(45) -sind(45)    0
+             sind(45)  cosd(45)    0
+                    0          0     1];
         RDT
         FT
         elapse
@@ -192,7 +202,9 @@ classdef SessionScanFT
         end
         function obj = forceFTconvert(obj) % convert from select into world axis
             %obj.force = obj.FTrot_M * obj.force_origin;
-            obj.force = obj.FTrot_M * obj.force_net;
+%             obj.force = obj.FTrot_M * obj.force_net;
+%             obj.force = obj.FTrot_M1 * obj.force_net; % raise-up configuration
+            obj.force = obj.FTrot_M2 * obj.force_net; % joystick configuration
             %obj.force_net = obj.FTrot_M * obj.force_net;
         end
         function plotElapse(obj)

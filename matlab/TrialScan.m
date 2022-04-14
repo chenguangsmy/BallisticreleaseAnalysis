@@ -1454,7 +1454,7 @@ classdef TrialScan
         %    dat.Fp = zeros(size(dat.Fp));
         %end
         
-        ifplot = 1;
+%         ifplot = 1;
         outcome_name = 'sf';
         if (ifplot)
 %             subplot(2,1,1); 
@@ -1482,7 +1482,12 @@ classdef TrialScan
               grid on;
               ylabel('Fp (N)' );
               axh(2) = subplot(4,1,2); hold on;
+%                     % tmp_code for debug:
+%                     t_avg_idx = t>-4.5 & t<-4;
+%                     x_avg = mean(dat.x(:,t_avg_idx),2);
+%                     % end tmp
               plot(t, dat.x(2,:));
+%               plot(t, dat.x(1,:) -x_avg(1));
               line([0.4 1.0], (0.48+obj.tarL+0.01)*[1 1], 'color', 'r');
               line([0.5 1.0], (0.48+obj.tarL-0.01)*[1 1], 'color', 'r');
               line([0.4 1.0], (0.48+obj.tarL+0.005)*[1 1], 'color', 'g');
@@ -1490,29 +1495,34 @@ classdef TrialScan
               ylabel('position (m)');
               grid on;
               axh(3) = subplot(4,1,3); hold on;
-              plot(t, dat.v(2,:));
+%               plot(t, dat.v(2,:));
+             plot(t, dat.v(1:2,:));
               line([0.5 1.0], [0.05 0.05], 'color', 'r');
               line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
               ylabel('velocity (m/s)');
               grid on;
               axh(4) = subplot(4,1,4);  hold on;
-              plot(t, dat.f(2,:), 'Marker', '.');
+%               plot(t, dat.f(2,:), 'Marker', '.');
+                plot(t, dat.f(1:2,:), 'Marker', '.');
               grid on;
               ylabel('Force (N)')
               
               linkaxes(axh, 'x');
               % xlim for better read
 %               xlim([[-0.01 0.02]]);
-%               xlim([-0.2 1]);
-              xlim([-0.2 2]);
+              xlim([-0.2 1]);
+%               xlim([-0.8 2]);
+%                 xlim([-8 2]);
+%                 xlim([-5 0])
 
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');
 %             subplot(2,1,2);
 %             plot(dat.t, dat.f);
 %%%%%%%%%%%%%% condition: abs(t(dat.Fp(2,:)==-12) - 0.2) < 0.02
+        
         end
-        ifplot = 1; 
+%         ifplot = 1; 
         if (isfield(dat, 'ox'))
         if (~isempty(dat.ox))
             
