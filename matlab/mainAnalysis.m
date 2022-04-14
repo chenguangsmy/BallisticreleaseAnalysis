@@ -114,15 +114,16 @@ classdef mainAnalysis < handle
 % %             save('/Users/jhermus/Desktop/Spring_12N_200ms_ss3925_3937.mat');  
 
             % Check new postions with stocstic method
-            load('data/ss4010_4013.mat');
-            for force = 2
-                for posture = 1:2
+%             load('data/ss4010_4013.mat');
+            load('data/ss4017_4019.mat');
+            for force = 1
+                for posture = 1
                     trial = 1;
                     X = data(1,1,force,posture,1,3);
                     X = X{1};
                     dex = find(X.ts == 4);
                     dex = dex(1000:end);
-                    this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+                    get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
                 end
             end
             %% Run from here to plot
