@@ -57,8 +57,10 @@ sucess_rate = zeros(3,6,3,4);
 for subj_i = 1:6
     for ri = 1:3
         for ci = 1:4
-            ss_num(subj_i,ri,ci)
+            display(['session' num2str(ss_num(subj_i,ri,ci))]);
             sstmp = SessionScan(ss_num(subj_i,ri,ci));
+            display('delayedIdx:');
+            sstmp.getDelayedTrialIdx
             sucess_rate(1,subj_i,ri,ci) = sum([sstmp.trials.outcome]);
             sucess_rate(2,subj_i,ri,ci) = sstmp.trials_num;
             sucess_rate(3,subj_i,ri,ci) = sucess_rate(1,subj_i,ri,ci)/sucess_rate(2,subj_i,ri,ci);

@@ -7,7 +7,8 @@
 % subj_names_all = {'Chenguang', 'James', 'Himanshu', 'Michael', 'Adam', 'Marco'};
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine.mat'); 
 subj_names_all = {'Springs', 'Chenguang', 'James', 'Himanshu', 'Michael', 'Adam', 'Marco'};
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_S_6subj_fine.mat'); 
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_S_6subj_fine.mat'); 
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine_fcealign.mat'); 
 %% 
 
 
@@ -15,7 +16,7 @@ load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/proc
 % 1. plot properties during perturbation for each subject
 
 Data = data(1:2,:,:,:,:,:);
-sbj_idx = [1 2];%[1:7]; %[1:6]; %%[1 4 5 6];
+sbj_idx = 1;%[1:6];%[1 2];%[1:7];  %%[1 4 5 6];
 subj_names = subj_names_all(sbj_idx);
 Data = data(sbj_idx,:,:,:,:,:);
 clear axh
@@ -31,8 +32,8 @@ l = size(Data, 5); % trials
 p = size(Data, 6); % perturbation type
 idx_last = 200;
 if_subtract = 0;
-epoc_type = 1;
-plot_type = 3%4;  % 1 displacement
+epoc_type = 2;
+plot_type = 2%4;  % 1 displacement
                 % 2 force
                 % 3 Fp
                 % 4 vlocity

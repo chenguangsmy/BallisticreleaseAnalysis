@@ -1,14 +1,18 @@
+% This file is no-longer being supported because of the old data format
+% cannot fit in the new parser. (time synchrony problem)
+
 % four example sesions in the ballistic-release testing. 
 clc; clear;
+
 %%
 % 2153: subject +y, robot +y; (robot-global)
 % 2154: subject -y, robot -y;
 % 2155: subject +x, robot -y;
 % 2156: subject -x, robot +y;
-ss_all = [2153 2154;    % front and back
+ss_list = [2153 2154;    % front and back
           2156 2155];   % left and right
 
-ss_list = ss_all(:);%[2153, 2154, 2155, 2156];
+ss_list = ss_list(:);%[2153, 2154, 2155, 2156];
 for ss_i = 1:length(ss_list)
     eval(['ss' num2str(ss_list(ss_i)) '=SessionScan(' num2str(ss_list(ss_i)) ');']);
 end
@@ -47,11 +51,11 @@ end
 
 % See the velocity differences when robot configuration is the same
 % plot front
-axhv1 = eval(['ss' num2str(ss_all(1,1)) '.plotMeantrialVel_sameCond_overlap(1, 1, 1);']);
-axhv1 = eval(['ss' num2str(ss_all(2,1)) '.plotMeantrialVel_sameCond_overlap(1, axhv1, 2);']);
+axhv1 = eval(['ss' num2str(ss_list(1,1)) '.plotMeantrialVel_sameCond_overlap(1, 1, 1);']);
+axhv1 = eval(['ss' num2str(ss_list(2,1)) '.plotMeantrialVel_sameCond_overlap(1, axhv1, 2);']);
 suptitle('front (red) and left (green)');
 % plot back
-axhv1 = eval(['ss' num2str(ss_all(1,2)) '.plotMeantrialVel_sameCond_overlap(-1, 1, 1);']);
-axhv1 = eval(['ss' num2str(ss_all(2,2)) '.plotMeantrialVel_sameCond_overlap(-1, axhv1, 2);']);
+axhv1 = eval(['ss' num2str(ss_list(1,2)) '.plotMeantrialVel_sameCond_overlap(-1, 1, 1);']);
+axhv1 = eval(['ss' num2str(ss_list(2,2)) '.plotMeantrialVel_sameCond_overlap(-1, axhv1, 2);']);
 suptitle('back (blue) and right (cyne)');
 
