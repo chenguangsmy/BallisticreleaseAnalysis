@@ -232,8 +232,8 @@ classdef (HandleCompatible)SessionScan < handle
             
             % should interpolate all the data here !!!!!
             obj = interpData(obj);
-
-            
+            ifdotrialfy = 1;
+            if (ifdotrialfy)
             if (flag_progress)
                     disp('Trialfy...');
             end
@@ -297,7 +297,7 @@ classdef (HandleCompatible)SessionScan < handle
             
             % remove error task conditions to avoid code error 
             obj = obj.dealingSessionsExceptions(); % nothing here 
-
+            end
         end
         function obj = dealingSessionsExceptions(obj)
             % solve some data-code inconsistant problem, specify for each

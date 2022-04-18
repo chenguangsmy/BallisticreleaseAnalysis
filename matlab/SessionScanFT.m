@@ -74,48 +74,40 @@ classdef SessionScanFT
         
         function obj = dealwithExceptions(obj, ss_num)
             % deal with exceptions 
-             if (ss_num == 3775)
+            switch ss_num
+             case  3775
                  obj.elapse(502620) = nanmean(obj.elapse(502619:502621));
-             end
-             if (ss_num == 3778)
+             case  3778
                  obj.elapse(199100) = nanmean(obj.elapse(199099:199101));
-             end
-             if (ss_num == 3803)
+             case  3803
                  obj.elapse(125225) = nanmean(obj.elapse(125224:125226));
                  obj.elapse(214050) = nanmean(obj.elapse(214049:214051));
                  obj.elapse(535351) = nanmean(obj.elapse(535350:535352));
                  obj.elapse(1354865) = nanmean(obj.elapse(1354864:1354866));
-             end
-             if (ss_num == 3820)
+             case  3820
                  obj.elapse(83250) = nanmean(obj.elapse(83249:83251));
-             end
-             if (ss_num == 3851)
+             case  3851
                  obj.elapse(656798) = nanmean(obj.elapse(656797:656799));
-             end
-             if (ss_num == 3852) 
+             case  3852
                  obj.elapse(1140790) = nanmean(obj.elapse(1140789:1140791));
                  obj.elapse(1352024) = nanmean(obj.elapse(1352023:1352025));
-             end
-             if (ss_num == 3905)
+             case  3905
                  obj.elapse(613100) = nanmean(obj.elapse(613099:613101));
-             end
-             if (ss_num == 3910)
+             case  3910
                  obj.elapse(368420) = nanmean(obj.elapse(368419:368421));
-             end
-             if (ss_num == 3914)
+             case  3914
                  obj.elapse(191400) = nanmean(obj.elapse(191399:191401));
-             end
-             if (ss_num == 3917)
+             case  3917
                  obj.elapse(602778) = nanmean(obj.elapse(602777:602779));
                  obj.elapse(680951) = nanmean(obj.elapse(680950:680952));
-             end
-             if (ss_num == 3920)
+             case  3920
                  obj.elapse(92050) = nanmean(obj.elapse(92049:92051));
                  obj.elapse(746502)= nanmean(obj.elapse(746501:746503));
-             end
-             if (ss_num == 3938)
+             case  3938
                  obj.elapse(650240) = nanmean(obj.elapse(650239:650241));
-             end
+             case 4062
+                 obj.elapse(90800) = nanmean(obj.elapse(90799:90801));
+            end
         end
         
         function obj = intropTime(obj)

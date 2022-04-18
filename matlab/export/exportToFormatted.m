@@ -81,3 +81,69 @@ for ss_i = 1:length(ss_bad_list)
     axh(2) = sstmp.plotAddTrialMark(fh.Children(3));
     linkaxes(axh, 'x')
 end
+
+
+%% format into 6 subjects;
+%Chenguang
+ss_num(1,:,:) =...
+    [   3487   	3486  	3488    3552
+    3495   	3494  	3489    3550
+    3507   	3506  	3505    3551];
+% James
+ss_num(2,:,:) = ...
+    [      3306    3307    3308    3317;
+    3309    3310    3311    3318;
+    3312    3313    3314    3319];
+% Himanshu
+ss_num(3,:,:) = ...
+    [  3499   3498  3500  3597
+    3492   3491  3497  3599
+    3502   3501  3503  3600];
+% MICHAEL WITH 20N force level.
+ss_num(4,:,:) =...
+    [  3629    3630    3661    3632
+    3650    3648    3665    3651
+    3627    3664    3662    3628];
+
+% % %ADAM WITH 3 FORCE LEVELS;
+ss_num(5,:,:) = ...
+    [  3621    3620    3622    3667
+    3637    3635    3636    3638
+    3668    3670    3669    3672];
+
+% MARCO WITH 3 FORCE LEVELS:
+ss_num(6,:,:) = ...
+    [  3643    3641    3642    3644
+    3647    3645    3646    3654
+    3656    3655    3657    3658];
+
+for subj_i = 1:size(ss_num,1)%1:size(ss_num,1)
+    for fce_i = 1:size(ss_num,2) 
+        for tar_i = 1:3 % step perts
+            ss_tmp = SessionScan(ss_num(subj_i, fce_i, tar_i));
+            celltmp = ss_tmp.export_as_formatted(1);
+
+            trials_num = size(celltmp,1);
+            if trials_num>15
+                data(subj_i,1, fce_i, tar_i,:,:) = celltmp(1:15,:);
+            else
+                data(subj_i,1, fce_i, tar_i,1:trials_num,:) = celltmp(:,:);
+            end
+        end
+    end
+        
+    for fce_i = 1:size(ss_num,2) 
+        ss_tmp = SessionScan(ss_num(subj_i, fce_i, 4));
+        celltmp = ss_tmp.export_as_formatted(1);
+        for tar_ii = 1:3 % as a session has 3 length
+            trials_num = size(celltmp,2);
+            if trials_num>15
+                data(subj_i,1, fce_i, tar_ii,1:15,3) = celltmp(tar_ii,1:15,3);
+            else
+                data(subj_i,1, fce_i, tar_ii,1:trials_num,3) = celltmp(tar_ii,:,3);
+            end
+        end
+    end
+end
+
+

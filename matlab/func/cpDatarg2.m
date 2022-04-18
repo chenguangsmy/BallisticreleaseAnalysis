@@ -65,6 +65,7 @@ for ss_i = 1:length(ss_num)
             cp_flag(ss_i) = cp_flag(ss_i) + ERRORCODE_LOSTWAMCSV;
         else
             disp('use WAM0.csv file.');
+            fname2 = fname20;
         end
         if (exist(fname21, 'file')) % binary file 
             disp('cautiion: WAM file is binary');
