@@ -128,7 +128,7 @@ classdef crossTrialAnalysis < handle
                         
         end
         
-        function [data_diff] = get_dataDiff(this,data,f_target)
+        function [data_diff,data_mean] = get_dataDiff(this,data,f_target)
         
             % Look at data
             figure; 
