@@ -42,13 +42,23 @@ classdef mainAnalysis_federico < handle
 %             dexStiff_spring = 1:4; 
 %             depMeasures_spring = crossConditionAnalysis(data_spring,1,dexForce_spring,dexStiff_spring,'spring');
  
+%             %Combined Many subject Tests (12/10/2021)
+%             load('data/prelimData_6subj_fine.mat');
+%             data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
+%             clear data
+%             dexSubject = 1;%:6;
+%             dexForce = 1;%:3; % [15N, 20N, 25N]
+%             dexDistance = 1;%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+            
+            
             %Combined Many subject Tests (12/10/2021)
-            load('data/prelimData_6subj_fine.mat');
-            data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
+            load('data/ss3938_3949.mat');
+            data_human = reshape(data(:,:,:,:,:,:),1,3,3,7,8); % Elliminate direction
             clear data
             dexSubject = 1;%:6;
-            dexForce = 1;%:3; % [15N, 20N, 25N]
-            dexDistance = 1;%:3; % [2.5cm, 5cm, 7.5cm]
+            dexForce = 1:3; % [15N, 20N, 25N]
+            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
             
            
