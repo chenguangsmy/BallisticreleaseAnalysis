@@ -191,7 +191,7 @@ classdef crossTrialAnalysis < handle
             
             %% Look at data diff
             figure; 
-            for j = 1:N_pret
+            for j = 1:N_pret- 1
                 subplot(2,1,1); plot(data_diff.t,data_diff.x(j,:),'linewidth',1.5); ylabel('x'); hold on;
                 subplot(2,1,2); plot(data_diff.t,data_diff.f(j,:),'linewidth',1.5); ylabel('f'); hold on;
             end 
