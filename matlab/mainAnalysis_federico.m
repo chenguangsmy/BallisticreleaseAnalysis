@@ -53,6 +53,7 @@ classdef mainAnalysis_federico < handle
             
             
             %Combined Many subject Tests (12/10/2021)
+            clc, close all
             load('data/ss3938_3949.mat');
             data_human = reshape(data(:,:,:,:,:,:),1,3,3,7,8); % Elliminate direction
             clear data

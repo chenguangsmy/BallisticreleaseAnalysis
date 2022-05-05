@@ -67,7 +67,7 @@ classdef crossTrialAnalysis < handle
 %             [trial_catch.est_release] = this.get_k_hat_release(data,subjectType,trialType,distVal);
 %             [trial_catch.est_pulse] = this.get_k_hat_pulse(data,f_target,subjectType,trialType);
             [data_diff,data_mean] = this.get_dataDiff(data,f_target); % HERE
-            [trial_catch.est_pulse_Diff] = this.get_k_hat_pulse_Diff(data_diff,f_target,subjectType);
+%             [trial_catch.est_pulse_Diff] = this.get_k_hat_pulse_Diff(data_diff,f_target,subjectType);
 
             % Pulse motion
 %             trialType = 2;
