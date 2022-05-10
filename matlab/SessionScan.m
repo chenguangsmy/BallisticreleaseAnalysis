@@ -530,22 +530,33 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             if (~isempty(obj.opt))
-                data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'linear', 'extrap')'; 
-                data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'linear', 'extrap')'; 
-                data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'linear', 'extrap')'; 
+                opt_t1 = interp1(1:length(obj.opt_t(~isnan(obj.opt_t))), obj.opt_t(~isnan(obj.opt_t)), 1:length(obj.opt_t), 'linear', 'extrap'); % not guareentee!  
+                obj.opt_t(1) = opt_t1(1); %??? possible???
+%                 data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'linear', 'extrap')'; 
+%                 data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'linear', 'extrap')'; 
+%                 data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'linear', 'extrap')'; 
+                data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'linear')'; 
+                data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'linear')'; 
+                data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'linear')'; 
+                % in case of obj.opt_t has nan values
+%                 opt_t1 = interp1(1:length(obj.opt_t(~isnan(obj.opt_t))), obj.opt_t(~isnan(obj.opt_t)), 1:length(obj.opt_t), 'linear', 'extrap'); % not guareentee!  
+%                 obj.opt_t(1) = opt_t1(1); %??? possible???
+%                 data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'spline', 'extrap')'; 
+%                 data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'spline', 'extrap')'; 
+%                 data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'spline', 'extrap')'; 
                 
                 nmarkers = size(data.optx,1);
                 if (ifplot)
                     clf; 
                     for i = 1:nmarkers
                         axh(i) = subplot(nmarkers,1,i); hold on; grid on; 
-                        plot(obj.opt.datah.bkt,obj.opt.datah.x(i,:),'marker', '.', 'Color', 'r');
+                        %plot(obj.opt.datah.bkt,obj.opt.datah.x(i,:),'marker', '.', 'Color', 'r');
                         plot(obj.wam_t, data.optx(i,:), '.', 'Color', 'b');
                         
-                        plot(obj.opt.datah.bkt,obj.opt.datah.y(i,:),'marker', '.', 'Color', 'r');
+                        %plot(obj.opt.datah.bkt,obj.opt.datah.y(i,:),'marker', '.', 'Color', 'r');
                         plot(obj.wam_t, data.opty(i,:), '.', 'Color', 'b');
                         
-                        plot(obj.opt.datah.bkt,obj.opt.datah.z(i,:),'marker', '.', 'Color', 'r');
+                        %plot(obj.opt.datah.bkt,obj.opt.datah.z(i,:),'marker', '.', 'Color', 'r');
                         plot(obj.wam_t, data.optz(i,:), '.', 'Color', 'b');
                     end
                     
@@ -749,6 +760,8 @@ classdef (HandleCompatible)SessionScan < handle
             %   t: 1-by-N matrix, time 
             %   mvst: the mask that robot can freely move
             trial_perturbs = [obj.trials.ifpert];
+            % This line is for the multiple perturbation 
+            trial_perturbs(trial_perturbs~=0 & trial_perturbs~=2) = 1;
             pert_max = max(3, (max(trial_perturbs)+1)); % 0,nopert; 1, pulse; 2, stoc
             t_idx = cell(2,pert_max);                   % succ/failure * pert_types
             for sf = 1:2
@@ -805,7 +818,7 @@ classdef (HandleCompatible)SessionScan < handle
                         for t_i = 1:length(trial_list)
                             t_tmp = obj.trials(trial_list(t_i));
                             cellsmat{sf,1,t_i,p_i} = t_tmp.export_as_formatted(ifplot);  % each trial
-                            xlim([-5 -4])
+%                             xlim([-5 -4])
                             %ifplot = true;
 %                             if (ifplot)
 %                                 subplot(2,1,1);
@@ -1108,6 +1121,30 @@ classdef (HandleCompatible)SessionScan < handle
              end
              linkaxes(axh, 'x');
         end 
+        function fh = plotTaskEndpointPosition_all_opt(obj)
+            % plot the xyz-axis position throughout this session
+            fh = figure();
+            axis_name = 'xyz';
+            for ai = 1:3 % xyz
+                axh(ai)=subplot(3,1,ai);hold on;grid on;
+                plot(obj.time, obj.Data.Position.Actual(:,ai), 'b-o');
+                switch ai
+                    case 1
+                        plot(obj.data.t, obj.data.optx(1,:), '.');
+                    case 2
+                        plot(obj.data.t, obj.data.opty(1,:), '.');
+                    case 3
+                        plot(obj.data.t, obj.data.optz(1,:), '.');
+                end
+                if ai == 1
+                    legend('msg', 'hi-sp');
+                end
+                xlabel('time (s)');
+                ylabel('pos (m)');
+                title([ axis_name(ai) ' axis position']);
+            end
+            linkaxes(axh, 'x');
+        end
         function fh = plotTaskEndpointVelocity(obj)
              % plot the y-axis velocity throughout this session
             fh = figure(); hold on;
@@ -1319,6 +1356,39 @@ classdef (HandleCompatible)SessionScan < handle
             end
             % title('all trials position');
         end
+        
+        function axh = plotTrialfyPositionh_all_opt(obj, axh)
+
+            if nargin < 2
+                axh = figure();
+            else
+                figure(axh);
+            end
+            axh_arr = 'xyz';
+            trials = obj.trials;
+            for axi = 1:3
+                axh(axi) = subplot(3,1,axi); hold on;
+                for trial_i = 1:length(trials)
+                    plot(trials(trial_i).data.t_shift, trials(trial_i).data.ox(axi,:));
+                end
+                xlim([-1 1]);
+                xlabel('time');
+                ylabel('position (m)');
+                title(['position ' axh_arr(axi)]);
+                %             subplot(2,1,2); hold on;
+                %             for trial_i = 1:length(trials)
+                %                 plot(trials(trial_i).data.t_shift, trials(trial_i).data.x(2,:));
+                %             end
+                %             xlim([-1 1]);
+                %             title('position y');
+                %             xlabel('time');
+                %             ylabel('position y (m)');
+            end
+            % title('all trials position');
+            linkaxes(axh(:), 'x');
+        end
+        
+        
         function axh = plotTrialfyVelocityh_all(obj, axh)
 
             if nargin < 2
@@ -1833,6 +1903,8 @@ classdef (HandleCompatible)SessionScan < handle
                     bk_time{2} = [];
                 end
                 
+                % no need this part again as the optotrak sync message has
+                % been updated.
                 if_OPT = 0;
                 if (length(bk_trials)>=3)
                     if obj.ssnum < 3957 
@@ -1840,9 +1912,11 @@ classdef (HandleCompatible)SessionScan < handle
                     else
                         if_OPT = 1;
                     end
-                    [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
+%                     [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
+                    [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{4}); % OPTOTRAK, buttom on
                     t_interest{3} = t_interest{3}(idx_msg3);
-                    bk_time{3} = bk_time{3}(idx_bk3);
+%                     bk_time{3} = bk_time{3}(idx_bk3);
+                    bk_time{3} = bk_time{4}(idx_bk3); % buttom on
                 end
                 
                 
@@ -1856,7 +1930,7 @@ classdef (HandleCompatible)SessionScan < handle
                 end
              end
             
-            ifplot = 1;
+            ifplot = 0;
             if (ifplot)
                 clf;
                 hold on;
@@ -1932,11 +2006,12 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             %%% 1. the OPT time
-            try
-                obj.opt_t = interp1(t_interest{3}, bk_time{3}, obj.opt.datah.t, 'linear', 'extrap'); 
-            catch 
-                display('wrong in opt time!');
-            end
+%             try
+%                 obj.opt_t = interp1(t_interest{3}, bk_time{3}, obj.opt.datah.t, 'linear', 'extrap'); 
+%             catch 
+%                 display('wrong in opt time!');
+%             end
+            obj.opt_t = obj.opt.datah.t;
             
             ifplot = 1;
             if (ifplot && if_OPT)

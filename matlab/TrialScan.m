@@ -114,10 +114,12 @@ classdef TrialScan
                 data.opty=sessionScanObj.data.opty(:,data_idx);
                 data.optz=sessionScanObj.data.optz(:,data_idx);
                 if_splineInterp = 1; 
-                ifplot = 0;
+                ifplot = 1;
                 if (if_splineInterp) 
+                    obj.data.ox = nan(3,length(obj.data.t),10); 
                     for marker_i = 1:size(data.optx,1)
                         % do the splineInterp here, for x, y, and z
+                        % QUESTION? DO WE NEED SPLINE?
                         val_idx = (~isnan(data.optx(marker_i,:))) ... 
                                  & (~isnan(data.opty(marker_i,:))) ...
                                  & (~isnan(data.optz(marker_i,:))); 
@@ -153,11 +155,14 @@ classdef TrialScan
                         data.optx(marker_i,:) = intpx;
                         data.opty(marker_i,:) = intpy;
                         data.optz(marker_i,:) = intpz;
-                        if(marker_i == 1)
-                            obj.data.ox(1:3,:) = [  data.optx(marker_i,:); 
-                                                    data.opty(marker_i,:); 
-                                                    data.optz(marker_i,:); ];
-                        end
+%                         if(marker_i == 1)
+%                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:); 
+%                                                     data.opty(marker_i,:); 
+%                                                     data.optz(marker_i,:); ];
+                        obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
+                        obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
+                        obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
+%                         end
                         
                     end
                 end
@@ -1364,11 +1369,27 @@ classdef TrialScan
             dat.emg=obj.data.emg(:,idx);
         end
         if isfield(obj.data, 'ox')
-            dat.ox = obj.data.ox(:,idx);
-            dat.ov = [ diff(obj.data.ox(1,idx)) ./ diff(obj.data.t(idx));
-                       diff(obj.data.ox(2,idx)) ./ diff(obj.data.t(idx));
-                       diff(obj.data.ox(3,idx)) ./ diff(obj.data.t(idx));];
-            dat.ov = dat.ov(:, [1,1:end]); % make same length
+            
+            if length(size(obj.data.ox))==2 % if only one marker
+                dat.ox = obj.data.ox(:,idx);
+                dat.ov = [ diff(obj.data.ox(1,idx)) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(2,idx)) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(3,idx)) ./ diff(obj.data.t(idx));];
+                dat.ov = dat.ov(:, [1,1:end]); % make same length
+            else % if multiple markers
+                dat.ox = obj.data.ox(:,idx,:);
+                dat.ov = [ diff(obj.data.ox(1,idx,:),[],2) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(2,idx,:),[],2) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(3,idx,:),[],2) ./ diff(obj.data.t(idx));];
+                try
+                    dat.ov = dat.ov(:, [1,1:end], :); % make same length
+                catch
+                    disp(['Optotrak no data trial ' num2str(obj.tNo)]);
+                    dat.ov = [];
+                end
+            end
+
+            
         end
         %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
         %dat.v = obj.velocity_h(:,vidx);
@@ -1390,6 +1411,11 @@ classdef TrialScan
 %         dat.tq= obj.wamtqe_h(:,vidx);
 %         dat.tq= interp1(obj.position_t', obj.wamtqe_h', dat.t)';
         %dat.tq= interp1(wamt_org, dat.tq, dat.t, 'linear', 'extrap');
+            % test code for a specific session ss4146:
+                if (sum(obj.ifpert==[4 6]) == 2)
+                    obj.ifpert = 6;
+                end
+            %
         if (obj.ifpert==0 || obj.ifpert==1)
             dat.mvst= (dat.ts==5 | dat.ts==6); % moveent start
         elseif(obj.ifpert==2) % stochastic pert
@@ -1486,12 +1512,19 @@ classdef TrialScan
 %                     t_avg_idx = t>-4.5 & t<-4;
 %                     x_avg = mean(dat.x(:,t_avg_idx),2);
 %                     % end tmp
-              plot(t, dat.x(2,:));
+%               plot(t, dat.x(2,:));
+              plot(t, dat.x(1,:));
+              if length(size(dat.ox))==2 % only one marker
+                    plot(t, dat.ox(1,:));
+              else % multiple markers
+                    plot(t,dat.ox(1,:,1));
+              end
 %               plot(t, dat.x(1,:) -x_avg(1));
-              line([0.4 1.0], (0.48+obj.tarL+0.01)*[1 1], 'color', 'r');
-              line([0.5 1.0], (0.48+obj.tarL-0.01)*[1 1], 'color', 'r');
-              line([0.4 1.0], (0.48+obj.tarL+0.005)*[1 1], 'color', 'g');
-              line([0.5 1.0], (0.48+obj.tarL-0.005)*[1 1], 'color', 'g');
+                tar_offset = 0; % 0.48
+% %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
+% %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
+% %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
+% %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
               ylabel('position (m)');
               grid on;
               axh(3) = subplot(4,1,3); hold on;
@@ -1510,8 +1543,8 @@ classdef TrialScan
               linkaxes(axh, 'x');
               % xlim for better read
 %               xlim([[-0.01 0.02]]);
-              xlim([-0.2 1]);
-%               xlim([-0.8 2]);
+%               xlim([-0.2 4]);
+              xlim([-0.8 2]);
 %                 xlim([-8 2]);
 %                 xlim([-5 0])
 
@@ -1537,24 +1570,29 @@ classdef TrialScan
               grid on;
               ylabel('Fp (N)' );
               axh(2) = subplot(4,1,2); hold on;
-              plot(t, dat.x(2,:), 'b.');    % robot
-              plot(t, dat.x(2,:), 'r.');    % optotrak
-              line([0.4 1.0], (0.48+obj.tarL+0.01)*[1 1], 'color', 'r');
-              line([0.5 1.0], (0.48+obj.tarL-0.01)*[1 1], 'color', 'r');
-              line([0.4 1.0], (0.48+obj.tarL+0.005)*[1 1], 'color', 'g');
-              line([0.5 1.0], (0.48+obj.tarL-0.005)*[1 1], 'color', 'g');
+              plot(t, dat.x(1,:), 'b.');    % robot
+              plot(t, dat.x(1,:), 'r.');    % optotrak
+              tar_offset = 0; % 0.48
+% % %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
+% % %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
+% % %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
+% % %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
               ylabel('position (m)');
               grid on;
               axh(3) = subplot(4,1,3); hold on;
-              lnh(1) = plot(t, dat.v(2,:), 'b.');    % robot
-              lnh(2) = plot(t, dat.ov(2,:), 'r.');    % optotrak
+              lnh(1) = plot(t, dat.v(1,:), 'b.');    % robot
+              if length(size(dat.ov))==2
+                lnh(2) = plot(t, dat.ov(1,:), 'r.');    % optotrak
+              else
+                lnh(2) = plot(t, dat.ov(1,:,1), 'r.');    % optotrak
+              end
               line([0.5 1.0], [0.05 0.05], 'color', 'r');
               line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
               legend(lnh, 'robot', 'optotrak');
               ylabel('velocity (m/s)');
               grid on;
               axh(4) = subplot(4,1,4);  hold on;
-              plot(t, dat.f(2,:), 'Marker', '.');
+              plot(t, dat.f(1,:), 'Marker', '.');
               grid on;
               ylabel('Force (N)')
               
@@ -1562,7 +1600,7 @@ classdef TrialScan
               % xlim for better read
 %               xlim([[-0.01 0.02]]);
 %               xlim([-0.2 1]);
-              xlim([-0.2 2]);
+              xlim([-3.0 2]);
 
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');
