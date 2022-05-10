@@ -9,6 +9,10 @@ ballisticRelease_stepPert.slxc
 func/cpDatarg2.m~
 func/results.txt
 optotrack/
+<<<<<<< HEAD
+=======
+sanityCheck_BallisticRelease/ReleaseDataCheck.m
+>>>>>>> 01f7e9f2fe16ab27677de53d8ada009a66e6f241
 slprj/
 tmp.txt
 ../slprj/
@@ -16,9 +20,19 @@ tmp.txt
 ../ballisticRelease_GaussianPerte.slxc
 ../ballisticRelease_stepPert.slxc
 ../slprj/
+<<<<<<< HEAD
 *.png
 *.jpg
 *.jpeg
 *.mat
 *.mp4
 *.pptx
+=======
+sanityCheck*
+*.pptx
+*.png
+*.mp4
+*.mat
+*.jpg
+*.jpeg
+>>>>>>> 01f7e9f2fe16ab27677de53d8ada009a66e6f241

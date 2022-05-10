@@ -5,8 +5,7 @@ classdef mainAnalysis < handle
     %estimates (step, stochastic, and release) in one data structure.
     
     properties
-        
-        
+                
     end
     
     methods
@@ -15,226 +14,139 @@ classdef mainAnalysis < handle
             dbstop if error
             addpath('func/');
 
-%           load('/Users/jhermus/Downloads/ss2818_2842.mat');
-            % Adapted filed
-%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss2818_2842_adp.mat')
-            
-            % Hack this data type to be able to run analysis
-%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3003_3005.mat')
-% 
-%             for width = 1:3
-%                 for height = 1:4
-%                     for trial = 1:10
-%                         datatmp{1,width,height,trial,2} = data{width,height}{trial};
-%                     end
-%                 end
-%             end
-%             
-%             datatmp{1,width,height,trial,1}=[];
-%             datatmp{1,width,height,trial,3}=[];
-% 
-%             clear data
-%             data = datatmp;
-% 
-%             dexSubject = 1;
-%             dexDirection = 1:3;
-%             dexDistance = 1:4;
-            
-%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/PertParamSelection_gaussian_cg.mat');
-%             data = Data;
-%             clear Data
-%             
-%             mag = 3;
-%             duration = 1;
-%             dist = 1:3;
-%             posNeg = 1;
-%             for trial = 1:15
-%                 datatmp{1,1,1,trial,2} = data{mag,duration,dist,posNeg}{trial};
-%             end
-%             
-%             datatmp{1,1,1,trial,1}=[];
-%             datatmp{1,1,1,trial,3}=[];
-% 
-%             clear data
-%             data = datatmp;
-% 
-%             dexSubject = 1;
-%             dexDirection = 1;
-%             dexDistance = 1:3;
-
-%             % Gaussian test with springs
-%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/SpringGaussian3.mat');
-%             data = Data;
-%             clear Data
-%             
-%             mag = 2;
-%             duration = 1;
-%             for posNeg = 1:2
-%                 for stiffness = 1:4
-%                     for trial = 1:15
-%                         datatmp{1,stiffness,posNeg,trial,2} = data{mag,duration,stiffness,posNeg}{trial};
-%                     end
-%                 end
-%             end
-%             
-%             datatmp{1,1,1,trial,1}=[];
-%             datatmp{1,1,1,trial,3}=[];
-% 
-%             clear data
-%             data = datatmp;
-% 
-%             dexSubject = 1;
-%             dexDirection = 1:4;
-%             dexDistance = 1:2;
-
-% %             James Testing 9/22/21
-%             load('/Users/jhermus/Downloads/ss2872_2876.mat');
-%             dataTmp = data{1,4,2,4,2};
-%             figure;
-%             ax1 = subplot(3,1,1); plot(dataTmp.t, dataTmp.x(2,:));
-%             ax2 = subplot(3,1,2); plot(dataTmp.t, dataTmp.f(2,:));
-%             ax3 = subplot(3,1,3); plot(dataTmp.t, dataTmp.Fp(2,:));
-%             linkaxes([ax1,ax2,ax3],'x');
-%             
-%             dexSubject = 1;
-%             dexDirection = 1:4;
-%             dexDistance = 1:3;
-            
-            %% Visiting Pittsburgh Test 11/3/2021
-            % Test fromt Chenguang both directions
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3353_3417.mat');
-            data_human = reshape(data(1,1,:,:,:,:),1,3,3,15,3);
-            clear data
-            dexSubject = 1; % [Chenguang]
-            dexForce = 1:3; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            depMeasures_human2 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-            
-            
-            % Test from James Wednesday
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3307_3314.mat');
-            data_human = data;
-            clear data
-            dexSubject = 1; % [James]
-            dexForce = 1:3; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            
-            depMeasures_human1 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-             
-
             % Spring Test
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3334_3344.mat');
-            data_spring = data;
-            clear data
-            dexSpring = 1; % [336 N/m]
-            dexForce_spring = 1:3; % [15N, 20N, 25N]
-            dexDistance_spring = 1:3; % [will vary based on spring constant]
-%             Spring [4.7, 6.25, 7.81]
-            depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring,'spring');
-%             depMeasures_spring.k_nonNan
-%             depMeasures_human1.k_nonNan
-%             depMeasures_human2.k_nonNan
-%             depMeasures_spring.k_nonNan
-          
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3345.mat');
-            data_robotOnly = data;
-            clear data
-            dexRob = 1; % 
-            dexForce_Rob = 1; 
-            dexDistance_Rob = 1;
-             
-            % Run analysis
-%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance);
-%             depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring);
-            depMeasures_rob = crossConditionAnalysis(data_robotOnly,1,1,1,'spring');
-
-            % Spring Test - diffpreturbation param
-%             load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3318_3319.mat');
+%             load('data/ss3334_3344_alter.mat');
+%             dexForce_spring = 1:3; % [15N, 20N, 25N]
 %             data_spring = data;
+%             for force = dexForce_spring
+%                 for stiff = 1:3
+%                     for trial = 1:15
+%                         for pret = 1:3
+%                             data_spring{1,force,stiff+1,trial,pret} = data{1,force,stiff,trial,pret};
+%                         end
+%                     end
+%                 end
+%             end
 %             clear data
-%             dexSpring = 1; % [336 N/m]
-%             dexForce_spring = 1; % [15N, 20N, 25N]
-%             dexDistance_spring = 1:2; % [will vary based on spring constant]
-%             depMeasures_spring = crossConditionAnalysis(data_spring,dexSpring,dexForce_spring,dexDistance_spring,'spring');
-
-            % Check out 2N stocastic
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/SpringGaussian_8N_format.mat');
-            data = reshape(Data(1,1,1,:,:,:),1,1,2,15,3);
-            crossConditionAnalysis(data, 1, 1, 1:2,'spring');
-            
-            % Check out 3N stocastic
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/SpringStoc_3N.mat');
-            data = reshape(Data(1,1,1,1,:,:),1,1,1,15,3);
-            crossConditionAnalysis(data, 1, 1, 1,'spring');
-
-            
-            % Test from Chenguang and subject
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3431_3440.mat');
+%             load('data/ss3345.mat');
+%             for force = dexForce_spring
+%                 for trial = 1:15
+%                     for pret = 1:3
+%                     data_spring{1,force,1,trial,pret} = data{1,1,1,trial,pret};
+%                     end
+%                 end
+%             end
 %             clear data
-            dexSubject = 1; % [first subject]
-            dexForce = 1; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            
-            depMeasures_TestHuman_Overshoot1 = crossConditionAnalysis(reshape(data(1,1,1,:,:,:),1,1,3,15,3), dexSubject, dexForce, dexDistance,'human');
-            depMeasures_TestHuman_Overshoot2 = crossConditionAnalysis(reshape(data(1,1,2,:,:,:),1,1,3,15,3), dexSubject, dexForce, dexDistance,'human');
-%             depMeasures_TestHuman_Overshoot1.k_nonNan
-%             depMeasures_TestHuman_Overshoot2.k_nonNan
-%             depMeasures_TestHuman_Overshoot1 = crossConditionAnalysis(reshape(data(1,1,1,:,:,:),1,1,3,15,3), dexSubject, dexForce, dexDistance,'human');
-%             depMeasures_TestHuman_Overshoot1 = crossConditionAnalysis(reshape(data(1,2,1,:,:,:),1,1,3,15,3), dexSubject, dexForce, dexDistance,'human');
-
-
-%             depMeasures_Testhuman1 = crossConditionAnalysis(reshape(data(2,1,:,:,:,:),1,1,3,15,3), 1, dexForce, dexDistance,'human');
-%             depMeasures_Testhuman1 = crossConditionAnalysis(reshape(data(3,1,:,:,:,:),1,1,3,15,3), 1, dexForce, dexDistance,'human');
-%             depMeasures_Testhuman1 = crossConditionAnalysis(reshape(data(4,1,:,:,:,:),1,1,3,15,3), 1, dexForce, dexDistance,'human');
-
-            % New Visual Feedback (naive subject)
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3477_3479.mat');
-            dexSubject = 1; % [first subject]
-            dexForce = 1; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            
-            depMeasures_TestHuman = crossConditionAnalysis(data, dexSubject, dexForce, dexDistance,'human');
-            depMeasures_TestHuman.k_nonNan
-            
-            % New Visual/spesifict instruction Feedback (naive subject)
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3491_3493.mat');
-            data_human = reshape(data(1,1,1,:,:,:),1,1,3,15,3);
-            dexSubject = 1; % [first subject]
-            dexForce = 1; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            
-            depMeasures_TestHuman = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-            depMeasures_TestHuman.k_nonNan
-            
-            % Test from Chenguang Full data (11/19/2021)
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3486_3534.mat');
-            data_human = reshape(data(1,3,:,:,:,:),1,3,3,15,3);
-            clear data
-            dexSubject = 1; % [Chenguang]
-            dexForce = 1:3; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            depMeasures_human2 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-                        
-            
-            % Test niave subject (11/19/21)
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/ss3491_3503.mat');
-            data_human = reshape(data(1,3,:,:,:,:),1,3,3,15,3);
-            clear data
-            dexSubject = 1; % 
-            dexForce = 1:3; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            depMeasures_human2 = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
-                        
-            
+%             dexStiff_spring = 1:4; 
+%             depMeasures_spring = crossConditionAnalysis(data_spring,1,dexForce_spring,dexStiff_spring,'spring');
+ 
             % Combined Many subject Tests (12/10/2021)
-            load('/Users/jhermus/Documents/School/MIT/Research/Schwartz_Collaboration/BallisticreleaseAnalysis/matlab/data/prelimData_6subj_fine.mat');
-            data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
-            clear data
-            dexSubject = 1:6;
-            dexForce = 1:3; % [15N, 20N, 25N]
-            dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
-            depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+%             load('data/prelimData_6subj_fine.mat');
+%             data_human = reshape(data(:,1,:,:,:,:),6,3,3,15,3); % Elliminate direction
+%             clear data
+%             dexSubject = 1;%:6;
+%             dexForce = 1%:3; % [15N, 20N, 25N]
+%             dexDistance = 1%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+         
+%             % Human 12N 100ms to late
+%             load('data/ss3818_3828.mat');  
+%             data_spring = reshape(data(1,1,:,:,:,:),1,3,3,5,13);
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3;%:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+%             save('/Users/jhermus/Desktop/Spring_12N_100ms_ss3818_3828_latespaceing.mat');
             
+            %% Meeting Motion Pulse Analysis
+            
+%             % Spring 12N 100ms
+%             load('data/ss3803_3812.mat');  
+%             data_spring = data; % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3;%:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+%             save('/Users/jhermus/Desktop/Spring_12N_100ms_ss3803_3812.mat');
+
+%             % Human 12N 100 ms 
+%             load('data/ss3896_3905.mat');
+%             data_human = reshape(data(1,1,:,:,:,:),1,3,3,10,8); % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3 ; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human'); 
+%             save('/Users/jhermus/Desktop/Human_12N_100ms_ss3896_3905.mat');
+            
+%             % Springs 12N 200 ms
+%             load('data/ss3873_3884.mat');
+%             data_spring = data; % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3;%:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3;%:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+% %             save('/Users/jhermus/Desktop/Spring_12N_200ms_ss3873_3884.mat');
+
+             % Human 12N 200 ms 
+%             load('data/ss3913_3921.mat');
+%             data_human = reshape(data(1,1,:,:,:,:),1,3,3,10,8); % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3 ; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_human, dexSubject, dexForce, dexDistance,'human');
+% %             save('/Users/jhermus/Desktop/Human_12N_200ms_ss3913_3921.mat');
+
+%             %% New data after Motion Pulse meeting (2/14/2022)
+%             % Force data better aligned not pulse before release
+%             % Springs 12N 200 ms
+%             load('data/ss3925_3937.mat');
+%             data_spring = reshape(data(1,:,:,:,1:6),1,3,3,15,6); % Elliminate direction
+%             clear data
+%             dexSubject = 1;
+%             dexForce = 1:3; % [15N, 20N, 25N]
+%             dexDistance = 1:3; % [2.5cm, 5cm, 7.5cm]
+%             depMeasures_human = crossConditionAnalysis(data_spring, dexSubject, dexForce, dexDistance,'human');
+% %             save('/Users/jhermus/Desktop/Spring_12N_200ms_ss3925_3937.mat');  
+
+            % Check new postions with stocstic method
+            load('data/ss4010_4013.mat');
+            for force = 2
+                for posture = 1:2
+                    trial = 1;
+                    X = data(1,1,force,posture,1,3);
+                    X = X{1};
+                    dex = find(X.ts == 4);
+                    dex = dex(1000:end);
+                    this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+                end
+            end
+            %% Run from here to plot
+
+%             save('/Users/jhermus/Desktop/test2022-2-4NoConstraint_noPrior.mat');
+%             load('/Users/jhermus/Desktop/test2022-2-4.mat');
+
+%               save('/Users/jhermus/Desktop/test2022-4-1.mat');
+             
+%             load('/Users/jhermus/Desktop/Spring_12N_100ms_ss3803_3812.mat');
+%             load('/Users/jhermus/Desktop/Human_12N_100ms_ss3896_3905.mat');
+%             load('/Users/jhermus/Desktop/Spring_12N_200ms_ss3873_3884.mat');
+%             load('/Users/jhermus/Desktop/Human_12N_200ms_ss3913_3921.mat');
+
+%             load('/Users/jhermus/Desktop/Spring_12N_100ms_ss3818_3828_latespaceing.mat');
+            pathh = 'prelimSubjectsRawPlots/images/';
+
+            % Make plots Spring
+%             depMeasures_spring.get_mainPlot('spring',1,pathh);
+             
+            % Make plots subjects
+            for i = 1
+               depMeasures_human.get_mainPlot('human',i,pathh);
+            end
                         
             % Make ANOVA Plots across human and spring trials
 %             this.plot_postion();
@@ -247,6 +159,17 @@ classdef mainAnalysis < handle
             
         end
         
-        
     end
 end
+
+% sfrq = 10000;
+% dt = 1/sfrq;
+% fs_pulse = 10;
+% bw = 0.5; % 60%
+% trunk = 60; % 40 dB truncated
+% tc = gauspuls('cutoff',fs_pulse,bw,[],-trunk); 
+% t = -tc : dt : tc; 
+% [yi,yq,ye] = gauspuls(t,fs_pulse,bw); 
+% 
+% figure; plot(t,yi,t,yq,[t,t],[ye,-ye],'linewidth',2.5);
+% legend('Inphase','Quadrature','Envelope');
