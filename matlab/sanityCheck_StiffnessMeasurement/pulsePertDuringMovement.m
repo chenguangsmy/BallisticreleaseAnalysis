@@ -5774,6 +5774,7 @@ end
 % mass have increased by the condition
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
 figure(); 
+data = reshape(data(1,1,:,:,:,:), 1,3,3,7,8);
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];
 color_arr = colormap('lines');
@@ -6092,6 +6093,7 @@ title('mass cross conditions (spring)');
 % Stiffness measurement using definition dF/dx, have 72 figures * 8 pannels
 % assume hand is only 3kg. 
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+data = reshape(data(1,1,:,:,:,:), 1, 3, 3, 7, 8);
 figure(); 
 F_list = [15, 20, 25];
 K_list = [2.5, 5.0, 7.5];

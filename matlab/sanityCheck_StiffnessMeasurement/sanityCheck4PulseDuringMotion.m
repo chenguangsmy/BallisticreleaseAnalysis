@@ -976,6 +976,7 @@ close(v);
 % spring force pulse = 200ms, 12N
 
 load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss3938_3949.mat', 'data');
+data = reshape(data(1,:,:,:,:,:), size(data, [2 3 4 5 6]));
 data = reshape(data(1,:,:,:,:), size(data, [2 3 4 5]));pertT_num = size(data,4);
 force_list = [15, 20, 25];
 dist_list = [2.5, 5.0, 7.5];
@@ -990,6 +991,7 @@ pair_t = sec(1):1/freq:sec(2);
 
 clf;
 for dist_i = 1:size(data,2) % for each spring
+    pi = 1; % ... could be a unproper name
 %     axh(1,(fce_i-1)*3+dist_i) = subplot(8,9,(fce_i-1)*3+dist_i); % plot the perturb command
     %         celltmp1 = reshape(data(1,dist_i,:,:),size(data,3),pertT_num);
     celltmp1 = reshape(data(1,dist_i,1:5,:),5,pertT_num);   % only use first 5 trials
@@ -1084,7 +1086,7 @@ for dist_i = 1:size(data,2) % for each spring
             if(pi~=8) 
                 set(gca,'xTickLabel', {''});
                 if (pi == 2)
-                    title(['force' num2str(fce_list(fce_i)) ' dist' num2str(dist_list(dist_i)) ] );
+                    title(['force' num2str(force_list(fce_i)) ' dist' num2str(dist_list(dist_i)) ] );
                 end
             else 
                 xlabel('t (s)');
