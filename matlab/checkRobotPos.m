@@ -15,16 +15,18 @@ classdef checkRobotPos < handle
             addpath('func/');
 
             % Check new postions with stocstic method
-             load('data/processedData/ss4017_4019.mat');
-%             load('data/processedData/ss4033_4039.mat');
+%               load('data/processedData/ss4017_4019.mat');
+            load('data/processedData/ss4083_4083.mat');
+%              load('data/processedData/ss4033_4039.mat');
              for force = 1
-                for posture = 1
+                for posture = 1:2
                     trial = 1;
                     X = data(1,1,force,posture,1,3);
                     X = X{1};
                     dex = find(X.ts == 4);
                     dex = dex(1000:end);
-                    this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+%                     this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+                    this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.f(1,dex),X.f(2,dex));
                 end
             end
            
