@@ -83,8 +83,15 @@ classdef TrialScan
             
             obj.tNo = trialNo;
             idx = find(sessionScanObj.Data.TrialNo == trialNo);
+            if ~isempty(idx)
             obj.bgn = idx(1);
             obj.edn = idx(end);                             % end_idx, avlid confliction
+            else    % when one trial was not recorded, use the previous one and the after one
+                idx_prev = find(sessionScanObj.Data.TrialNo == (trialNo-1));
+                idx_post = find(sessionScanObj.Data.TrialNo == (trialNo+1));
+                obj.bgn = idx_prev(end); 
+                obj.edn = idx_post(1);
+            end
             obj.bgn_t = sessionScanObj.time(obj.bgn);  % time for high_sample
             obj.edn_t = sessionScanObj.time(obj.edn);
             obj.outcome = unique(sessionScanObj.Data.OutcomeMasks.Success(obj.bgn:obj.edn));
@@ -101,6 +108,65 @@ classdef TrialScan
             obj.data.tq = sessionScanObj.data.tq(:,data_idx);
             obj.data.ts = sessionScanObj.data.ts(:,data_idx);
             obj.data.f  = sessionScanObj.data.f(:,data_idx);
+            obj.data.ftq  = sessionScanObj.data.ftq(:,data_idx);
+            if (~isempty(sessionScanObj.opt))   % if use optotrak
+                data.optx=sessionScanObj.data.optx(:,data_idx);
+                data.opty=sessionScanObj.data.opty(:,data_idx);
+                data.optz=sessionScanObj.data.optz(:,data_idx);
+                if_splineInterp = 1; 
+                ifplot = 1;
+                if (if_splineInterp) 
+                    obj.data.ox = nan(3,length(obj.data.t),10); 
+                    for marker_i = 1:size(data.optx,1)
+                        % do the splineInterp here, for x, y, and z
+                        % QUESTION? DO WE NEED SPLINE?
+                        val_idx = (~isnan(data.optx(marker_i,:))) ... 
+                                 & (~isnan(data.opty(marker_i,:))) ...
+                                 & (~isnan(data.optz(marker_i,:))); 
+                        if (sum(val_idx) ~= 0)
+                            intpx = spline(obj.data.t(val_idx), ...
+                                data.optx(marker_i,val_idx),...
+                                obj.data.t);
+                            intpy = spline(obj.data.t(val_idx), ...
+                                data.opty(marker_i,val_idx),...
+                                obj.data.t);
+                            intpz = spline(obj.data.t(val_idx), ...
+                                data.optz(marker_i,val_idx),...
+                                obj.data.t);
+                        else
+                            intpx = nan(size(obj.data.t));
+                            intpy = nan(size(obj.data.t));
+                            intpz = nan(size(obj.data.t));
+                        end
+                        if (ifplot)
+                            clf; 
+                            subplot(3,1,1); title('x'); hold on;
+                            plot(obj.data.t, data.optx(marker_i,:), 'r.', 'MarkerSize', 10);
+                            plot(obj.data.t, intpx, 'b.');
+                            
+                            subplot(3,1,2); title('y'); hold on;
+                            plot(obj.data.t, data.opty(marker_i,:), 'r.', 'MarkerSize', 10);
+                            plot(obj.data.t, intpy, 'b.');
+                            
+                            subplot(3,1,3); title('z'); hold on;
+                            plot(obj.data.t, data.optz(marker_i,:), 'r.', 'MarkerSize', 10);
+                            plot(obj.data.t, intpz, 'b.');
+                        end
+                        data.optx(marker_i,:) = intpx;
+                        data.opty(marker_i,:) = intpy;
+                        data.optz(marker_i,:) = intpz;
+%                         if(marker_i == 1)
+%                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:); 
+%                                                     data.opty(marker_i,:); 
+%                                                     data.optz(marker_i,:); ];
+                        obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
+                        obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
+                        obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
+%                         end
+                        
+                    end
+                end
+            end 
             
             %%% optional: when emg data exists 
             if (isfield(sessionScanObj.data, 'emg'))
@@ -158,14 +224,18 @@ classdef TrialScan
             
             if length(sessionScanObj.pertCond.wamKp) == 1
                 obj.wamKp    = sessionScanObj.pertCond.wamKp;
+            else
+                obj.wamKp    = unique(sessionScanObj.Data.TaskJudging.wamKp(maskTrial & maskHold));
+            end
+            
+            if length(sessionScanObj.pertCond.wamBp) == 1
                 obj.wamBp    = sessionScanObj.pertCond.wamBp;
             else
-                obj.wamKp    = unique(sessionScanObj.pertCond.wamKp(maskTrial & maskHold));
-                obj.wamBp    = unique(sessionScanObj.pertCond.wamBp(maskTrial & maskHold));
+                 obj.wamBp    = unique(sessionScanObj.Data.TaskJudging.wamBp(maskTrial & maskHold));
             end
 
             try
-                obj.pert_f   = unique(sessionScanObj.pertCond.pertdf(maskTrial & maskHold));
+                obj.pert_f   = unique(sessionScanObj.Data.TaskJudging.pertdf_mag(maskTrial & maskHold));
             catch
                  obj.pert_f  = [];
             end
@@ -188,21 +258,21 @@ classdef TrialScan
                 linkaxes(axh, 'x');
             end
             
-            if (~isempty(sessionScanObj.opt))
-                opt_idx   = sessionScanObj.opt.data.t >= obj.bgn_t & sessionScanObj.opt.data.t <= obj.edn_t;
-                opt_idxh  = sessionScanObj.opt.datah.t >= obj.bgn_t & sessionScanObj.opt.datah.t <= obj.edn_t;
-                obj.opt.data.t = sessionScanObj.opt.data.t(opt_idx) - sessionScanObj.time(obj.bgn);
-                obj.opt.data.rdt = sessionScanObj.opt.data.rdt(opt_idx);
-                obj.opt.data.x = sessionScanObj.opt.data.x(opt_idx);
-                obj.opt.data.y = sessionScanObj.opt.data.y(opt_idx);
-                obj.opt.data.z = sessionScanObj.opt.data.z(opt_idx);
-                
-                obj.opt.datah.t = sessionScanObj.opt.datah.t(opt_idxh) - sessionScanObj.time(obj.bgn);
-                obj.opt.datah.rdt = sessionScanObj.opt.datah.rdt(opt_idxh);
-                obj.opt.datah.x = sessionScanObj.opt.datah.x(opt_idxh);
-                obj.opt.datah.y = sessionScanObj.opt.datah.y(opt_idxh);
-                obj.opt.datah.z = sessionScanObj.opt.datah.z(opt_idxh);
-            end
+%             if (~isempty(sessionScanObj.opt))
+%                 opt_idx   = sessionScanObj.opt.data.t >= obj.bgn_t & sessionScanObj.opt.data.t <= obj.edn_t;
+%                 opt_idxh  = sessionScanObj.opt.datah.t >= obj.bgn_t & sessionScanObj.opt.datah.t <= obj.edn_t;
+%                 obj.opt.data.t = sessionScanObj.opt.data.t(opt_idx) - sessionScanObj.time(obj.bgn);
+%                 obj.opt.data.rdt = sessionScanObj.opt.data.rdt(opt_idx);
+%                 obj.opt.data.x = sessionScanObj.opt.data.x(opt_idx);
+%                 obj.opt.data.y = sessionScanObj.opt.data.y(opt_idx);
+%                 obj.opt.data.z = sessionScanObj.opt.data.z(opt_idx);
+%                 
+%                 obj.opt.datah.t = sessionScanObj.opt.datah.t(opt_idxh) - sessionScanObj.time(obj.bgn);
+%                 obj.opt.datah.rdt = sessionScanObj.opt.datah.rdt(opt_idxh);
+%                 obj.opt.datah.x = sessionScanObj.opt.datah.x(opt_idxh);
+%                 obj.opt.datah.y = sessionScanObj.opt.datah.y(opt_idxh);
+%                 obj.opt.datah.z = sessionScanObj.opt.datah.z(opt_idxh);
+%             end
             
             xy_char = 'xy';
             obj.xyn = xy_char(obj.xyi);
@@ -1281,7 +1351,8 @@ classdef TrialScan
         % %%% package the data into format
         
         %dat.t = obj.data.t(idx);
-        dat.t = obj.data.t(idx);
+%         dat.t = obj.data.t(idx);
+        dat.t = obj.data.t_shift(idx);
         %wamt_org= dat.t;
         %t_const = min(dat.t):2e-3:max(dat.t);
         %dat.t = t_const;
@@ -1290,11 +1361,35 @@ classdef TrialScan
         dat.x = obj.data.x(:,idx);
         dat.v = obj.data.v(:,idx);
         dat.f = obj.data.f(:,idx);
+        dat.ftq=obj.data.ftq(:,idx);
         dat.Fp= obj.data.Fp(:,idx);
         dat.ts= obj.data.ts(:,idx);
         dat.tq= obj.data.tq(:,idx);
         if isfield(obj.data, 'emg')
             dat.emg=obj.data.emg(:,idx);
+        end
+        if isfield(obj.data, 'ox')
+            
+            if length(size(obj.data.ox))==2 % if only one marker
+                dat.ox = obj.data.ox(:,idx);
+                dat.ov = [ diff(obj.data.ox(1,idx)) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(2,idx)) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(3,idx)) ./ diff(obj.data.t(idx));];
+                dat.ov = dat.ov(:, [1,1:end]); % make same length
+            else % if multiple markers
+                dat.ox = obj.data.ox(:,idx,:);
+                dat.ov = [ diff(obj.data.ox(1,idx,:),[],2) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(2,idx,:),[],2) ./ diff(obj.data.t(idx));
+                           diff(obj.data.ox(3,idx,:),[],2) ./ diff(obj.data.t(idx));];
+                try
+                    dat.ov = dat.ov(:, [1,1:end], :); % make same length
+                catch
+                    disp(['Optotrak no data trial ' num2str(obj.tNo)]);
+                    dat.ov = [];
+                end
+            end
+
+            
         end
         %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
         %dat.v = obj.velocity_h(:,vidx);
@@ -1316,18 +1411,23 @@ classdef TrialScan
 %         dat.tq= obj.wamtqe_h(:,vidx);
 %         dat.tq= interp1(obj.position_t', obj.wamtqe_h', dat.t)';
         %dat.tq= interp1(wamt_org, dat.tq, dat.t, 'linear', 'extrap');
+            % test code for a specific session ss4146:
+                if (sum(obj.ifpert==[4 6]) == 2)
+                    obj.ifpert = 6;
+                end
+            %
         if (obj.ifpert==0 || obj.ifpert==1)
             dat.mvst= (dat.ts==5 | dat.ts==6); % moveent start
         elseif(obj.ifpert==2) % stochastic pert
             dat.mvst= (dat.ts==5 | dat.ts==6);
         end
         % the optotrak data
-        if ~isempty(obj.opt)
-            ox = interp1(obj.opt.datah.t, obj.opt.datah.x, dat.t, 'linear', 'extrap');
-            oy = interp1(obj.opt.datah.t, obj.opt.datah.y, dat.t, 'linear', 'extrap');
-            oz = interp1(obj.opt.datah.t, obj.opt.datah.z, dat.t, 'linear', 'extrap');
-            dat.ox = [ox; oy; oz];
-        end
+%         if ~isempty(obj.opt)
+%             ox = interp1(obj.opt.datah.t, obj.opt.datah.x, dat.t, 'linear', 'extrap');
+%             oy = interp1(obj.opt.datah.t, obj.opt.datah.y, dat.t, 'linear', 'extrap');
+%             oz = interp1(obj.opt.datah.t, obj.opt.datah.z, dat.t, 'linear', 'extrap');
+%             dat.ox = [ox; oy; oz];
+%         end
         
 
         % deal with errors (that back to ts3)
@@ -1380,7 +1480,7 @@ classdef TrialScan
         %    dat.Fp = zeros(size(dat.Fp));
         %end
         
-        %ifplot = 1;
+%         ifplot = 1;
         outcome_name = 'sf';
         if (ifplot)
 %             subplot(2,1,1); 
@@ -1408,33 +1508,118 @@ classdef TrialScan
               grid on;
               ylabel('Fp (N)' );
               axh(2) = subplot(4,1,2); hold on;
-              plot(t, dat.x(2,:));
-              line([0.4 1.0], (0.48+obj.tarL+0.01)*[1 1], 'color', 'r');
-              line([0.5 1.0], (0.48+obj.tarL-0.01)*[1 1], 'color', 'r');
-              line([0.4 1.0], (0.48+obj.tarL+0.005)*[1 1], 'color', 'g');
-              line([0.5 1.0], (0.48+obj.tarL-0.005)*[1 1], 'color', 'g');
+%                     % tmp_code for debug:
+%                     t_avg_idx = t>-4.5 & t<-4;
+%                     x_avg = mean(dat.x(:,t_avg_idx),2);
+%                     % end tmp
+%               plot(t, dat.x(2,:));
+              plot(t, dat.x(1,:));
+              if length(size(dat.ox))==2 % only one marker
+                    plot(t, dat.ox(1,:));
+              else % multiple markers
+                    plot(t,dat.ox(1,:,1));
+              end
+%               plot(t, dat.x(1,:) -x_avg(1));
+                tar_offset = 0; % 0.48
+% %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
+% %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
+% %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
+% %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
               ylabel('position (m)');
               grid on;
               axh(3) = subplot(4,1,3); hold on;
-              plot(t, dat.v(2,:));
+%               plot(t, dat.v(2,:));
+             plot(t, dat.v(1:2,:));
               line([0.5 1.0], [0.05 0.05], 'color', 'r');
               line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
               ylabel('velocity (m/s)');
               grid on;
               axh(4) = subplot(4,1,4);  hold on;
-              plot(t, dat.f(2,:));
+%               plot(t, dat.f(2,:), 'Marker', '.');
+                plot(t, dat.f(1:2,:), 'Marker', '.');
               grid on;
               ylabel('Force (N)')
               
               linkaxes(axh, 'x');
-%              xlim([-2 0.7]);
+              % xlim for better read
+%               xlim([[-0.01 0.02]]);
+%               xlim([-0.2 4]);
+              xlim([-0.8 2]);
+%                 xlim([-8 2]);
+%                 xlim([-5 0])
 
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');
 %             subplot(2,1,2);
 %             plot(dat.t, dat.f);
+%%%%%%%%%%%%%% condition: abs(t(dat.Fp(2,:)==-12) - 0.2) < 0.02
+        
+        end
+%         ifplot = 1; 
+        if (isfield(dat, 'ox'))
+        if (~isempty(dat.ox))
+            
+             if (ifplot)
+              clf;
+%               time = dat.t;
+              t = obj.data.t_shift(idx);
+              axh(1) = subplot(4,1,1);
+              plot(t, dat.Fp);
+%               plot(t, dat.mvst);
+              title(['trial' num2str(obj.tNo) ' :' outcome_name(2-obj.outcome)]);
+              grid on;
+              ylabel('Fp (N)' );
+              axh(2) = subplot(4,1,2); hold on;
+              plot(t, dat.x(1,:), 'b.');    % robot
+              plot(t, dat.x(1,:), 'r.');    % optotrak
+              tar_offset = 0; % 0.48
+% % %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
+% % %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
+% % %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
+% % %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
+              ylabel('position (m)');
+              grid on;
+              axh(3) = subplot(4,1,3); hold on;
+              lnh(1) = plot(t, dat.v(1,:), 'b.');    % robot
+              if length(size(dat.ov))==2
+                lnh(2) = plot(t, dat.ov(1,:), 'r.');    % optotrak
+              else
+                lnh(2) = plot(t, dat.ov(1,:,1), 'r.');    % optotrak
+              end
+              line([0.5 1.0], [0.05 0.05], 'color', 'r');
+              line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
+              legend(lnh, 'robot', 'optotrak');
+              ylabel('velocity (m/s)');
+              grid on;
+              axh(4) = subplot(4,1,4);  hold on;
+              plot(t, dat.f(1,:), 'Marker', '.');
+              grid on;
+              ylabel('Force (N)')
+              
+              linkaxes(axh, 'x');
+              % xlim for better read
+%               xlim([[-0.01 0.02]]);
+%               xlim([-0.2 1]);
+              xlim([-3.0 2]);
+
+%             subplot(2,1,1);
+%             plot(obj.force_t', obj.force_h');
+%             subplot(2,1,2);
+%             plot(dat.t, dat.f);
+%%%%%%%%%%%%%% condition: abs(t(dat.Fp(2,:)==-12) - 0.2) < 0.02
+            end
+        end % end of if
         end
         end
+        
+        function params = export_trial_params(obj)
+            % return the parameters in this trial 
+            params.wamKp = obj.wamKp;
+            params.wamBp = obj.wamBp;
+            params.pertf = obj.pert_f;
+            
+        end
+        
         
         function obj = dealForceException(obj)
             % obj = dealForceException(obj)

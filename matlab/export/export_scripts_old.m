@@ -464,12 +464,12 @@ ss_num(4,:,:) =...
             3531     3530    3529   3562       
             3532     3534    3533   3563];
 
-for dir_i = 1:size(ss_num,1)%1:size(ss_num,1)
+for dir_i = 1%:size(ss_num,1)%1:size(ss_num,1)
     for fce_i = 1:size(ss_num,2) 
         for tar_i = 1:3 % step perts
             ss_tmp = SessionScan(ss_num(dir_i, fce_i, tar_i));
-            celltmp = ss_tmp.export_as_formatted(1);
-
+            celltmp1 = ss_tmp.export_as_formatted(0);
+            celltmp = reshape(celltmp1(1,1,:,:), size(celltmp1, [3 4]));
             trials_num = size(celltmp,1);
             if trials_num>15
                 data(1,dir_i, fce_i, tar_i,:,:) = celltmp(1:15,:);
@@ -481,19 +481,22 @@ for dir_i = 1:size(ss_num,1)%1:size(ss_num,1)
         
     for fce_i = 1:size(ss_num,2) 
         ss_tmp = SessionScan(ss_num(dir_i, fce_i, 4));
-        celltmp = ss_tmp.export_as_formatted(1);
+        celltmp1 = ss_tmp.export_as_formatted(0);
+        celltmp = reshape(celltmp1(1,1,:,:), size(celltmp1, [3 4]));
         for tar_ii = 1:3 % as a session has 3 length
-            trials_num = size(celltmp,2);
+            trials_num = size(celltmp,1);
             if trials_num>15
-                data(1,dir_i, fce_i, tar_ii,1:15,3) = celltmp(tar_ii,1:15,3);
+%                 data(1,dir_i, fce_i, tar_ii,1:15,3) = celltmp(tar_ii,1:15,3);
+                data(1,dir_i, fce_i, tar_ii,1:15,3) = celltmp(1:15,3);
             else
-                data(1,dir_i, fce_i, tar_ii,1:trials_num,3) = celltmp(tar_ii,:,3);
+%                 data(1,dir_i, fce_i, tar_ii,1:trials_num,3) = celltmp(tar_ii,:,3);
+                data(1,dir_i, fce_i, tar_ii,1:trials_num,3) = celltmp(:,3);
             end
         end
     end
 end
 %save('data/processedData/ss3353_3417.mat', 'data')
-% save('data/processedData/ss3486_3534.mat', 'data')
+save('data/processedData/ss3486_3534.mat', 'data')
 %save('data/processedData/ss3345.mat', 'data')
 
 % % check the data
@@ -551,30 +554,30 @@ clear; clc; close all;
 
 % % HIMANSHU AT HARDER CONDITION, REALLY GOOD LOOKING DATA 
 % ss_num = [3492 3491 3493 3434];
-% % HIMANSHU AT HARDER CONDITION, 3 FORCE LEVELS!!!
-% ss_num = [  3499   3498  3500  3597
-%             3492   3491  3497  3599
-%             3502   3501  3503  3600];
+% HIMANSHU AT HARDER CONDITION, 3 FORCE LEVELS!!!
+ss_num = [  3499   3498  3500  3597
+            3492   3491  3497  3599
+            3502   3501  3503  3600];
 
 % DELIN
 %ss_num = [3581 3580 3582 3434];
 %ss_num = [3581 3580 3584 3434];
 
-% % MICHAEL WITH 20N force level. 
+% MICHAEL WITH 20N force level. 
 % 
 % ss_num = [  3629    3630    3661    3632
 %             3650    3648    3665    3651
 %             3627    3664    3662    3628];
 
-% %ADAM WITH 3 FORCE LEVELS;
+% % %ADAM WITH 3 FORCE LEVELS;
 % ss_num = [  3621    3620    3622    3667
 %             3637    3635    3636    3638
 %             3668    3670    3669    3672]; 
         
 % MARCO WITH 3 FORCE LEVELS: 
-ss_num = [  3643    3641    3642    3644
-            3647    3645    3646    3654
-            3656    3655    3657    3658];
+% ss_num = [  3643    3641    3642    3644
+%             3647    3645    3646    3654
+%             3656    3655    3657    3658];
 
 % CHENGUANG TRY BACKWARD FULLY EXTENDED
 % ss_num = [  3587    3586    3585    3596
@@ -619,10 +622,10 @@ end
 %save('data/processedData/ss3491_3493.mat', 'data')
 %save('data/processedData/ss3580_3582.mat', 'data')
 %save('data/processedData/ss3585_3596.mat', 'data')
-% save('data/processedData/ss3491_3503.mat', 'data')    % HIMANSHU'S NEW TASK CONDITION
+save('data/processedData/ss3491_3503.mat', 'data')    % HIMANSHU'S NEW TASK CONDITION
 % save('data/processedData/ss3615_3618.mat', 'data')      % MICHAEL TRY "TOLERANT" TASK CONDITION
 % save('data/processedData/ss3620_3629.mat', 'data')       % ADAM TRY "TOLERANT" TASK CONDITION
-save('data/processedData/ss3641_3644.mat', 'data')       % MARCO TRY "TOLERANT" TASK CONDITION
+% save('data/processedData/ss3641_3644.mat', 'data')       % MARCO TRY "TOLERANT" TASK CONDITION
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -729,7 +732,8 @@ for idx_subj = 1:6
     data1(idx_subj,:,:,:,:,:) = data(1,:,:,:,:,:);
 end
 data = data1;
-save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine.mat', 'data', '-v7.3')
+% save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine.mat', 'data', '-v7.3')
+save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/prelimData_6subj_fine_fcealign.mat', 'data', '-v7.3')
 
 %% spring + 6 subjects
 clear;
@@ -1418,3 +1422,59 @@ axh(2) = subplot(3,1,2); plot(obj.wam_t,obj.wam.tp(:,2));
 axh(3) = subplot(3,1,3); plot(obj.wam_t,obj.wam.state); 
 
 linkaxes(axh, 'x');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+% After change the WAM configuration, do the following things again, for
+% the stochastic perturbations, do it again and ovserve the partial
+% coherance. 
+
+%%% Chenguang tested with the arm sling on... 
+ss_num(1,:,:) =...
+        [   3487   	3486  	3488    4040
+            3495   	3494  	3489    4041
+            3507   	3506  	3505    4042];
+        
+for dir_i = 1%:size(ss_num,1)%1:size(ss_num,1)
+    for fce_i = 1:size(ss_num,2) 
+        for tar_i = 1:3 % step perts
+            ss_tmp = SessionScan(ss_num(dir_i, fce_i, tar_i));
+            celltmp1 = ss_tmp.export_as_formatted(0);
+            celltmp = reshape(celltmp1(1,1,:,:), size(celltmp1, [3 4]));
+            trials_num = size(celltmp,1);
+            if trials_num>15
+                data(1,dir_i, fce_i, tar_i,:,:) = celltmp(1:15,:);
+            else
+                data(1,dir_i, fce_i, tar_i,1:trials_num,:) = celltmp(:,:);
+            end
+        end
+    end
+        
+    for fce_i = 1:size(ss_num,2) 
+        ss_tmp = SessionScan(ss_num(dir_i, fce_i, 4));
+        celltmp1 = ss_tmp.export_as_formatted(1);
+        celltmp = reshape(celltmp1(1,1,:,:), size(celltmp1, [3 4]));
+        for tar_ii = 1:3 % as a session has 3 length
+            trials_num = size(celltmp,1);
+            if trials_num>15
+%                 data(1,dir_i, fce_i, tar_ii,1:15,3) = celltmp(tar_ii,1:15,3);
+                data(1,dir_i, fce_i, tar_ii,1:15,3) = celltmp(1:15,3);
+            else
+%                 data(1,dir_i, fce_i, tar_ii,1:trials_num,3) = celltmp(tar_ii,:,3);
+                data(1,dir_i, fce_i, tar_ii,1:trials_num,3) = celltmp(:,3);
+                for trial_i = 1:trials_num % shift the x, y
+                    if (isempty(data{1,dir_i,fce_i,tar_ii,trial_i,3}))
+                        continue
+                    end
+                    datatmp = data{1,dir_i,fce_i,tar_ii,trial_i,3};
+                    datatmp.x = datatmp.x([2 1 3], :);
+                    datatmp.f = datatmp.f([2 1 3], :);
+                    datatmp.v = datatmp.v([2 1 3], :);
+                    datatmp.Fp = datatmp.Fp([2 1 3], :);
+                    data{1,dir_i,fce_i,tar_ii,trial_i,3} = datatmp;
+                end
+            end
+        end
+    end
+end
+save('data/processedData/ss3486_4042.mat', 'data')

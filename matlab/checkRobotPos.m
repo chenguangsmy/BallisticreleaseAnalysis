@@ -23,7 +23,12 @@ classdef checkRobotPos < handle
                     X = X{1};
                     dex = find(X.ts == 4);
                     dex = dex(1000:end);
+% <<<<<<< HEAD
+% %                     this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+%                     this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.f(1,dex),X.f(2,dex));
+% =======
                     this.get_Z_spectral(X.Fp(1,dex),X.Fp(2,dex),X.x(1,dex),X.x(2,dex));
+% >>>>>>> 01f7e9f2fe16ab27677de53d8ada009a66e6f241
                 end
             end
            

@@ -11,6 +11,16 @@ classdef SessionScanFT
             [0          0           cosd(180)
             -sind(45)   cosd(45)    0
             cosd(45)    sind(45)    0];
+        FTrot_M1 = ...  % another position"raise-hand" 
+                   ...  % global: x-right, y-front, z-up, FT_base x-rightback, y-rightfront, z-up
+            [cosd(315) -sind(315)    0
+             sind(315)  cosd(315)    0
+                    0          0     1];
+        FTrot_M2 = ... % another position "joystick", "raise-hand horizontal mount"
+                    ... % global: x-right, y-front, z-up, FT_base x-rightfront, y-leftfront, z-up
+            [cosd(45) -sind(45)    0
+             sind(45)  cosd(45)    0
+                    0          0     1];
         RDT
         FT
         elapse
@@ -18,7 +28,7 @@ classdef SessionScanFT
     end
     
     methods
-        function obj = SessionScanFT(ss_num)
+        function obj = SessionScanFT(ss_num, fname_other)
             %FTSEPERATEDAT Construct an instance of this class
             %   Detailed explanation goes here
             fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
@@ -26,6 +36,9 @@ classdef SessionScanFT
             %fname = 'KingKongFT01865.csv';
             fname = sprintf('KingKongFT%05d.csv', ss_num);
             Data = readtable([fdir '/' fname]);
+            if (exist('fname_other', 'var'))
+                Data = readtable([fdir '/' fname_other]);
+            end
             Data = dealRDTError(Data);
             obj.force_origin = [Data.Fx' + Data.Fx0'
                                 Data.Fy' + Data.Fy0'
@@ -61,21 +74,40 @@ classdef SessionScanFT
         
         function obj = dealwithExceptions(obj, ss_num)
             % deal with exceptions 
-             if (ss_num == 3775)
+            switch ss_num
+             case  3775
                  obj.elapse(502620) = nanmean(obj.elapse(502619:502621));
-             end
-             if (ss_num == 3778)
+             case  3778
                  obj.elapse(199100) = nanmean(obj.elapse(199099:199101));
-             end
-             if (ss_num == 3803)
+             case  3803
                  obj.elapse(125225) = nanmean(obj.elapse(125224:125226));
                  obj.elapse(214050) = nanmean(obj.elapse(214049:214051));
                  obj.elapse(535351) = nanmean(obj.elapse(535350:535352));
                  obj.elapse(1354865) = nanmean(obj.elapse(1354864:1354866));
-             end
-             if (ss_num == 3820)
+             case  3820
                  obj.elapse(83250) = nanmean(obj.elapse(83249:83251));
-             end
+             case  3851
+                 obj.elapse(656798) = nanmean(obj.elapse(656797:656799));
+             case  3852
+                 obj.elapse(1140790) = nanmean(obj.elapse(1140789:1140791));
+                 obj.elapse(1352024) = nanmean(obj.elapse(1352023:1352025));
+             case  3905
+                 obj.elapse(613100) = nanmean(obj.elapse(613099:613101));
+             case  3910
+                 obj.elapse(368420) = nanmean(obj.elapse(368419:368421));
+             case  3914
+                 obj.elapse(191400) = nanmean(obj.elapse(191399:191401));
+             case  3917
+                 obj.elapse(602778) = nanmean(obj.elapse(602777:602779));
+                 obj.elapse(680951) = nanmean(obj.elapse(680950:680952));
+             case  3920
+                 obj.elapse(92050) = nanmean(obj.elapse(92049:92051));
+                 obj.elapse(746502)= nanmean(obj.elapse(746501:746503));
+             case  3938
+                 obj.elapse(650240) = nanmean(obj.elapse(650239:650241));
+             case 4062
+                 obj.elapse(90800) = nanmean(obj.elapse(90799:90801));
+            end
         end
         
         function obj = intropTime(obj)
@@ -86,16 +118,36 @@ classdef SessionScanFT
 
             time = obj.elapse; 
             rdt  = obj.RDT;
-            
-            time1= interp1(rdt(10:10:end),time(10:10:end), rdt, 'linear', 'extrap');
-            
-            ifplot = 1;
-            if (ifplot)
-                clf; hold on;
-                plot(rdt, time, 'b*');
-                plot(rdt, time1, 'r.');
-                legend('pfem time', 'reconstructed time' );
+            if(~isempty(setdiff(unique(diff(rdt)),1)))
+                %                 rdt1 = rdt(1):rdt(end);
+                %                 time1= interp1(rdt(10:10:end),time(10:10:end), rdt1, 'linear', 'extrap');
+                timediffidx = find(diff([time(1) time]) > 0.003);
+                timediffdx = (timediffidx-1);            % select the last timepoint
+                timediffidx = timediffdx(timediffdx>1);
+                time1 = interp1(rdt(timediffidx),time(timediffidx), rdt, 'linear', 'extrap');
+                ifplot = 1;
+                if (ifplot)
+                    clf; hold on;
+                    plot(rdt, time, 'b*');
+                    plot(rdt(timediffidx), time(timediffidx), 'mo');
+                    plot(rdt, time1, 'r.');
+                    legend('pfem time', 'difftime', 'reconstructed time' );
+                end
+            else
+                time1= interp1(rdt(10:10:end),time(10:10:end), rdt, 'linear', 'extrap'); 
+                                % has to be 10 because the last datapoint
+                                % in the batch is the 'realtime'. The first
+                                % should have time before that. 
+                ifplot = 1;
+                if (ifplot)
+                    clf; hold on;
+                    plot(rdt, time, 'b*');
+                    plot(rdt, time1, 'r.');
+                    legend('pfem time', 'difftime', 'reconstructed time' );
+                end
             end
+            
+
             
             obj.elapse = time1;
         end
@@ -142,7 +194,9 @@ classdef SessionScanFT
         end
         function obj = forceFTconvert(obj) % convert from select into world axis
             %obj.force = obj.FTrot_M * obj.force_origin;
-            obj.force = obj.FTrot_M * obj.force_net;
+%             obj.force = obj.FTrot_M * obj.force_net;
+%             obj.force = obj.FTrot_M1 * obj.force_net; % raise-up configuration
+            obj.force = obj.FTrot_M2 * obj.force_net; % joystick configuration
             %obj.force_net = obj.FTrot_M * obj.force_net;
         end
         function plotElapse(obj)

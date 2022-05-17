@@ -152,19 +152,34 @@ classdef SessionScanEMG
             t = obj.data.t;
             for chi = 1:8 % iterate through channels
                 % 1. do the 100Hz low pass filter
-                fs = 500; % data frequency
-                lpf1 = 100;
+                fs = obj.freq; % data frequency
+                lpf1 = 60;%100;
                 % emg1 = bandstop(emg(ch_i,:),[118.5 121.5],fs);
-                emg_stp1 = highpass(emg(chi,:), lpf1, fs);
+%                 emg_stp1 = highpass(emg(chi,:), lpf1, fs);
+                emg_stp1 = emg(chi,:);
                 % 2. mean-centered and scaled by standard deviation...
                 emg_stp2 = (emg_stp1 - obj.emg_means(chi)) / obj.emg_stds(chi);
                 % 3. squared, and do low-pass filter of 30Hz
-                lpf2 = 30;
-                emg_stp3 = lowpass(emg_stp2.^2, lpf2, fs);
+                lpf2 = 30; %30
+%                 emg_stp3 = lowpass(emg_stp2.^2, lpf2, fs);
+                emg_stp3 = emg_stp2.^2;
                 % 3. squre root transform and *2
                 emg_stp4 = sqrt(emg_stp3)*2;                                                   % bad name, need chagne
-                
-                [emg_stp5, ~] = envelope(real(emg_stp4), 5, 'peak');
+                emg_stp4 =  abs(emg(chi,:)/32767*5000/2000); % convert to mV
+                [emg_stp5, ~] = envelope(real(emg_stp4), 50, 'peak'); % check what it used to be?
+                ifplot = 1;
+                if (ifplot)
+                    clf; hold on;
+                    plot(t, emg(chi,:), 'Color', [0.7 0.7 0.7], 'Marker', '.')
+                    plot(t, emg_stp1, 'r', 'Marker', '.');
+                    plot(t, emg_stp2, 'b', 'Marker', '.');
+                    plot(t, emg_stp3, 'g', 'Marker', '.');
+                    plot(t, emg_stp4, 'm', 'Marker', '.');
+                    plot(t, emg_stp5, 'c', 'Marker', '.');
+                    ylim([-5, 10]);
+                    title(['chennel ' num2str(chi)]);
+                    legend('raw', 'highpass', 'z-score', 'lowpass', 'sqrt transform', 'envolope');
+                end
                 emg_processed0(chi,:)=emg_stp4;
                 emg_processed(chi,:) = emg_stp5;%emg_stp4;
                 
@@ -176,27 +191,34 @@ classdef SessionScanEMG
                 % plot
 
                 axh(2) = subplot(5,1,2); hold on;
-                plot(t,emg_processed0(1:2,:), '.'); %title('EMG12'); %ylabel('N');
+%                 plot(t,emg_processed0(1:2,:), '.'); %title('EMG12'); %ylabel('N');
                 plot(t,emg_processed(1:2,:)); %title('EMG12'); %ylabel('N');
+                legend('1', '2');
                 
                 axh(3) = subplot(5,1,3); hold on;
-                plot(t,emg_processed0(3:4,:), '.'); %title('EMG12'); %ylabel('N');
+%                 plot(t,emg_processed0(3:4,:), '.'); %title('EMG12'); %ylabel('N');
                 plot(t,emg_processed(3:4,:)); %title('EMG34'); %ylabel('N');
+                legend('3', '4');
                 
                 % hold on; plot(t,emg_processed(3,:));
                 % plot(t,emg_processed0(3,:)); %title('EMG34'); %ylabel('N');
                 
                 axh(4) = subplot(5,1,4); hold on;
-                plot(t,emg_processed0(5:6,:), '.'); %title('EMG12'); %ylabel('N');
+%                 plot(t,emg_processed0(5:6,:), '.'); %title('EMG12'); %ylabel('N');
                 plot(t,emg_processed(5:6,:)); %title('EMG56'); %ylabel('N');
+                legend('5', '6');
                 
                 axh(5) = subplot(5,1,5); hold on;
-                plot(t,emg_processed0(7:8,:), '.'); %title('EMG12'); %ylabel('N');
+%                 plot(t,emg_processed0(7:8,:), '.'); %title('EMG12'); %ylabel('N');
                 plot(t,emg_processed(7:8,:)); %title('EMG78'); %ylabel('N');
+                legend('7', '8');
                 
                 linkaxes(axh, 'x');
                 linkaxes(axh(2:end), 'y');
-                ylim(axh(5), [0, 10]);
+%                 ylim(axh(5), [0, 10]);
+                ylim(axh(5), [-0.2 0.2]);
+                
+                linkaxes(axh, 'x');
             end
         end
         
