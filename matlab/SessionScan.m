@@ -14,7 +14,7 @@ classdef (HandleCompatible)SessionScan < handle
         %%% task targetst
         tarRs
         tarLs
-        fThs
+        tarFs
         %%% task variables 
         hand_pos        % position read from WAM endpoint
         hand_pos_offset % the center_pos for WAM endpoint
@@ -26,9 +26,9 @@ classdef (HandleCompatible)SessionScan < handle
         taskState
         trials TrialScan% member function
         %%% perturbation variables
-        pert_state = 3  % only perturb at force ramp pert_state == 3
-        pert_time       % perturbation start and end time
-        pert_rdt        % perturbation start read time, (same with wam)
+%       pert_state = 3  % only perturb at force ramp pert_state == 3
+%         pert_time       % perturbation start and end time
+%         pert_rdt        % perturbation start read time, (same with wam)
         pertCond
         %%% other modules
         ft              % object of force
@@ -181,7 +181,7 @@ classdef (HandleCompatible)SessionScan < handle
             obj.duration = max(obj.time);
             obj.tarRs = unique(obj.Data.TaskJudging.Target(5,obj.Data.TaskStateMasks.Move)); %have 0
             obj.tarLs = unique(obj.Data.TaskJudging.Target(6,obj.Data.TaskStateMasks.Move)); % deviate 0
-            obj.fThs  = unique(obj.Data.TaskJudging.Target(4,obj.Data.TaskStateMasks.Move)); % deviate 0
+            obj.tarFs  = unique(obj.Data.TaskJudging.Target(4,obj.Data.TaskStateMasks.Move)); % deviate 0
             try 
                 obj.pertCond.pertdx0_mag = unique(Data.TaskJudging.pertdx0_mag(obj.Data.TaskStateMasks.FrcHold));
                 obj.pertCond.wamKp = unique(Data.TaskJudging.wamKp(obj.Data.TaskStateMasks.FrcHold));
@@ -342,11 +342,11 @@ classdef (HandleCompatible)SessionScan < handle
 % %             tar_num = length(tard);
 % %             tarl = obj.tarLs;
 % %             tarl_num = length(tarl);
-% %             fThs = obj.fThs;
-% %             fThs_num = length(fThs);
-% %             sT = zeros(tar_num, tarl_num, fThs_num);    % sucessful trials
-% %             tT = zeros(tar_num, tarl_num, fThs_num);    % total trials
-% %             sR = zeros(tar_num, tarl_num, fThs_num); 
+% %             tarFs = obj.tarFs;
+% %             tarFs_num = length(tarFs);
+% %             sT = zeros(tar_num, tarl_num, tarFs_num);    % sucessful trials
+% %             tT = zeros(tar_num, tarl_num, tarFs_num);    % total trials
+% %             sR = zeros(tar_num, tarl_num, tarFs_num); 
 % %             % copy all the tarR, tarL, fTh from all trials first
 % %             tarR = zeros(1, obj.trials_num);
 % %             tarL = zeros(1, obj.trials_num);
@@ -370,22 +370,22 @@ classdef (HandleCompatible)SessionScan < handle
 % %             end
 % %             for tard_i = 1:tar_num
 % %                 for tarl_i = 1:tarl_num
-% %                     for fThi = 1:fThs_num
+% %                     for fThi = 1:tarFs_num
 % %                         tT(tard_i, tarl_i, fThi) = ...
 % %                             sum(tarR == tard(tard_i) &...
 % %                             tarL == tarl(tarl_i) & ...
-% %                             fTh  == fThs(fThi));
+% %                             fTh  == tarFs(fThi));
 % %                         sT(tard_i, tarl_i, fThi) = ...
 % %                             sum(tarR == tard(tard_i) &...
 % %                             tarL == tarl(tarl_i) & ...
-% %                             fTh  == fThs(fThi) & ...
+% %                             fTh  == tarFs(fThi) & ...
 % %                             [obj.trials.outcome] == 1);
 % %                         sR(tard_i, tarl_i, fThi) = sT(tard_i, tarl_i, fThi)/tT(tard_i, tarl_i, fThi);
 % %                     end
 % %                 end
 % %             end
 % %             sR_2d = reshape(sR(1,:,:), size(sR, 2), size(sR, 3));
-% %             sR_table = [[obj.fThs]', sR_2d'];
+% %             sR_table = [[obj.tarFs]', sR_2d'];
 % %             % display rate using table
 % %             display(['For session' num2str(obj.ssnum)]);
 % %             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
@@ -398,10 +398,10 @@ classdef (HandleCompatible)SessionScan < handle
             rate = fin_trials/all_trials;
             if (length(obj.tarLs) == 1)
                 fprintf("tar: %.1f(cm), F: %d(N): %d/%d, rate: %f \n" ,...
-                    obj.tarLs(1)*100, obj.fThs(1), fin_trials, all_trials, rate);
+                    obj.tarLs(1)*100, obj.tarFs(1), fin_trials, all_trials, rate);
             else 
                 fprintf("Stoc, F: %d(N): %d/%d, rate: %f \n" ,...
-                 obj.fThs(1), fin_trials, all_trials, rate);
+                 obj.tarFs(1), fin_trials, all_trials, rate);
             end
         end
         function [time_mean] = getConditionaltime(obj) 
@@ -414,9 +414,9 @@ classdef (HandleCompatible)SessionScan < handle
 % %             tar_num = length(tard);
 % %             tarl = obj.tarLs;
 % %             tarl_num = length(tarl);
-% %             fThs = obj.fThs;
-% %             fThs_num = length(fThs);
-% %             trialTime = zeros(tar_num, tarl_num, fThs_num);
+% %             tarFs = obj.tarFs;
+% %             tarFs_num = length(tarFs);
+% %             trialTime = zeros(tar_num, tarl_num, tarFs_num);
 % %             % copy all the tarR, tarL, fTh from all trials first
 % %             tarR = zeros(1, obj.trials_num);
 % %             tarL = zeros(1, obj.trials_num);
@@ -440,18 +440,18 @@ classdef (HandleCompatible)SessionScan < handle
 % %             end
 % %             for tard_i = 1:tar_num
 % %                 for tarl_i = 1:tarl_num
-% %                     for fThi = 1:fThs_num
+% %                     for fThi = 1:tarFs_num
 % %                         trialid = ...
 % %                             (tarR == tard(tard_i) &...
 % %                             tarL == tarl(tarl_i) & ...
-% %                             fTh  == fThs(fThi));
+% %                             fTh  == tarFs(fThi));
 % %                         time_all = [obj.trials(trialid).edn_t] - [obj.trials(trialid).bgn_t];
 % %                         time_mean(tard_i, tarl_i, fThi) = mean(time_all);
 % %                     end
 % %                 end
 % %             end
 % %             time_2d = reshape(time_mean(1,:,:), size(time_mean, 2), size(time_mean, 3));
-% %             time_table = [[obj.fThs]', time_2d'];
+% %             time_table = [[obj.tarFs]', time_2d'];
 % %             % display rate using table
 % %             display(['For session' num2str(obj.ssnum)]);
 % %             VarNames = {'Force (N)', 'tar 2.5 (cm)', 'tar 5.0 (cm)', 'tar 7.5 (cm)', 'tar 10.0 (cm)'}; % could be different when task diff
@@ -1912,11 +1912,11 @@ classdef (HandleCompatible)SessionScan < handle
                     else
                         if_OPT = 1;
                     end
-%                     [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK
+%                     [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{3}); % OPTOTRAK, buttom off
+%                     bk_time{3} = bk_time{3}(idx_bk3); %buttom off
                     [trial_its, idx_msg3, idx_bk3] = intersect(t_msg_trialidx{3}, bk_trials{4}); % OPTOTRAK, buttom on
-                    t_interest{3} = t_interest{3}(idx_msg3);
-%                     bk_time{3} = bk_time{3}(idx_bk3);
                     bk_time{3} = bk_time{4}(idx_bk3); % buttom on
+                    t_interest{3} = t_interest{3}(idx_msg3);
                 end
                 
                 
@@ -2011,6 +2011,12 @@ classdef (HandleCompatible)SessionScan < handle
 %             catch 
 %                 display('wrong in opt time!');
 %             end
+            if isempty(obj.opt) 
+                obj.opt_t = []; 
+                disp('no OPT data was recorded');
+                flag = -4; % ?write flag?
+                return
+            end
             obj.opt_t = obj.opt.datah.t;
             
             ifplot = 1;

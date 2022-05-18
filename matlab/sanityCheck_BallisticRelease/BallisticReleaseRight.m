@@ -13,17 +13,30 @@
 %              4148    4149    4150
 %              4151    4152    4153];
 
-ss_num = [  4169  4170  4171
-            4175  4176  4174
-            4179  4177  4178];
+% ss_num = [  4169  4170  4171
+%             4175  4176  4174
+%             4179  4177  4178];
+
+% %             K900  K600  K300             % Chenguang   
+% ss_num = [    4183  4184  4187  % low force
+%               4190  4185  4188  % middle force
+%               4181  4186  4189];% high force
+
+%             K900  K600  K300             % Himanshu
+% ss_num = [    4196  4201  4199  % low force
+%               4195  4197  4202  % middle force
+%               4194  4200  4198];% high force
+
+ss_num = [4204:4212]
+
 % Run the sessionScanOPT to make sure OPT was converted 
 for i = 1:length(ss_num(:))
     ss_list = ss_num(:);
-    SessionScanOPT(ss_list(i));
+     SessionScanOPT(ss_list(i));
 %     SessionScan(ss_list(i));
 end
 
-%% 
+% 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
 % export the data into specified format 
@@ -50,7 +63,7 @@ for fce_i = 1:size(ss_num,1)
             end
             trialtmp = celltmp{trial_i,2};
             [~,pert_max_idx] = max(abs(trialtmp.Fp(1,:)));
-            ifplot = 1;
+            ifplot = 0;
             if (ifplot)
                 clf;
                 axh(1) = subplot(2,1,1);
@@ -71,6 +84,16 @@ for fce_i = 1:size(ss_num,1)
         
 
     % tidy them according to the perturb conditions 
+    %   if unperturbed trial less than 15 
+        trialcp_idx = 1;
+        for trial_i = 1:15
+            if isempty(celltmp{trial_i,1})
+                celltmp{trial_i,1} = celltmp{trialcp_idx,1};
+                disp(['Fill slot ' num2str(trial_i) ' with trial ' ...
+                    num2str(trialcp_idx)]);
+                trialcp_idx = trialcp_idx + 1;
+            end
+        end
          % unperturbed trials 
         if trials_num>15
             data(1,1, fce_i, tar_i,:,1) = celltmp(1:15,1);
@@ -94,7 +117,9 @@ end
 
 % save('data/processedData/ss4129_4137.mat', 'data')
 % save('data/processedData/ss4147_4156.mat', 'data')
-save('data/processedData/ss4169_4179.mat', 'data')
+% save('data/processedData/ss4169_4179.mat', 'data')
+% save('data/processedData/ss4181_4189.mat', 'data')
+save('data/processedData/ss4198_4202.mat', 'data')
 %% 
 % concatinate two subjects 
 clear; 
@@ -105,6 +130,18 @@ data2 = data;
 data(1,:,:,:,:,:) = data1;
 data(2,:,:,:,:,:) = data2;
 save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4129_4179.mat', 'data')
+
+% concatinate two subjects for iso-stiffness
+clear; 
+load('data/processedData/ss4181_4189.mat', 'data');
+data1 = data;
+load('data/processedData/ss4198_4202.mat', 'data');
+data2 = data; 
+data(1,:,:,:,:,:) = data1;
+data(2,:,:,:,:,:) = data2;
+save('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4181_4202.mat', 'data')
+
+
 
 %% 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -195,12 +232,25 @@ save('data/processedData/ss4159_4168.mat', 'data')
 % Display here 
 dist_list = [2.5 5.0 7.5];
 fce_list = [15 20 25];
+
+f_val   = [ 15  15  7.5
+            30  30  15
+            45  45  22.5];
+%         K900   K600    K300
+d_val   = [ 1.6     2.5     2.5        
+            3.3     5       5          
+            5       7.5     7.5];
+k_val = [900    600     300
+         900    600     300
+         900    600     300];
 % load('data/processedData/ss4129_4137.mat', 'data');  % 6N perturbation on
 % x, require 800ms
 % load('data/processedData/ss4147_4156.mat', 'data');   % adapted task & 3 cursors
 % load('data/processedData/ss4159_4168.mat', 'data');     % require 500ms
 % load('data/processedData/ss4169_4179.mat', 'data');     % Himanshu
-load('data/processedData/ss4129_4179.mat', 'data');     % Himanshu
+% load('data/processedData/ss4129_4179.mat', 'data');     % Himanshu
+% load('data/processedData/ss4181_4189.mat', 'data');       % 3K values - Chenguang
+load('data/processedData/ss4198_4202.mat', 'data');       % 3K values - Himanshu
 Data = data;
 Freq = 500;
 t_step = 1/500;
@@ -217,9 +267,9 @@ p = size(Data, 6); % perturbation type
 idx_last = 200;
 if_subtract = 0;
 
-epoc_type = 2;  % 1 perturb
+epoc_type = 1;  % 1 perturb
                 % 2 release
-plot_type = 2;  % 1 displacement
+plot_type = 8;  % 1 displacement
                 % 2 force 
                 % 3 feedforward force
                 % 4 velocity
@@ -231,7 +281,7 @@ plot_type = 2;  % 1 displacement
                 % 10 opt 1
                 % 11 opt 2
                 % 12 opt 3
-pert_type = 1; % choose option [2 3 4]
+pert_type = 2; % choose option [2 3 4]
 axh = zeros(d,r);
 xyi = 1;        % x, y
 
@@ -335,7 +385,8 @@ for ri = 1%1:r % subj
                         %                     plot(time, dat, 'Color', [0.7 0.7 0.7]);
                     end
                 end
-                title(['fce' num2str(fce_list(fi)) 'dist' num2str(dist_list(li))]);
+%                 title(['fce' num2str(fce_list(fi)) 'dist' num2str(dist_list(li))]);
+                title(['K' num2str(k_val(fi,li)) ' fce' num2str(f_val(fi,li)) ' dist' num2str(d_val(fi,li))]);
             end
         end
     end

@@ -147,12 +147,13 @@ classdef SessionScanOPT
                 else
                     
                     % read from intermediate.mat with each trial
-                    num_trials = length(Data.QL.Data.OPTO_BUFFER_DATA);
+%                     num_trials = length(Data.QL.Data.OPTO_BUFFER_DATA); % could be inaccurate as some trials not record
                     
                     % also read TimeSync.mat so that I'm able to know time
                     fname = sprintf('KingKongTSync.%05d.mat', ss_num);
                     datadir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
                     dataT = load([datadir '/' fname]);
+                    num_trials = max(dataT.data.eventsTrials); 
                     %time_start = min(dataT.data.eventsT(dataT.data.eventsL==5));
                     %time_end = max(dataT.data.eventsT(dataT.data.eventsL==5));
                     time_interval = diff(dataT.data.eventsT(dataT.data.eventsL==5));
@@ -161,6 +162,7 @@ classdef SessionScanOPT
                     datTrial_stt_end_t = nan(num_trials,2);
                     time_interTrial = cell(num_trials-1,1);
                     num_interTrial = zeros(num_trials-1,1); % no data, but still has time count
+                    num_pulse = zeros(1,num_trials);
                     for trial_i = 1:num_trials
                         events_idx = (dataT.data.eventsTrials==trial_i & dataT.data.eventsL==5);
                         if (sum(dataT.data.eventsTrials==trial_i & dataT.data.eventsL==5)==0) % no data recorded
@@ -174,26 +176,45 @@ classdef SessionScanOPT
                             time_interTrial{trial_i-1} = time_interTrial{trial_i-1}(2:end-1); % remove the begining and the last
                             num_interTrial(trial_i-1) = length(time_interTrial{trial_i-1});
                         end
+                       num_pulse(trial_i) = sum(events_idx);
                     end
                     
                     % 2. Get the data out
-                    for trial_i = 1:num_trials
-                        events_idx = (dataT.data.eventsTrials==trial_i & dataT.data.eventsL==5);
-                        if (sum(events_idx) == 0)
+                    dataint_idx_all = Data.QL.Data.TRIAL_CONFIG.trial_no;
+                    for trial_i = 1:length(dataint_idx_all)
+                        trial_idx = dataint_idx_all(trial_i);
+                        events_idx = (dataT.data.eventsTrials==trial_idx & ...
+                            dataT.data.eventsL==5);
+                        
+                        if (sum(events_idx) == 0) | sum(trial_i==dataint_idx_all)==0
                             datah.t{trial_i} = [];
                             datah.x{trial_i} = [];
                             continue;
                         end
                         events_t = dataT.data.eventsT(events_idx);
-                        [n_markers, bufferdat{trial_i}] = obj.getBufferDatafromRawReading(Data.QL.Data.OPTO_BUFFER_DATA{trial_i}); %
-                        datah.x{trial_i} = bufferdat{trial_i};
+                        [n_markers, bufferdat{trial_idx}] = obj.getBufferDatafromRawReading(Data.QL.Data.OPTO_BUFFER_DATA{dataint_idx_all(trial_i)}); %
+                        num_data(trial_idx) = length(bufferdat{trial_idx}{1});
+                    end
+
+
+                    % 3. align them
+                    for trial_i = 1:length(dataint_idx_all)
+                        trial_idx = dataint_idx_all(trial_i);
+                        datah.x{trial_idx} = bufferdat{trial_idx};
+                        if isempty(bufferdat{trial_idx})
+                            continue;
+                        end
 %                       datah.t{trial_i} = 1:size(bufferdat{trial_i}{1},2); % don't mean anything, time at blackrock time
-                        datah.t{trial_i} = events_t;
+                        events_idx = (dataT.data.eventsTrials==trial_idx & ...
+                            dataT.data.eventsL==5);
+                        events_t = dataT.data.eventsT(events_idx);
+
+                        datah.t{trial_idx} = events_t;
                         % need some way to get the datah.t here
                         
                         % if datah.x and datah.t are not same length
-                        if (size(datah.x{trial_i}{1},2) ~= length(events_t))
-                            num_lost = length(events_t)-size(datah.x{trial_i}{1},2);
+                        if (size(datah.x{trial_idx}{1},2) ~= length(events_t))
+                            num_lost = length(events_t)-size(datah.x{trial_idx}{1},2);
                             if (num_lost) < 0 
                                 disp('Data Error: pulse < data'); 
                                 % after I check the code, I found the
@@ -228,7 +249,7 @@ classdef SessionScanOPT
                                     pulse_insert_idx = find(diff(events_t_edt)>dur_interpulse*1.1);
                                 end
                                 events_t = events_t_edt;
-                                num_lost = length(events_t)-size(datah.x{trial_i}{1},2);
+                                num_lost = length(events_t)-size(datah.x{trial_idx}{1},2);
                             end
                             
                                 disp(['num_pulse - num_data == ' num2str(num_lost)]);
@@ -238,7 +259,7 @@ classdef SessionScanOPT
                             % recording did not start).
                             % discard/dispose the early pulses
 %                             datah.t{trial_i} = events_t((num_lost+1):end);
-                            datah.t{trial_i} = events_t(1:end-num_lost); % discard/dispose the late pulses
+                            datah.t{trial_idx} = events_t(1:end-num_lost); % discard/dispose the late pulses
                         end
                     end
                     
@@ -248,8 +269,9 @@ classdef SessionScanOPT
 %                     for marker_i = 1:10
 %                         dataH.x{marker_i} = [];
 %                     end
-                    for trial_i = 1:num_trials
-                        dataH.t = [dataH.t datah.t{trial_i} ];
+                    for trial_i = 1:length(dataint_idx_all)
+                        trial_idx = dataint_idx_all(trial_i);
+                        dataH.t = [dataH.t datah.t{trial_idx} ];
                         % 
                         ifplot = 1; 
                         if (ifplot)
@@ -261,17 +283,17 @@ classdef SessionScanOPT
 %                                 dataH.x = [dataH.x datah.x{trial_i}{marker_i} ];
 %                             end
                               % format a 3-d matrix for each trial
-                              if isempty(datah.x{trial_i})
+                              if isempty(datah.x{trial_idx})
                                   data_length = 0;
                               else
-                                  data_length = size(datah.x{trial_i}{1},2);
+                                  data_length = size(datah.x{trial_idx}{1},2);
                               end
                               dataH_allm = nan(3,data_length,10);
-                              if isempty(datah.x{trial_i})
+                              if isempty(datah.x{trial_idx})
                                   % do nothing
                               else
                                   for marker_i = 1:3 % only 3 marker used
-                                      dataH_allm(:,:,marker_i) = datah.x{trial_i}{marker_i};
+                                      dataH_allm(:,:,marker_i) = datah.x{trial_idx}{marker_i};
                                   end
                               end
 
@@ -280,12 +302,12 @@ classdef SessionScanOPT
 %                             dataH.x = [dataH.x datah.x{trial_i} ];
 %                         end
                         
-                        if (trial_i < num_trials)
-                            dataH.t = [dataH.t time_interTrial{trial_i}];
+                        if (trial_idx < num_trials)
+                            dataH.t = [dataH.t time_interTrial{trial_idx}];
 %                             for marker_i = 1:10
 %                                 dataH.x{marker_i} = [dataH.x{marker_i} nan(3, num_interTrial(trial_i))];
 %                             end
-                              dataH.x = cat(2,dataH.x, nan(3, num_interTrial(trial_i),10));
+                              dataH.x = cat(2,dataH.x, nan(3, num_interTrial(trial_idx),10));
                         end
                     end
                     
@@ -382,25 +404,35 @@ classdef SessionScanOPT
             % The others, n_markers * [x, y, z] position
             
             dat_arr = zeros(1,length(data_uint8)/8);
+            unit8_mat = repmat('0', [length(data_uint8)/8, 64]);
             for byte_i = 1:length(data_uint8)/8
-                uint8_arr = [];
+%                 uint8_arr = [];
                 offset = (byte_i-1)*8;
                 for dat_pos_i = 1:8
                     %    uint8_arr = [uint8_arr dec2bin(typecast(int8(data_uint8(dat_pos_i)),'uint8'),8)]
-                    uint8_arr = [dec2bin(typecast(int8(data_uint8(offset+dat_pos_i)),'uint8'),8) uint8_arr];
+%                     uint8_arr = [dec2bin(typecast(int8(data_uint8(offset+dat_pos_i)),'uint8'),8) uint8_arr];
+                    unit8_mat(byte_i,((8-dat_pos_i)*8 + (1:8))) = dec2bin(typecast(int8(data_uint8(offset+dat_pos_i)),'uint8'),8);
                 end
-                q = quantizer('double');
-                B = bin2num(q, uint8_arr);
-                dat_arr(byte_i) = B;
+%                 q = quantizer('double');
+% %                 B = bin2num(q, uint8_arr);
+%                 B = bin2num(q, unit8_mat);
+%                 dat_arr(byte_i) = B;
             end
+                q = quantizer('double');
+%                 B = bin2num(q, uint8_arr);
+                B = bin2num(q, unit8_mat);
+%                 dat_arr(byte_i) = B;
+                dat_arr = B;
+
+
             n_markers = dat_arr(1); 
             pos = reshape(dat_arr(2:end), [3, length(dat_arr(2:end))/3]);
             plot(pos');     % position of all markers
             
             num_eachMarker = size(pos,2)/n_markers; 
-            if mod(num_eachMarker, n_markers) ~= 0
-                disp('error on the marker_num or intermediate data');
-            end
+%             if mod(num_eachMarker, n_markers) ~= 0        % what do you mean here? Useless
+%                 disp('error on the marker_num or intermediate data');
+%             end
             
             bufferdat = cell(n_markers,1);
             for marker_i = 1:n_markers

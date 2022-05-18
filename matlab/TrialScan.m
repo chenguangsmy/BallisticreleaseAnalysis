@@ -20,7 +20,8 @@ classdef TrialScan
         states_arr
         tarR    % target-rotation
         tarL    % target-length
-        tarP    % target-position 
+        tarP    % target-position [x,y]
+        tarF             % force-threshold
          % state indexes
         idx_bgn
         idx_prt
@@ -36,7 +37,6 @@ classdef TrialScan
          % specific ballistic-realease
         opt
         opth
-        fTh             % force-threshold
         position_offset % steady position before release, as wam uses impedance control
         data
         ifpert
@@ -199,6 +199,9 @@ classdef TrialScan
             maskTrial   = false(size(sessionScanObj.Data.TaskJudging.Target(5, :)));
             maskTrial(obj.bgn:obj.edn) = 1;   
             obj.tarR    = unique(sessionScanObj.Data.TaskJudging.Target(5, maskMov & maskTrial));          % target-rotation
+            if isempty(obj.tarR)
+                obj.tarR = nan;
+            end
             obj.tarL    = unique(sessionScanObj.Data.TaskJudging.Target(6, maskMov & maskTrial));    % target-length % some old trials
             if isempty(obj.tarL)
                 obj.tarL = nan;
@@ -217,9 +220,10 @@ classdef TrialScan
             obj.time_orn= sessionScanObj.time(obj.bgn:obj.edn);
             obj.time    = sessionScanObj.time(obj.bgn:obj.edn) - sessionScanObj.time(obj.bgn);       % time after aligned 
              % specific ballistic-realease
-            obj.fTh = unique(nonzeros(sessionScanObj.Data.TaskJudging.Target(4, obj.bgn:obj.edn)));  % problematic here, if fTh==0; return 0 here         % force-threshold
-            if isempty(obj.fTh)
-                obj.fTh = nan;
+            targets = sessionScanObj.Data.TaskJudging.Target(:, maskTrial);
+            obj.tarF = unique(nonzeros(targets(4, obj.idx_fcr:obj.idx_mov)));  % problematic here, if tarF==0; return 0 here         % force-threshold
+            if isempty(obj.tarF)
+                obj.tarF = nan;
             end
             
             if length(sessionScanObj.pertCond.wamKp) == 1
@@ -1186,23 +1190,23 @@ classdef TrialScan
 %         end
 
 %         function comboTT = getComboTT(obj,sessionScanObj)
-%         	% defined: targets = [obj.tarR, obj.tarL, obj.fTh];
+%         	% defined: targets = [obj.tarR, obj.tarL, obj.tarF];
 %             if length(unique(obj.tarR)) > 1
 %                 display(['trial' num2str(obj.tNo) ' have more than 1 tarR']);
 %             end
 %             tarR = max(obj.tarR);
 %             tarL = obj.tarL;
-%             fTh  = obj.fTh;
+%             tarF  = obj.tarF;
 %             tarR_all = sessionScanObj.tarRs; 
 %             tarL_all = sessionScanObj.tarLs; 
-%             fTh_all  = sessionScanObj.fThs; 
+%             tarF_all  = sessionScanObj.tarFs; 
 %             try % sometrials do not have tarR
 %                 tarR_idx = find(tarR == tarR_all);
 %                 tarL_idx = find(tarL == tarL_all);
-%                 fTh_idx  = find(fTh  == fTh_all );
-%                 comboTT = (tarR_idx-1) * length(tarL_all) * length(fTh_all) + ...
-%                           (tarL_idx-1) * length(fTh_all) + ...
-%                           fTh_idx;
+%                 tarF_idx  = find(tarF  == tarF_all );
+%                 comboTT = (tarR_idx-1) * length(tarL_all) * length(tarF_all) + ...
+%                           (tarL_idx-1) * length(tarF_all) + ...
+%                           tarF_idx;
 %             catch
 %                 comboTT = nan;
 %             end
@@ -1571,7 +1575,7 @@ classdef TrialScan
               ylabel('Fp (N)' );
               axh(2) = subplot(4,1,2); hold on;
               plot(t, dat.x(1,:), 'b.');    % robot
-              plot(t, dat.x(1,:), 'r.');    % optotrak
+              plot(t, dat.ox(1,:,1), 'r.');    % optotrak
               tar_offset = 0; % 0.48
 % % %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
 % % %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
