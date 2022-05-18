@@ -2,8 +2,10 @@
 clc, clear, close all
 
 % load('ss3938_3949.mat', 'data');  % 6N perturbation on x, 
-load('ss4129_4137.mat', 'data');  % 6N perturbation on x, 
-
+% load('data/processedData/ss4129_4137.mat', 'data');  % 6N perturbation on x, 
+% load('data/processedData/ss4169_4179.mat', 'data');  % 6N perturbation on x, 
+% load('data/processedData/ss4181_4189.mat', 'data');       % 3K values - Chenguang
+load('data/processedData/ss4198_4202.mat', 'data');       % 3K values - Himanshu
 Data = data;
 Freq = 500;
 t_step = 1/500;
@@ -237,6 +239,91 @@ for f_sel= 1:3
         results.M_up_std(f_sel,d_sel) = M_est_up_std;
         results.FIT_up_avg(f_sel,d_sel) = FIT_est_up_avg;
         results.FIT_up_std(f_sel,d_sel) = FIT_est_up_std;
+
+
+        %%%%%<<<<<Chenguang added the estimation on release, but using 
+        %         trials of pulse pre-release
+                %Create Average Profile of Unperturbed
+        time_new = linspace(0,1.25,1.25e3);
+        clear force_interp disp_interp
+        for i = 1:5%trial_l
+            time_up{i,:} = time_t{1,1,f_sel,d_sel,i,2};
+            release_t = 0.5;
+            [~,release_cloest_idx] = min(abs(time_new - 0.49));
+            force_interp(i,:) = interp1(time_up{i,:},Data{1,1,f_sel,d_sel,i,2}.f(1,idx_t{1,1,f_sel,d_sel,i,2}),time_new); %.f(2,.. for old .f(1,.. for new
+            disp_interp(i,:) = interp1(time_up{i,:},Data{1,1,f_sel,d_sel,i,2}.ox(1,idx_t{1,1,f_sel,d_sel,i,2}),time_new); %.x(2,.. for old .x(1,.. for new
+            force_interp(i,time_new<release_t) = force_interp(i,release_cloest_idx);
+            disp_interp(i,time_new<release_t) = disp_interp(i,release_cloest_idx);
+            %Identification on Single Trial
+            force_interp_t(i,:) = -(force_interp(i,:)-force_interp(i,1));
+            disp_interp_t(i,:) = disp_interp(i,:)-disp_interp(i,1);
+            % SYS IDENT
+            % Unperturbed
+            Ts = (time_new(15)-time_new(14));
+            data_est_UPs = iddata(disp_interp_t(i,:)',force_interp_t(i,:)',Ts);
+            sysUP_s = tfest(data_est_UPs,2,0);
+            [NUM_UPs,DEN_UPs] = tfdata(sysUP_s);
+            % K_est_rp_s (release of perturb)
+            K_est_rp_s(i) = DEN_UPs{1}(3)/NUM_UPs{1}(3); % Find the proper name!!!
+            B_est_rp_s(i) = DEN_UPs{1}(2)/NUM_UPs{1}(3);
+            M_est_rp_s(i) = DEN_UPs{1}(1)/NUM_UPs{1}(3);
+            FIT_rp_s(i) = sysUP_s.Report.Fit.FitPercent;
+
+            results.K_rp_tr(f_sel,d_sel,i) = K_est_rp_s(i);
+            results.B_rp_tr(f_sel,d_sel,i) = B_est_rp_s(i);
+            results.M_rp_tr(f_sel,d_sel,i) = M_est_rp_s(i);
+        end
+        
+        %Average and STD of Impedance and FIT over trials
+        K_est_rp_avg = mean(K_est_rp_s);
+        K_est_rp_std = std(K_est_rp_s);
+        B_est_rp_avg = mean(B_est_rp_s);
+        B_est_rp_std = std(B_est_rp_s);
+        M_est_rp_avg = mean(M_est_rp_s);
+        M_est_rp_std = std(M_est_rp_s);
+        FIT_est_rp_avg = mean(FIT_rp_s);
+        FIT_est_rp_std = std(FIT_rp_s);
+
+        force_rp_avg = mean(force_interp);
+        force_rp_avg_t =-(force_rp_avg-force_rp_avg(1));
+        disp_rp_avg = mean(disp_interp);
+        disp_rp_avg_t = disp_rp_avg-disp_rp_avg(1);
+
+        % SYS IDENT
+        % Unperturbed
+        Ts = (time_new(15)-time_new(14));
+        data_est_UP = iddata(disp_rp_avg_t',force_rp_avg_t',Ts);
+        sysUP = tfest(data_est_UP,2,0);
+        [NUM_UP,DEN_UP] = tfdata(sysUP);
+        K_est_rp = DEN_UP{1}(3)/NUM_UP{1}(3);
+        B_est_rp = DEN_UP{1}(2)/NUM_UP{1}(3);
+        M_est_rp = DEN_UP{1}(1)/NUM_UP{1}(3);
+        FIT_rp = sysUP.Report.Fit.FitPercent;
+        % bode(sysUP)
+        
+        results.FD_RP{f_sel,d_sel} = {time_new;force_interp_t;disp_interp_t};
+        results.avg_FD_RP{f_sel,d_sel} = [time_new;force_rp_avg_t;disp_rp_avg_t];
+        results.K_rp(f_sel,d_sel) = K_est_rp;
+        results.B_rp(f_sel,d_sel) = B_est_rp;
+        results.M_rp(f_sel,d_sel)= M_est_rp;
+        results.TF.rp{f_sel,d_sel} = sysUP;
+        results.FIT_rp(f_sel,d_sel) = FIT_rp;
+        
+        %Computing Identified System Response to Ballistic Release
+        [yy,tt,xx] = lsim(results.TF.rp{f_sel,d_sel},results.avg_FD_RP{f_sel,d_sel}(2,:),results.avg_FD_RP{f_sel,d_sel}(1,:));
+        results.tt_mod{f_sel,d_sel} = tt;
+        results.disp_mod{f_sel,d_sel} = yy;
+               
+        results.K_rp_avg(f_sel,d_sel) = K_est_rp_avg;
+        results.K_rp_std(f_sel,d_sel) = K_est_rp_std;
+        results.B_rp_avg(f_sel,d_sel) = B_est_rp_avg;
+        results.B_rp_std(f_sel,d_sel) = B_est_rp_std;
+        results.M_rp_avg(f_sel,d_sel) = M_est_rp_avg;
+        results.M_rp_std(f_sel,d_sel) = M_est_rp_std;
+        results.FIT_rp_avg(f_sel,d_sel) = FIT_est_rp_avg;
+        results.FIT_rp_std(f_sel,d_sel) = FIT_est_rp_std;
+
+        %%%%%<<<<< End of Chenguang's add
         
         time_new_long = linspace(0,2.5,2.5e3);
         for pert = 2:4%2:length(Data(1,1,1,1,1,:))
@@ -266,7 +353,7 @@ for f_sel= 1:3
             end
             
             
-            if pert ~= 4
+            if pert ~= 4 % cg: why only 4 but not with 2?
                 force_p_avg = mean(forcep_interp);
                 disp_p_avg = mean(dispp_interp);
                 force_c_avg = -mean(force_command);
@@ -684,6 +771,14 @@ xx = [25 50 75];
 
 [XX,FF] = meshgrid(xx,ff);
 
+% XX = [16    25      25
+%       33    50      50
+%       50    75      75];
+% 
+% FF = [15    15      7.5
+%       30    30      15
+%       45    45      22.5];
+
 % Interpolate Impedance Matrix to get Surface
 
 fq = 15:1:25;
@@ -696,6 +791,10 @@ Bup_interp = interp2(XX,FF,results.B_up,Xq,Fq);
 Mup_interp = interp2(XX,FF,results.M_up,Xq,Fq);
 FITup_interp = interp2(XX,FF,results.FIT_up,Xq,Fq);
 
+Krp_interp = interp2(XX,FF,results.K_rp,Xq,Fq);
+Brp_interp = interp2(XX,FF,results.B_rp,Xq,Fq);
+Mrp_interp = interp2(XX,FF,results.M_rp,Xq,Fq);
+FITrp_interp = interp2(XX,FF,results.FIT_rp,Xq,Fq);
 
 
 %--------------------------------------------
@@ -711,6 +810,7 @@ figure(),%'Units','normalized','Position',[0 0 1 1])
 set(gcf,'color','w');
 plot3(FF,XX,results.K_up,'.k','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.K_up_avg,'.r','MarkerSize',10,'LineWidth',2), hold on
+% plot3(FF,XX,results.K_rp_avg,'*b','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.K_up_avg+results.K_up_std,'+r','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.K_up_avg-results.K_up_std,'_r','MarkerSize',10,'LineWidth',2), hold on
 s = surf(Fq,Xq,Kup_interp); hold on
@@ -788,6 +888,7 @@ figure(),
 set(gcf,'color','w');
 plot3(FF,XX,results.B_up,'.k','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.B_up_avg,'.r','MarkerSize',10,'LineWidth',2), hold on
+% plot3(FF,XX,results.B_rp_avg,'*b','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.B_up_avg+results.B_up_std,'+r','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.B_up_avg-results.B_up_std,'_r','MarkerSize',10,'LineWidth',2), hold on
 s = surf(Fq,Xq,Bup_interp); grid on
@@ -864,6 +965,7 @@ figure(),
 set(gcf,'color','w');
 plot3(FF,XX,results.M_up,'.k','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.M_up_avg,'.r','MarkerSize',10,'LineWidth',2), hold on
+% plot3(FF,XX,results.M_rp_avg,'*b','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.M_up_avg+results.M_up_std,'+r','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.M_up_avg-results.M_up_std,'_r','MarkerSize',10,'LineWidth',2), hold on
 s = surf(Fq,Xq,Mup_interp); grid on
@@ -941,6 +1043,7 @@ figure()
 set(gcf,'color','w');
 plot3(FF,XX,results.FIT_up,'.k','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.FIT_up_avg,'.r','MarkerSize',10,'LineWidth',2), hold on
+% plot3(FF,XX,results.FIT_rp_avg,'*b','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.FIT_up_avg+results.FIT_up_std,'+r','MarkerSize',10,'LineWidth',2), hold on
 plot3(FF,XX,results.FIT_up_avg-results.FIT_up_std,'_r','MarkerSize',10,'LineWidth',2), hold on
 s = surf(Fq,Xq,FITup_interp); grid on
