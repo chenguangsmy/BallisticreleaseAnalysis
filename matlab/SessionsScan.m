@@ -25,9 +25,11 @@ classdef SessionsScan
             % 
             % 1. Have the subjects - directions - sessions trials
             % subject 1, CZ
-            ss_num{1} = [4216 4217 4218 4219 4220];
+            ss_num{1} = [4216 4217 4218 4219 4220]; % CZ            
+%             ss_num{1} = [ 4217];
             % subject 2, HA
 %             ss_num{2} = [4204 4205 4206 4208]
+            ss_num{2} = [4222 4223 4224 4225 4226];   % HA 
             % subject 3, CZ2
 %             ss_num{3} = [4204 4205 4206 4208] % 4204:4211
             % export setup
@@ -67,7 +69,7 @@ classdef SessionsScan
             obj.cond.ssNo = [];
             obj.cond.sf = [];
             obj.cond.pert = [];
-
+            
             for subj_i = 1:length(ss_num)
                 for ss_i = 1:length(ss_num{subj_i})
                     obj.trials = [obj.trials ss_tmp{subj_i}{ss_i}.trials];
@@ -77,9 +79,10 @@ classdef SessionsScan
                     ss_cond.disp = [ss_tmp{subj_i}{ss_i}.trials.tarL];
                     ss_cond.tNo = [ss_tmp{subj_i}{ss_i}.trials.tNo];
                     ss_cond.ssNo = [ss_num{subj_i}(ss_i)]*ones(size(ss_tmp{subj_i}{ss_i}.trials));
+                    ss_tmp{subj_i}{ss_i}.trials(2).outcome = 0;             % manual fail the trial avoid the nan ox data
                     ss_cond.sf = [ss_tmp{subj_i}{ss_i}.trials.outcome];
                     ss_cond.pert = [1]*ones(size(ss_tmp{subj_i}{ss_i}.trials)); % perterturbation type... edt
-
+                    
                     % concatinate into conditions 
                     obj.cond.subject = [obj.cond.subject ss_cond.subject];
                     obj.cond.direction = [obj.cond.direction ss_cond.direction];
@@ -88,7 +91,7 @@ classdef SessionsScan
                     obj.cond.tNo = [obj.cond.tNo ss_cond.tNo];
                     obj.cond.ssNo = [obj.cond.ssNo ss_cond.ssNo];
                     obj.cond.sf = [obj.cond.sf ss_cond.sf];
-                    obj.cond.pert = [obj.cond.pert ss_cond.pert]
+                    obj.cond.pert = [obj.cond.pert ss_cond.pert];
                 end
             end
 
@@ -96,7 +99,12 @@ classdef SessionsScan
             session_max = max(obj.cond.ssNo);
             obj.filename = sprintf('ss%4d_%4d.mat', session_min, session_max);
 
+            % set every first trial in the session 0 
+
+
             obj = obj.SessionsSpecifyRotation();
+
+            obj.SessionsExport();
         end
         
         function data = SessionsExport(obj)
@@ -109,13 +117,13 @@ classdef SessionsScan
             %       [nopert, pertPreMotion, pertInMotion, pertPostMotion]
             % 
             % In experiment with 4 directions no pulse, perturbation is 1
-            data = cell(length(obj.export_cond.subject), ... % subjects
+            data = cell(length(unique(obj.export_cond.subject)), ... % subjects
                 4, ...                                       % directions
                 3, ...                                       % fce
                 3, ...                                       % dist
                 15, ...                                      % trials
-                1);                                          % pert
-%                 4);                                          % pert
+                4);                                          % pert
+%                 1);                                          % pert
 
             for subj_i = 1:length(obj.export_cond.subject)
                 for direction_i = 1:4
@@ -156,8 +164,8 @@ classdef SessionsScan
                                 for trial_idx_dest = 1:length(trial_idx)
                                     trial_idx_from = trial_idx(trial_idx_dest);
                                     data{subj_i,direction_i,fce_i,disp_i,trial_idx_dest,pert_i} = ...
-                                        obj.trials(trial_idx_from).export_as_formatted(1); % need edition.
-%                                         obj.trials(trial_idx_from).export_as_formatted(); % need edition.
+                                        obj.trials(trial_idx_from).export_as_formatted(); % need edition.
+%                                         obj.trials(trial_idx_from).export_as_formatted(1); % need edition.
                                 end
                             end
                         end
@@ -165,7 +173,7 @@ classdef SessionsScan
                 end
             end
             
-            save(['data/processedData/' obj.filename], 'data');
+            save(['data/processedData/' obj.filename], 'data', '-v7.3');
         end
         
         function obj = SessionsSpecifyRotation(obj)
@@ -178,7 +186,8 @@ classdef SessionsScan
             % It will change all the target rotation in this session (0, 4)
             % to (2, 6) 
 
-            sessions_rot = [4218 4219 4220]; 
+            sessions_rot = [4218 4219 4220 ...
+                            4225 4226 ]; 
                 % first assume these sessions. These can be read from .conf
                 % in the future. 
                 

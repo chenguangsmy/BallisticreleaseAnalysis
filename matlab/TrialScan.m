@@ -1548,7 +1548,7 @@ classdef TrialScan
               % xlim for better read
 %               xlim([[-0.01 0.02]]);
 %               xlim([-0.2 4]);
-              xlim([-0.8 2]);
+              xlim([-0.2 0.8]);
 %                 xlim([-8 2]);
 %                 xlim([-5 0])
 
@@ -1603,8 +1603,9 @@ classdef TrialScan
               linkaxes(axh, 'x');
               % xlim for better read
 %               xlim([[-0.01 0.02]]);
-%               xlim([-0.2 1]);
-              xlim([-3.0 2]);
+              xlim([-0.2 1]);
+%               xlim([-3.0 2]);
+%               xlim([-3.0 20]);
 
 %             subplot(2,1,1);
 %             plot(obj.force_t', obj.force_h');

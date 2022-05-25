@@ -189,10 +189,12 @@ classdef SessionScanOPT
                         if (sum(events_idx) == 0) | sum(trial_i==dataint_idx_all)==0
                             datah.t{trial_i} = [];
                             datah.x{trial_i} = [];
+                            bufferdat{trial_idx} = []; % valid?
                             continue;
                         end
                         events_t = dataT.data.eventsT(events_idx);
-                        [n_markers, bufferdat{trial_idx}] = obj.getBufferDatafromRawReading(Data.QL.Data.OPTO_BUFFER_DATA{dataint_idx_all(trial_i)}); %
+                        [n_markers, buffertmp] = obj.getBufferDatafromRawReading(Data.QL.Data.OPTO_BUFFER_DATA{dataint_idx_all(trial_i)}); %
+                        bufferdat{trial_idx} = buffertmp;
                         num_data(trial_idx) = length(bufferdat{trial_idx}{1});
                     end
 
@@ -292,7 +294,7 @@ classdef SessionScanOPT
                               if isempty(datah.x{trial_idx})
                                   % do nothing
                               else
-                                  for marker_i = 1:3 % only 3 marker used
+                                  for marker_i = 1%:3 % only 3 marker used
                                       dataH_allm(:,:,marker_i) = datah.x{trial_idx}{marker_i};
                                   end
                               end
