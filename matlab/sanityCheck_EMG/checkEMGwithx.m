@@ -986,7 +986,8 @@ emg_pair_Label = {'FCR', 'EXD', 'BIC', 'TIC', 'DTA', 'DTP', 'PEC', 'TPZ'};
 cols = 3;
 y_mag = [0.55, 30, .15, .15, .1, .1, .2, .05, 0.03, .05];
 rows = 2 + length(emg_pair);
-load('data/processedData/ss3864_3872.mat', 'data');%
+% load('data/processedData/ss3864_3872.mat', 'data');%
+load('data/processedData/ss4253_4274.mat', 'data');%
 force_list = [15 20 25];
 for fce_i = 1:3
 for tar_i = 1:3
@@ -1009,6 +1010,9 @@ for tar_i = 1:3
     
     trial_idx = 0;
     for trial_i = trials_list 
+        if (isempty(datass{trial_i}))
+            continue;
+        end
         % get t-shift
         idx_tshift = find((datass{trial_i}.ts == 5));
         t_shift = datass{trial_i}.t - datass{trial_i}.t(idx_tshift(1));

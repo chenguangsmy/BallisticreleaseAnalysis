@@ -25,13 +25,20 @@ classdef SessionsScan
             % 
             % 1. Have the subjects - directions - sessions trials
             % subject 1, CZ
-            ss_num{1} = [4216 4217 4218 4219 4220]; % CZ            
+%             ss_num{1} = [4216 4217 4218 4219 4220]; % CZ            
 %             ss_num{1} = [ 4217];
             % subject 2, HA
 %             ss_num{2} = [4204 4205 4206 4208]
-            ss_num{2} = [4222 4223 4224 4225 4226];   % HA 
+%             ss_num{2} = [4222 4223 4224 4225 4226];   % HA 
+%             ss_num{2} = [4235 4236 4237 4238 4239];   % HA Update condition
             % subject 3, CZ2
 %             ss_num{3} = [4204 4205 4206 4208] % 4204:4211
+
+            % the 1 direction with 2 pulses (pulse before release + pulse
+            % at position hold 
+            ss_num{1} = [4253 4256 4259 4262 4257 4260 4263 4258 4261];
+%             ss_num{2} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
+%             ss_num{1} = [4274 4265 4266 4263 4258];
             % export setup
             obj.export_cond.subject = [1:2];
             obj.export_cond.direction = [0 2 4 6];
@@ -80,8 +87,10 @@ classdef SessionsScan
                     ss_cond.tNo = [ss_tmp{subj_i}{ss_i}.trials.tNo];
                     ss_cond.ssNo = [ss_num{subj_i}(ss_i)]*ones(size(ss_tmp{subj_i}{ss_i}.trials));
                     ss_tmp{subj_i}{ss_i}.trials(2).outcome = 0;             % manual fail the trial avoid the nan ox data
-                    ss_cond.sf = [ss_tmp{subj_i}{ss_i}.trials.outcome];
-                    ss_cond.pert = [1]*ones(size(ss_tmp{subj_i}{ss_i}.trials)); % perterturbation type... edt
+%                     ss_cond.sf = [ss_tmp{subj_i}{ss_i}.trials.outcome];   % relying on online judge
+                    ss_cond.sf = [[ss_tmp{subj_i}{ss_i}.trials.outcomeo] | [ss_tmp{subj_i}{ss_i}.trials.outcome]];   % relying on offline | online judge
+%                     ss_cond.pert = [1]*ones(size(ss_tmp{subj_i}{ss_i}.trials)); % perterturbation type... edt
+                    ss_cond.pert = [ss_tmp{subj_i}{ss_i}.trials.ifpert]; % perterturbation type... edt
                     
                     % concatinate into conditions 
                     obj.cond.subject = [obj.cond.subject ss_cond.subject];
@@ -97,7 +106,7 @@ classdef SessionsScan
 
             session_min = min(obj.cond.ssNo);
             session_max = max(obj.cond.ssNo);
-            obj.filename = sprintf('ss%4d_%4d.mat', session_min, session_max);
+            obj.filename = sprintf('ss%4d_%4d', session_min, session_max);
 
             % set every first trial in the session 0 
 
@@ -124,6 +133,81 @@ classdef SessionsScan
                 15, ...                                      % trials
                 4);                                          % pert
 %                 1);                                          % pert
+            % one direction
+            pert_export_code = [0 1 6]; % each pulse
+            trials_req =       [20 10 10];      % each perturb
+            % four directions
+%             pert_export_code = [0 nan nan];   
+%             trials_req =       [15 nan nan];
+            for subj_i = 1:length(obj.export_cond.subject)
+                for direction_i = 1:4
+                    for fce_i = 1:3
+                        for disp_i = 1:3
+                            for pert_i = 1:3
+                                trialMask = [obj.cond.subject == subj_i &...
+                                             obj.cond.direction == obj.export_cond.direction(direction_i) & ...
+                                             obj.cond.fce == obj.export_cond.fce(fce_i) & ...
+                                             obj.cond.disp == obj.export_cond.disp(disp_i) & ... 
+                                             obj.cond.pert == pert_export_code(pert_i) & ...
+                                             obj.cond.sf == 1
+                                             ];
+
+
+                                if (sum(trialMask)) == 0 % no trials
+                                    continue;
+                                end
+                                
+                                trial_idx = find(trialMask);
+                                % if trial is enough, get trials, 
+                                if (sum(trialMask))>=15
+                                    trial_idx = find(trialMask);
+                                    trial_idx = trial_idx(1:15);
+                                % if trial is not enough, get more trials
+                                % from repeating
+                                else
+                                    trials_qualify_num = sum(trialMask);
+                                    trials_lack = trials_req(pert_i) - trials_qualify_num;
+
+                                    for trials_lacki = 1:trials_lack
+                                        trial_idx(trials_qualify_num+trials_lacki) = ...
+                                            trial_idx(trials_lacki);
+                                        disp(['put trial' num2str(trials_lacki) 'in slot' num2str(trials_qualify_num+trials_lacki)]);
+                                    end
+                                end
+
+                                for trial_idx_dest = 1:length(trial_idx)
+                                    trial_idx_from = trial_idx(trial_idx_dest);
+                                    data{subj_i,direction_i,fce_i,disp_i,trial_idx_dest,pert_i} = ...
+                                        obj.trials(trial_idx_from).export_as_formatted(); % need edition.
+%                                         obj.trials(trial_idx_from).export_as_formatted(1); % need edition.
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            
+            save(['data/processedData/' obj.filename '.mat'], 'data', '-v7.3');
+        end
+        
+        function data = SessionsExportf(obj)
+            %SessionsExport Export to formatted data matrix, only failed
+            %trials
+            %   the formatted data matrix is a 6-D matrix, which is: 
+            %   subj - direction - force - distance - trials - pert
+            % 
+            % In experiment with one direction multiple pulse, perturbation
+            % could be 4: 
+            %       [nopert, pertPreMotion, pertInMotion, pertPostMotion]
+            % 
+            % In experiment with 4 directions no pulse, perturbation is 1
+            data = cell(length(unique(obj.export_cond.subject)), ... % subjects
+                4, ...                                       % directions
+                3, ...                                       % fce
+                3, ...                                       % dist
+                15, ...                                      % trials
+                4);                                          % pert
+%                 1);                                          % pert
 
             for subj_i = 1:length(obj.export_cond.subject)
                 for direction_i = 1:4
@@ -135,7 +219,7 @@ classdef SessionsScan
                                              obj.cond.fce == obj.export_cond.fce(fce_i) & ...
                                              obj.cond.disp == obj.export_cond.disp(disp_i) & ... 
                                              obj.cond.pert == pert_i & ...
-                                             obj.cond.sf == 1
+                                             obj.cond.sf == 0
                                              ];
 
 
@@ -173,9 +257,10 @@ classdef SessionsScan
                 end
             end
             
-            save(['data/processedData/' obj.filename], 'data', '-v7.3');
+            save(['data/processedData/' obj.filename 'f.mat'], 'data', '-v7.3');
         end
         
+
         function obj = SessionsSpecifyRotation(obj)
             % Specify the roated sessions in this function
             % Where the 'target rotation' array will be changed. 
@@ -187,7 +272,8 @@ classdef SessionsScan
             % to (2, 6) 
 
             sessions_rot = [4218 4219 4220 ...
-                            4225 4226 ]; 
+                            4225 4226 ...
+                            4237 4238 4239]; 
                 % first assume these sessions. These can be read from .conf
                 % in the future. 
                 

@@ -25,6 +25,7 @@ classdef TrialScan
          % state indexes
         idx_bgn
         idx_prt
+        tarHD   % target - Hold-Duration
         idx_fcr
         idx_mov
         idx_hld
@@ -109,6 +110,10 @@ classdef TrialScan
             obj.data.ts = sessionScanObj.data.ts(:,data_idx);
             obj.data.f  = sessionScanObj.data.f(:,data_idx);
             obj.data.ftq  = sessionScanObj.data.ftq(:,data_idx);
+            % data from formatted data 
+            obj.data.ts_msg = sessionScanObj.data.tsf(:,data_idx); % get from the formatted data
+            obj.data.x_msg = sessionScanObj.data.x_msg(:,data_idx);
+            obj.data.v_msg = sessionScanObj.data.v_msg(:,data_idx);
             if (~isempty(sessionScanObj.opt))   % if use optotrak
                 data.optx=sessionScanObj.data.optx(:,data_idx);
                 data.opty=sessionScanObj.data.opty(:,data_idx);
@@ -171,6 +176,8 @@ classdef TrialScan
             %%% optional: when emg data exists 
             if (isfield(sessionScanObj.data, 'emg'))
                 obj.data.emg = sessionScanObj.data.emg(:,data_idx);
+            else 
+                obj.data.emg = nan(8,length(data_idx));
             end
             
             %%%%%%%%%%%%%%%% deal with perturbation, etc %%%%%%%%%%%%%%%%%%
@@ -459,10 +466,13 @@ classdef TrialScan
             %   Just do linear shift, do NOT skew time
             time = obj.time;
             idx = find(obj.data.ts == 5);
+            idx_msg = find(obj.data.ts_msg == 5);
             if isempty(idx)
                 time_offset = obj.data.t(end); % not at all moved
+                time_offset_msg = obj.data.t(end);
             else
-                time_offset = obj.data.t(idx(1));
+                time_offset = obj.data.t(idx(1)); % time from WAM
+                time_offset_msg = obj.data.t(idx_msg(1));  % time from message
             end
             % if no ST_MOV, abort align
             if (~isempty(time_offset))
@@ -470,6 +480,7 @@ classdef TrialScan
                 
                 if(~isempty(obj.data.t))
                     obj.data.t_shift = obj.data.t - time_offset;
+                    obj.data.t_shift_msg = obj.data.t - time_offset_msg;
                 end
                 if(~isempty(obj.opt))
                     obj.opt.data.t = obj.opt.data.t - time_offset;
@@ -921,11 +932,12 @@ classdef TrialScan
             % position and the velocity to re-define the obj.outcome 
             
             % 1. offline judge parameters define
-            time_scale = [0.4 0.6];
+%             time_scale = [0.4 0.6];
+            time_scale = [0.5 0.8];
             pos_dist = 0.01;        % ±1cm
-            vel_dist = 0.05;       % 5mm/s ??? is it 5cm or 5mm?
+            vel_dist = 0.05;       % 5cm/s 
             TS_MOV = 5;
-            pos_offset = 0.48;
+            pos_offset = -0.48;
             idx = obj.data.t_shift > time_scale(1) & obj.data.t_shift < time_scale(2);
             
             % 2. judge begin
@@ -948,15 +960,15 @@ classdef TrialScan
             
                 % begin judge
             
-            jd(1) = prod(abs(obj.data.x(2,idx) - pos_offset -obj.tarL) < pos_dist);
-            jd(2) = prod(abs(obj.data.v(2,idx)- 0 ) < vel_dist);
+            jd(1) = prod(abs(obj.data.x(1,idx) - pos_offset -obj.tarL) < pos_dist);
+            jd(2) = prod(abs(obj.data.v(1,idx)- 0 ) < vel_dist);
             obj.outcomeo = jd(1) * jd(2); % should I use &&?
             
             ifplot = 0;
             if(ifplot)
                 clf;
                 axh(1) = subplot(2,1,1); hold on;
-                plot(obj.data.t_shift, obj.data.x(2,:));
+                plot(obj.data.t_shift, obj.data.x(1,:));
                 line(time_scale, (pos_offset+obj.tarL+pos_dist)*[1 1], 'color', 'r');
                 line(time_scale, (pos_offset+obj.tarL-pos_dist)*[1 1], 'color', 'r');
                 title(['trial ' num2str(obj.tNo) 'outcome ' num2str(obj.outcome)]);
@@ -964,7 +976,7 @@ classdef TrialScan
                 grid on;
                 
                 axh(2) = subplot(2,1,2); hold on;
-                plot(obj.data.t_shift, obj.data.v(2,:));
+                plot(obj.data.t_shift, obj.data.v(1,:));
                 line(time_scale, (0+0+vel_dist)*[1 1], 'color', 'r');
                 line(time_scale, (0+0-vel_dist)*[1 1], 'color', 'r');
                 ylabel('velocity (m/s)');
@@ -972,6 +984,8 @@ classdef TrialScan
                 
                 linkaxes(axh, 'x');
                 xlim([0 0.7]);
+
+                sgtitle(['outcomeo' num2str(obj.outcomeo)]);
             end
         end
         function obj = predictMass(obj, ifplot)
@@ -1356,7 +1370,8 @@ classdef TrialScan
         
         %dat.t = obj.data.t(idx);
 %         dat.t = obj.data.t(idx);
-        dat.t = obj.data.t_shift(idx);
+        dat.t = obj.data.t_shift(idx);      % arrange t from robot recorded task-state
+        dat.t = obj.data.t_shift_msg(idx);  % arrange t from matlab recorded task-state
         %wamt_org= dat.t;
         %t_const = min(dat.t):2e-3:max(dat.t);
         %dat.t = t_const;
@@ -1369,8 +1384,14 @@ classdef TrialScan
         dat.Fp= obj.data.Fp(:,idx);
         dat.ts= obj.data.ts(:,idx);
         dat.tq= obj.data.tq(:,idx);
+%         % data from formatted data 
+%         dat.ts_msg = obj.data.tsf(:,idx); % get from the formatted data
+%         dat.x_msg = obj.data.x_msg(:,idx);
+%         dat.v_msg = obj.data.v_msg(:,idx);
         if isfield(obj.data, 'emg')
             dat.emg=obj.data.emg(:,idx);
+        else 
+            dat.emg=nan(8,length(idx));
         end
         if isfield(obj.data, 'ox')
             
@@ -1395,26 +1416,7 @@ classdef TrialScan
 
             
         end
-        %dat.x = interp1(wamt_org, dat.x', dat.t, 'linear', 'extrap');
-        %dat.v = obj.velocity_h(:,vidx);
-        %dat.v = interp1(obj.position_t', obj.velocity_h', dat.t)';
-%         try
-%             dat.f = (interp1(obj.force_t', obj.force_h', dat.t, 'linear', 'extrap'))'; %... need intropolate
-%         catch
-%             [C,IA,IC] = unique(obj.force_t);
-%             dat.f = (interp1(obj.force_t(IA)', obj.force_h(:,IA)', dat.t, 'linear', 'extrap'))'; %... need intropolate
-%             disp(['force_t have' num2str(sum(diff(obj.force_t)==0)) ' overlapping values, ! Need to check!']);
-%         end
-%         
-%         dat.Fp= obj.pertfce_h(:,vidx);
-%         dat.Fp= interp1(obj.position_t', obj.pertfce_h', dat.t)';
-        %dat.FP = interp1(wamt_org, dat.FP, dat.t, 'linear', 'extrap');
-%         ts = reshape(obj.data.ts, 1, length(obj.data.ts));
-%         dat.ts = interp1(obj.position_t',ts,dat.t, 'linear', 'extrap');
-        %dat.ts = round(interp1(wamt_org, dat.ts, dat.t, 'linear', 'extrap'));
-%         dat.tq= obj.wamtqe_h(:,vidx);
-%         dat.tq= interp1(obj.position_t', obj.wamtqe_h', dat.t)';
-        %dat.tq= interp1(wamt_org, dat.tq, dat.t, 'linear', 'extrap');
+
             % test code for a specific session ss4146:
                 if (sum(obj.ifpert==[4 6]) == 2)
                     obj.ifpert = 6;
@@ -1424,15 +1426,7 @@ classdef TrialScan
             dat.mvst= (dat.ts==5 | dat.ts==6); % moveent start
         elseif(obj.ifpert==2) % stochastic pert
             dat.mvst= (dat.ts==5 | dat.ts==6);
-        end
-        % the optotrak data
-%         if ~isempty(obj.opt)
-%             ox = interp1(obj.opt.datah.t, obj.opt.datah.x, dat.t, 'linear', 'extrap');
-%             oy = interp1(obj.opt.datah.t, obj.opt.datah.y, dat.t, 'linear', 'extrap');
-%             oz = interp1(obj.opt.datah.t, obj.opt.datah.z, dat.t, 'linear', 'extrap');
-%             dat.ox = [ox; oy; oz];
-%         end
-        
+        end        
 
         % deal with errors (that back to ts3)
         if (~isempty(find(dat.ts==3 & [diff([1 dat.ts]) == -1], 1 )))
@@ -1504,7 +1498,8 @@ classdef TrialScan
 %             plot(dat.t, dat.x(2,:));
               clf;
 %               time = dat.t;
-              t = obj.data.t_shift(idx);
+%               t = obj.data.t_shift(idx);
+                t = obj.data.t_shift_msg(idx);
               axh(1) = subplot(4,1,1);
               plot(t, dat.Fp);
 %               plot(t, dat.mvst);
@@ -1518,24 +1513,45 @@ classdef TrialScan
 %                     % end tmp
 %               plot(t, dat.x(2,:));
               plot(t, dat.x(1,:));
+              plot(t, obj.data.x_msg(:,idx)', '.');
               if length(size(dat.ox))==2 % only one marker
                     plot(t, dat.ox(1,:));
               else % multiple markers
                     plot(t,dat.ox(1,:,1));
               end
 %               plot(t, dat.x(1,:) -x_avg(1));
-                tar_offset = 0; % 0.48
-% %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
-% %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
-% %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
-% %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
+              tar_offset = -0.483;
+                ylim([-0.49 -0.40]);
+              % do a vertical line indicating ts5, and start from there 
+              idx_hold = find(obj.data.ts == 6);
+
               ylabel('position (m)');
               grid on;
               axh(3) = subplot(4,1,3); hold on;
 %               plot(t, dat.v(2,:));
              plot(t, dat.v(1:2,:));
-              line([0.5 1.0], [0.05 0.05], 'color', 'r');
-              line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
+             plot(t, obj.data.v_msg(:,idx)', '.');
+%               line([0.5 1.0], [0.05 0.05], 'color', 'r');
+%               line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
+
+%%% plot out the reference line for judgement
+              if (length(idx_hold) > 1)
+                  
+                  t_hold = obj.data.t_shift(idx_hold(1));
+                  t_hold_dur = 2.5; % s
+                  subplot(axh(2));
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL+0.015)*[1 1], 'color', 'g');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL-0.015)*[1 1], 'color', 'g');
+                  
+                  subplot(axh(3));
+                  line([t_hold t_hold + t_hold_dur], (0.015)*[1 1], 'color', 'r');
+                  line([t_hold t_hold + t_hold_dur], (-0.015)*[1 1], 'color', 'r');
+                  line([t_hold t_hold + t_hold_dur], (0.08)*[1 1], 'color', 'g');
+                  line([t_hold t_hold + t_hold_dur], (-0.08)*[1 1], 'color', 'g');
+              end
+
               ylabel('velocity (m/s)');
               grid on;
               axh(4) = subplot(4,1,4);  hold on;
@@ -1560,61 +1576,62 @@ classdef TrialScan
         
         end
 %         ifplot = 1; 
-        if (isfield(dat, 'ox'))
-        if (~isempty(dat.ox))
-            
-             if (ifplot)
-              clf;
-%               time = dat.t;
-              t = obj.data.t_shift(idx);
-              axh(1) = subplot(4,1,1);
-              plot(t, dat.Fp);
-%               plot(t, dat.mvst);
-              title(['trial' num2str(obj.tNo) ' :' outcome_name(2-obj.outcome)]);
-              grid on;
-              ylabel('Fp (N)' );
-              axh(2) = subplot(4,1,2); hold on;
-              plot(t, dat.x(1,:), 'b.');    % robot
-              plot(t, dat.ox(1,:,1), 'r.');    % optotrak
-              tar_offset = 0; % 0.48
-% % %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
-% % %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
-% % %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
-% % %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
-              ylabel('position (m)');
-              grid on;
-              axh(3) = subplot(4,1,3); hold on;
-              lnh(1) = plot(t, dat.v(1,:), 'b.');    % robot
-              if length(size(dat.ov))==2
-                lnh(2) = plot(t, dat.ov(1,:), 'r.');    % optotrak
-              else
-                lnh(2) = plot(t, dat.ov(1,:,1), 'r.');    % optotrak
-              end
-              line([0.5 1.0], [0.05 0.05], 'color', 'r');
-              line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
-              legend(lnh, 'robot', 'optotrak');
-              ylabel('velocity (m/s)');
-              grid on;
-              axh(4) = subplot(4,1,4);  hold on;
-              plot(t, dat.f(1,:), 'Marker', '.');
-              grid on;
-              ylabel('Force (N)')
-              
-              linkaxes(axh, 'x');
-              % xlim for better read
-%               xlim([[-0.01 0.02]]);
-              xlim([-0.2 1]);
-%               xlim([-3.0 2]);
-%               xlim([-3.0 20]);
-
-%             subplot(2,1,1);
-%             plot(obj.force_t', obj.force_h');
-%             subplot(2,1,2);
-%             plot(dat.t, dat.f);
-%%%%%%%%%%%%%% condition: abs(t(dat.Fp(2,:)==-12) - 0.2) < 0.02
-            end
-        end % end of if
-        end
+%         if (isfield(dat, 'ox'))
+%         if (~isempty(dat.ox))
+%             
+%              if (ifplot)
+%               clf;
+% %               time = dat.t;
+%               t = obj.data.t_shift(idx);
+%               axh(1) = subplot(4,1,1);
+%               plot(t, dat.Fp);
+% %               plot(t, dat.mvst);
+%               title(['trial' num2str(obj.tNo) ' :' outcome_name(2-obj.outcome)]);
+%               grid on;
+%               ylabel('Fp (N)' );
+%               axh(2) = subplot(4,1,2); hold on;
+%               plot(t, dat.x(1,:), 'b.');    % robot
+%               plot(t, dat.ox(1,:,1), 'r.');    % optotrak
+%               tar_offset = 0; % 0.48
+% % % %               line([0.4 1.0], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
+% % % %               line([0.5 1.0], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
+% % % %               line([0.4 1.0], (tar_offset+obj.tarL+0.005)*[1 1], 'color', 'g');
+% % % %               line([0.5 1.0], (tar_offset+obj.tarL-0.005)*[1 1], 'color', 'g');
+%               ylabel('position (m)');
+%               grid on;
+%               axh(3) = subplot(4,1,3); hold on;
+%               lnh(1) = plot(t, dat.v(1,:), 'b.');    % robot
+%               if length(size(dat.ov))==2
+%                 lnh(2) = plot(t, dat.ov(1,:), 'r.');    % optotrak
+%               else
+%                 lnh(2) = plot(t, dat.ov(1,:,1), 'r.');    % optotrak
+%               end
+%               line([0.5 1.0], [0.05 0.05], 'color', 'r');
+%               line([0.4 1.0], [-0.05 -0.05], 'color', 'r');
+%               legend(lnh, 'robot', 'optotrak');
+%               ylabel('velocity (m/s)');
+%               grid on;
+%               axh(4) = subplot(4,1,4);  hold on;
+%               plot(t, dat.f(1,:), 'Marker', '.');
+%               grid on;
+%               ylabel('Force (N)')
+%               
+%               linkaxes(axh, 'x');
+%               % xlim for better read
+% %               xlim([[-0.01 0.02]]);
+% %               xlim([-0.2 1]);
+%                 xlim([-0.5 2.5]);
+% %               xlim([-3.0 2]);
+% %               xlim([-3.0 20]);
+% 
+% %             subplot(2,1,1);
+% %             plot(obj.force_t', obj.force_h');
+% %             subplot(2,1,2);
+% %             plot(dat.t, dat.f);
+% %%%%%%%%%%%%%% condition: abs(t(dat.Fp(2,:)==-12) - 0.2) < 0.02
+%             end
+%         end % end of if
+%         end
         end
         
         function params = export_trial_params(obj)

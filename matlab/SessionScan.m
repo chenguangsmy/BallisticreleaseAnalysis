@@ -252,6 +252,7 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
                 obj.trials(trial_i) = judgeOffline(obj.trials(trial_i));
                 %obj.trials(trial_i) = alignPertInit(obj.trials(trial_i));
+                
                 if (flag_progress)
                     if (trial_i == length(trials_all)) % last trial
                         fprintf('  100%%  FINISHED!\n');
@@ -260,6 +261,7 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             [s,f] = readManualSetsf(obj.ssnum);
+            
             if (~isempty(s)) %specify good trials
                 disp('Manual set trials suceed: ');
                 for trial_i = s
@@ -297,6 +299,7 @@ classdef (HandleCompatible)SessionScan < handle
             
             % remove error task conditions to avoid code error 
             obj = obj.dealingSessionsExceptions(); % nothing here 
+            obj = obj.dealingEMGOpenLoopNoise();   % bad EMG to 0 
             end
         end
         function obj = dealingSessionsExceptions(obj)
@@ -469,6 +472,25 @@ classdef (HandleCompatible)SessionScan < handle
             force_h = interp1(obj.force_t', obj.ft.force', obj.wam_t', 'linear', 'extrap')'; 
             torque_h = interp1(obj.force_t', obj.ft.torque_origin', obj.wam_t', 'linear', 'extrap')';
             
+            %%% deal with the task state masks
+            ts_masks = obj.Data.TaskStateMasks;
+            ts_masks_mat = zeros(8,length(obj.Data.TaskStateMasks.Begin));
+            ts_masks_list={'Begin','Present','FrcRamp','FrcHold','Move','Hold','End','Reset'};
+            for mask_i = 1:8
+                ts_masks_mat(mask_i,:) = mask_i * eval(['obj.Data.TaskStateMasks.' ts_masks_list{mask_i}]);
+            end
+            ts_ = sum(ts_masks_mat);
+            idx_nan = isnan(obj.Data.SpikeTimestamp);
+            ts_h = interp1(obj.Data.SpikeTimestamp(~idx_nan),...
+                ts_(~idx_nan), obj.wam_t, 'previous');
+            %%% deal with the messaged position and velocity
+            x_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
+                obj.Data.Position.Actual(~idx_nan,:), obj.wam_t', 'previous');
+            x_msg_h = x_msg_h';
+            v_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
+                obj.Data.Velocity.Actual(:,~idx_nan)', obj.wam_t', 'previous');
+            v_msg_h = v_msg_h';
+            
             ifplot = 0;
             if (ifplot)
                 clf;
@@ -506,6 +528,9 @@ classdef (HandleCompatible)SessionScan < handle
             obj.data.tq = obj.wam.jt;
             obj.data.jp = obj.wam.jp;
             obj.data.ts = obj.wam.state;
+            obj.data.tsf = ts_h; % get from the formatted data
+            obj.data.x_msg = x_msg_h;
+            obj.data.v_msg = v_msg_h;
             obj.data.f = force_h;
             obj.data.ftq= torque_h; % force transducer cencored torque
             
@@ -740,7 +765,151 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
         end
-        
+        function recognizeBadEmgTrials(obj, vThreshold)
+            % recognize which trial have abnormal EMG, and write that trial
+            % is not able to use.  
+            % Write the trial list in the config file:
+            %  manualSetEMGTrialf.conf
+
+            % 1. Specify the threshold
+            if (~exist('vThreshold', 'var'))
+                vThreshold = 0.2; % mV
+            end
+            % 2. Get the EMG bad time series 
+            t_list = obj.emg.scanThresholdCrossing(vThreshold); 
+
+            % 3. Convert the EMG bad time into the trial 
+            trials_list = cell(8,1);
+            for ch_i = 1:8
+                if isempty(t_list{ch_i})
+                    continue
+                end
+                % 2.2 for each trial
+                trials_list_tmp = [];
+                for trial_i = 1:length(obj.trials)  
+                    t_stt = obj.trials(trial_i).bgn_t; % ...? start time
+                    t_edn = obj.trials(trial_i).edn_t; % ...? end time 
+                    % if there is time in the zone 
+                    if (sum(t_list{ch_i}>t_stt & t_list{ch_i}<t_edn))
+                        trials_list_tmp = [trials_list_tmp trial_i];
+                    end
+                end
+                trials_list{ch_i} = trials_list_tmp;
+            end
+                % concatinate all the trials in this session
+                trials_list_all = unique([trials_list{:}]);
+                if (isempty(trials_list_all))
+                    return; % no trials should be marked as 'wrong EMG'
+                end
+
+            % 4. Read the *.conf, check the *.conf, write the *.conf
+                % read the *.conf
+                filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/config/manualSetEMGTrialsf.conf';
+                fid = fopen(filename);
+                C = textscan(fid, '%s\n','CommentStyle','#');
+                fclose(fid);
+                for li = 1:size(C{1}, 1)
+                    str = C{1}{li};
+                    freadtmp = textscan(str,'%d,%s');
+                    
+                    ss_num = freadtmp{1}(1);
+                    if ss_num ~= obj.ssnum
+                        continue;
+                    else
+                        % this part is not really useful as it read trials
+                        % (unnessesary for the current part).
+                        ch_trials_str = freadtmp{2}{1};
+                        trials_lists = textscan(ch_trials_str,'%s', 'Delimiter',';');
+                        for ch_i = 1:8
+                            if (~isempty(trials_lists{1}{ch_i}))
+                                 strtmp = textscan(trials_lists{1}{ch_i},'%d', 'Delimiter',',');
+                                 ch_trials{ch_i} = strtmp{1}';
+                            end
+                        end
+                    end
+                    trial_str = [ch_trials{:}];
+                end
+                if exist('trial_str', 'var')    % defined by the config file
+                    trials_idx = double(trial_str)';
+                    clear trial_str;
+                else % default value
+                    trials_idx = [];    % The right order
+                end
+
+                if ~isempty(trials_idx)
+                    fprintf('SessionScan::RecognizeBadEmgTrials: already marked tirals!\n');
+                    return
+                end
+                % write the *.conf
+                str_towrite = [];
+                for ch_i = 1:length(trials_list)
+                    for t_i = 1:length(trials_list{ch_i})
+  %                     str_towrite = [str_towrite ',' num2str(trials_list_all(t_i))];
+                        str_towrite = [str_towrite num2str(trials_list{ch_i}(t_i)) ','];
+                    end
+                    if (~isempty(trials_list{ch_i})) 
+                        str_towrite = [str_towrite(1:end-1) ';']; % end-1 for remove end ','
+                    else
+                        str_towrite = [str_towrite ';'];
+                    end
+                end
+                fid = fopen(filename, 'a');
+                fprintf(fid,'%s',[num2str(obj.ssnum), ',', str_towrite]);
+                fclose(fid);
+        end
+        function trials_list = readBadEmgTrials(obj)
+            % read which trial have abnormal EMG, from config file:
+            %  manualSetEMGTrialf.conf
+
+            % 0. default value, blank
+            trials_list = cell(8,1);
+            % 1. Read the *.conf, check the *.conf, write the *.conf
+                % read the *.conf
+                filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/config/manualSetEMGTrialsf.conf';
+                fid = fopen(filename);
+                C = textscan(fid, '%s\n','CommentStyle','#');
+                fclose(fid);
+
+
+                for li = 1:size(C{1}, 1)
+                    str = C{1}{li};
+                    freadtmp = textscan(str,'%d,%s');
+                    
+                    ss_num = freadtmp{1}(1);
+                    if ss_num ~= obj.ssnum
+                        continue;
+                    else
+                        % this part is not really useful as it read trials
+                        % (unnessesary for the current part).
+                        ch_trials_str = freadtmp{2}{1};
+                        trials_lists = textscan(ch_trials_str,'%s', 'Delimiter',';');
+                        for ch_i = 1:8
+                            if (~isempty(trials_lists{1}{ch_i}))
+                                 strtmp = textscan(trials_lists{1}{ch_i},'%d', 'Delimiter',',');
+                                 ch_trials{ch_i} = strtmp{1}';
+                            end
+                        end
+                        trials_list = ch_trials;
+                    end
+                end
+            % have bug if there are repeat ss_num in the file
+        end
+        function obj = dealingEMGOpenLoopNoise(obj)
+            % deal with EMG open-loop noise by set specific trials data to Nan
+            % read the config from config file 
+            % the trials will be set according to the pre-setted config
+            trials_list = readBadEmgTrials(obj);
+            for ch_i = 1:8
+                for trial_i = 1:length(trials_list{ch_i})
+                    % for specific trial, nan the emg data
+                    trial_idx = trials_list{ch_i}(trial_i);
+                    obj.trials(trial_idx).data.emg(ch_i,:) = nan;
+                end
+            end
+
+            
+
+        end
 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % EXPORT CODE FOR FURTHER ANALYSIS

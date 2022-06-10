@@ -120,20 +120,38 @@ sgtitle('WAM(x) vs OPT (x), subtracted 0')
 % 2. Compare the y directional force vs x directional force 
 % (ss4065 v.s. ss4069)
 
+%% report the sucess rate of Himanshu 
+sessions_list = {[4235] [4237 4238] [4236] [4239]}; 
+for i = 1:4
+    sessions_list_sub = sessions_list{i};
+    disp(['direction' num2str(i)]);
+    for session_i = sessions_list_sub
+        ss_tmp = SessionScan(session_i);
+        ss_tmp.displayBlockCondition
+    end
+end
+%%%%%%%%%%%%%% temperary code for only Himanshu's work
+trials_sucess = [144 153 145 145 587];
+trials_all =    [250 232 240 217 903];
+sucess_percent= trials_sucess./trials_all;
 %% 4-directional only release data, check the files 
 dist_list = [2.5 5.0 7.5];
 fce_list = [15 20 25];
 
 % load('data/processedData/ss4216_4220.mat', 'data');       % 3K values - Himanshu
 % load('data/processedData/ss4222_4226.mat', 'data');       % only release -Himanshu
-load('data/processedData/ss4216_4226.mat', 'data');       % chenguang & Himanshu
+% load('data/processedData/ss4216_4226.mat', 'data');       % chenguang & Himanshu
+% load('data/processedData/ss4216_4239.mat', 'data');       % chenguang & Himanshu
+% load('data/processedData/ss4216_4239f.mat', 'data');       % chenguang & Himanshu, failed trials
+% load('data/processedData/ss4253_4274.mat', 'data');       % chenguang 1 dir 2 pert with EMG
+load('data/processedData/ss4253_4263.mat', 'data');       % chenguang 
 Data = data;
 Freq = 500;
 t_step = 1/500;
 clear axh
-fh = figure(2); 
+fh_tmp = figure(2); 
 colors = colormap('lines');
-close(fh);
+close(fh_tmp);
 r = size(Data, 1); % subj
 d = size(Data, 2); % direction
 f = size(Data, 3); % force
@@ -145,7 +163,7 @@ if_subtract = 0;
 
 epoc_type = 2;  % 1 perturb
                 % 2 release
-plot_type = 9;  % 1 displacement
+plot_type = 13; % 1 displacement
                 % 2 force 
                 % 3 feedforward force
                 % 4 velocity
@@ -157,14 +175,15 @@ plot_type = 9;  % 1 displacement
                 % 10 opt 1
                 % 11 opt 2
                 % 12 opt 3
-pert_type = 1; % choose option [2 3 4]
+                % 13 emg 1
+pert_type = 2; % choose option [2 3 4]
 axh = zeros(d,r);
 xyi = 1;        % x, y
 
 % fh = figure();
 % pert_type = 2; colors = colors(4:end,:)
-for ri = 1:r % subj
-    for di = 1:d % direction
+for ri = 1%1:r % subj
+    for di = 1%:d % direction
         fh = figure('Name', ['direction' num2str(di)]);
         %axh(ri, ci) = subplot(r,c,c*(ri-1) + ci);grid on;hold on;
         %         axh(ri, di) = subplot(d,r,r*(di-1) + ri);grid on;hold on;
@@ -189,7 +208,8 @@ for ri = 1:r % subj
                                 end
                             case 2
                                 idx = find(Data{ri,di,fi,li,ti,pi}.ts==5 | Data{ri,di,fi,li,ti,pi}.ts==6);
-                                idx = (idx(1)-100):idx(end);
+%                                 idx = (idx(1)-100):idx(end);
+                                idx = (idx(1)-500):(idx(end)+100);
                                 %idx = (idx(1)):idx(end);
                         end
                         %plot(Data{ri,ci,di,ti,li}.Fp(xyi,:));
@@ -254,6 +274,11 @@ for ri = 1:r % subj
                             case 12 
                                 dat = Data{ri,di,fi,li,ti,pi}.ox(xyi,idx,3);
                                 titlestr = 'opto3-position';
+                            case 13
+                                channeli = 8;
+                                dat = Data{ri,di,fi,li,ti,pi}.emg(channeli,idx);
+                                titlestr = ['EMG' num2str(channeli)];
+
                         end
                         if (if_subtract)
                             dat = dat - mean(dat(1:50));
@@ -263,15 +288,20 @@ for ri = 1:r % subj
                     end
                 end
                 title(['fce' num2str(fce_list(fi)) 'dist' num2str(dist_list(li))]);
-
+                xticks([0.2 0.45 0.7 1.0]);
+                xticklabels({'0' '0.25' '0.5' '0.8'});
             end
         end
         linkaxes(axh, 'xy');
         xlim([0 1.0])
+%         xlim([0.2 1.2])
+%         ylim([0 0.1]);
+        ylim([0 0.1]);
     end
 end
 linkaxes(axh, 'xy');
 xlim([0 1.0])
+% xlim([-2 2])
 % xlim([0 0.5]);
 % xlim([0 2])
 sgtitle(titlestr);
@@ -281,7 +311,7 @@ sgtitle(titlestr);
 %% New data running Federico's analysis on the 4-directional data
 %%%%%%%%%%%%%%%%%
 % Change ln20, to choose plot things: force, displacement, velocity, etc.
-clc,  close all, %clear,
+clc,  close all, clear,
 
 % load('ss3938_3949.mat', 'data');  % 6N perturbation on x, 
 % load('ss4129_4137.mat', 'data');  % 6N and 12N perturbation on x, only chenguang,
@@ -290,7 +320,10 @@ clc,  close all, %clear,
 % load('ss4181_4202.mat', 'data');  % 6N and 12N perturbation on x, himanshu and chenguang
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4220.mat', 'data');  % just release, Chenguang
 % load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4222_4226.mat', 'data');  % just release, Himanshu
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4226.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4226.mat', 'data');
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4226.mat', 'data');  % Himanshu updated condition
+load('data/processedData/ss4216_4239.mat', 'data');       % chenguang & Himanshu
+% load('data/processedData/ss4216_4239f.mat', 'data');       % chenguang & Himanshu failed
 
 Data = data;
 Freq = 500;
@@ -319,7 +352,7 @@ axh = zeros(f,r);
 
 
 
-for ri = 1:r % subj
+for ri = 2%1:r % subj
     for ci = 1:c
         for fi = 1:f % fce
             for di = 1:d % target distance
@@ -332,6 +365,43 @@ for ri = 1:r % subj
                             continue;
                         end
 
+
+                        %%%% start of faking trial
+                        % in the latter part (system_idx), a minimum of
+                        % 1.25s data must be preserved. Hence, I'll expand
+                        % the current value to 1.25s when there is lack of
+                        % data
+                        time_tmp = Data{ri,ci,fi,di,ti,li}.t; 
+                        if (max(time_tmp)<1.25)
+                            disp(['faking trial f' num2str(fi) 'd' num2str(di) 't' num2str(ti)]);
+                            t_step = mode(diff(time_tmp));
+                            % expand time to 1.25
+                            time_tmp_update = min(time_tmp):t_step:(1.25 + 0.01); % safe margin 0.01
+                            % extrapolate with previous value of x, ox
+                            clear datatmp
+                            datatmp.t = time_tmp_update;
+                            datatmp.ox(:,:,1) = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.ox(:,:,1)', time_tmp_update, 'previous','extrap')';
+                            datatmp.ov(:,:,1) = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.ov(:,:,1)', time_tmp_update, 'previous','extrap')';
+                            datatmp.f(:,:) = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.f(:,:)', time_tmp_update, 'previous','extrap')';
+                            datatmp.x(:,:) = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.x(:,:)', time_tmp_update, 'previous','extrap')';
+                            datatmp.v(:,:) = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.v(:,:)', time_tmp_update, 'previous','extrap')';
+                            % % also do other variables to make the length
+                            % consistent 
+                            datatmp.ftq = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.ftq(:,:)', time_tmp_update, 'previous','extrap')';
+                            datatmp.Fp = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.Fp(:,:)', time_tmp_update, 'previous','extrap')';
+                            datatmp.ts = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.ts(:,:)', time_tmp_update, 'previous','extrap')';
+                            datatmp.tq = interp1(time_tmp', Data{ri,ci,fi,di,ti,li}.tq(:,:)', time_tmp_update, 'previous','extrap')';
+                            datatmp.mvst = interp1(time_tmp', double(Data{ri,ci,fi,di,ti,li}.mvst(:,:)'), time_tmp_update, 'previous','extrap')';
+                            % extrapolate with 0 of f and v
+                            datatmp.f(:,datatmp.t>max(time_tmp)) = 0;
+                            datatmp.v(:,datatmp.t>max(time_tmp)) = 0;
+                            datatmp.ov(:,datatmp.t>max(time_tmp),:) = 0;
+                            data{ri,ci,fi,di,ti,li} = datatmp;
+                            Data{ri,ci,fi,di,ti,li} = datatmp;
+                        end
+                        %%%%% end of facking trial
+
+
                         switch epoc_type
                             case 1
                                 idx = find(Data{ri,ci,fi,di,ti,li}.Fp(2,:)~=0 & ...
@@ -341,7 +411,8 @@ for ri = 1:r % subj
                                     disp('ERROR: should use li == 2!!!');
                                 end
                             case 2
-                                idx = find(Data{ri,ci,fi,di,ti,li}.ts==5 | Data{ri,ci,fi,di,ti,li}.ts==6);
+%                                 idx = find(Data{ri,ci,fi,di,ti,li}.ts==5 | Data{ri,ci,fi,di,ti,li}.ts==6); % origin
+                                idx = find(Data{ri,ci,fi,di,ti,li}.ts>=5); % expanded
                                 idx = (idx(1)-250):idx(end);
                                 %idx = (idx(1)):idx(end);
                         end
@@ -350,6 +421,7 @@ for ri = 1:r % subj
                         idx_t{ri,ci,fi,di,ti,li} = idx;
                         time_t{ri,ci,fi,di,ti,li} = t_step*(idx-idx(1));
                         %time = idx-idx(1);
+                        
                         switch plot_type
                             case 1
                                 dat = Data{ri,ci,fi,di,ti,li}.ox(1,idx);
@@ -398,7 +470,7 @@ linkaxes(axh, 'xy');
 xlim([0 2])
 sgtitle(titlestr);
 
-%% %
+% %
 subj_i = 2;
 Results = cell(4,1);
 for dir_i = 1:4
@@ -515,6 +587,19 @@ for axh_i = 1:4
 end
 legend('15 N','20 N','25 N')
 
+%% % 
+% Check the continuous failure trials 
+ss_list = [4235 4236 4237 4238 4239];
+fail_interval = [];
+for ss_i = 1:length(ss_list)
+    ss_tmp = SessionScan(ss_list(ss_i));
+    fails = find([ss_tmp.trials.outcome] == 0);
+    fail_interval = [fail_interval diff(fails)];
+end
+hist(fail_interval, [0.5:1:15.5]); 
+xlabel('inter-trial-interval'); 
+ylabel('count');
+title('the InterTrialInterval of failed trials');
 %% %
 %%%% new way to interpret the K, B, and M
 % use TF, but only use the "magnifier", "natural frequency", "damping coef"
