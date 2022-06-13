@@ -6,8 +6,8 @@ clc, clear, close all
 % load('ss4129_4179.mat', 'data');  % 6N and 12N perturbation on x,
 % himanshu and chenguang
 % load('ss4181_4202.mat', 'data');  % 6N and 12N perturbation on x, himanshu and chenguang
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4220.mat', 'data');  % just release, Chenguang
-
+% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4220.mat', 'data');  % just release, Chenguang
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4253_4274.mat', 'data'); % release and perturb, Chenguang and Himanshu
 Data = data;
 Freq = 500;
 t_step = 1/500;
@@ -58,7 +58,8 @@ for ri = 1:r % subj
                                 end
                             case 2
                                 idx = find(Data{ri,ci,fi,di,ti,li}.ts==5 | Data{ri,ci,fi,di,ti,li}.ts==6);
-                                idx = (idx(1)-250):idx(end);
+%                                 idx = (idx(1)-250):idx(end);
+                                idx = (idx(1)-600):idx(end);
                                 %idx = (idx(1)):idx(end);
                         end
 
@@ -361,7 +362,7 @@ p_mass = anovan(MMM,{Force Disp},'model','interaction','varnames',{'Force','Disp
 % 
 %% FIGURES
 clc
-close all,
+% close all,
 
 tpause = 0.05; %Speed of plotting
 wind_start = 20; %From which time window to start showing
@@ -411,16 +412,17 @@ xlabel('Force [N]')
 ylabel('Displacement [mm]')
 zlabel('Stiffness [N/m]')
 zlim([0 1000])
-% for widx = wind_start:length(results.wind_v)
-%     for p = 1:3
-%         pplot = plot3(FF,XX,results.K_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
-%         if p == 1
-%             pplot(1).Marker = "x";
-%             pplot(2).Marker = "x";
-%             pplot(3).Marker = "x";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+for widx = wind_start:length(results.wind_v)
+% for widx = 10:length(results.wind_v)
+    for p = 1%:3
+        pplot = plot3(FF,XX,results.K_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
+        if p == 1
+            pplot(1).Marker = "x";
+            pplot(2).Marker = "x";
+            pplot(3).Marker = "x";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
 %         elseif p == 2
 %             pplot(1).Marker = "o";
 %             pplot(2).Marker = "o";
@@ -435,13 +437,13 @@ zlim([0 1000])
 %             pplot(1).LineStyle = 'none';
 %             pplot(2).LineStyle = 'none';
 %             pplot(3).LineStyle = 'none';
-%         end
-%     end
-%     grid on
-%     zlim([0 1000])
-%     pause(tpause)
-% 
-% end
+        end
+    end
+    grid on
+    zlim([0 1000])
+    pause(tpause)
+
+end
 
 figure(),
 set(gcf,'color','w');
@@ -457,16 +459,16 @@ xlabel('Force [N]')
 ylabel('Displacement [mm]')
 zlabel('Damping [Ns/m]')
 zlim([0 50]) 
-% for widx = wind_start:length(results.wind_v)
-%     for p = 1:3
-%         pplot = plot3(FF,XX,results.B_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
-%         if p == 1
-%             pplot(1).Marker = "x";
-%             pplot(2).Marker = "x";
-%             pplot(3).Marker = "x";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+for widx = wind_start:length(results.wind_v)
+    for p = 1%:3
+        pplot = plot3(FF,XX,results.B_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
+        if p == 1
+            pplot(1).Marker = "x";
+            pplot(2).Marker = "x";
+            pplot(3).Marker = "x";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
 %         elseif p == 2
 %             pplot(1).Marker = "o";
 %             pplot(2).Marker = "o";
@@ -481,12 +483,12 @@ zlim([0 50])
 %             pplot(1).LineStyle = 'none';
 %             pplot(2).LineStyle = 'none';
 %             pplot(3).LineStyle = 'none';
-%         end
-%     end
-%     grid on
-%     zlim([0 50])
-%     pause(tpause)
-% end
+        end
+    end
+    grid on
+    zlim([0 50])
+    pause(tpause)
+end
 
 
 figure(),
@@ -508,16 +510,16 @@ xlabel('Force [N]')
 ylabel('Displacement [mm]')
 zlabel('Mass [kg]')
 zlim([0 5])
-% for widx = wind_start:length(results.wind_v)
-%     for p = 1:3
-%         pplot = plot3(FF,XX,results.M_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
-%         if p == 1
-%             pplot(1).Marker = "x";
-%             pplot(2).Marker = "x";
-%             pplot(3).Marker = "x";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+for widx = wind_start:length(results.wind_v)
+    for p = 1%:3
+        pplot = plot3(FF,XX,results.M_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
+        if p == 1
+            pplot(1).Marker = "x";
+            pplot(2).Marker = "x";
+            pplot(3).Marker = "x";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
 %         elseif p == 2
 %             pplot(1).Marker = "o";
 %             pplot(2).Marker = "o";
@@ -532,12 +534,12 @@ zlim([0 5])
 %             pplot(1).LineStyle = 'none';
 %             pplot(2).LineStyle = 'none';
 %             pplot(3).LineStyle = 'none';
-%         end
-%     end
-%     grid on
-%     zlim([0 5])
-%     pause(tpause)
-% end
+        end
+    end
+    grid on
+    zlim([0 5])
+    pause(tpause)
+end
 
 figure()
 set(gcf,'color','w');
@@ -554,16 +556,16 @@ xlabel('Force [N]')
 ylabel('Displacement [mm]')
 zlabel('Model FIT [%]')
 zlim([0 100])
-% for widx = wind_start:length(results.wind_v)
-%     for p = 1:3
-%         pplot = plot3(FF,XX,results.FIT_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
-%         if p == 1
-%             pplot(1).Marker = "x";
-%             pplot(2).Marker = "x";
-%             pplot(3).Marker = "x";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+for widx = wind_start:length(results.wind_v)
+    for p = 1%:3
+        pplot = plot3(FF,XX,results.FIT_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
+        if p == 1
+            pplot(1).Marker = "x";
+            pplot(2).Marker = "x";
+            pplot(3).Marker = "x";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
 %         elseif p == 2
 %             pplot(1).Marker = "o";
 %             pplot(2).Marker = "o";
@@ -578,12 +580,12 @@ zlim([0 100])
 %             pplot(1).LineStyle = 'none';
 %             pplot(2).LineStyle = 'none';
 %             pplot(3).LineStyle = 'none';
-%         end
-%     end
-%     grid on
-%     zlim([0 100])
-%     pause(tpause)
-% end
+        end
+    end
+    grid on
+    zlim([0 100])
+    pause(tpause)
+end
 
 %% 2-D Bar Plots Unperturbed vs Pulses over Trials at Constant Window
 clc, close all
