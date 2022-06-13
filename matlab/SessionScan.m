@@ -773,7 +773,7 @@ classdef (HandleCompatible)SessionScan < handle
 
             % 1. Specify the threshold
             if (~exist('vThreshold', 'var'))
-                vThreshold = 0.2; % mV
+                vThreshold = 0.1; % mV
             end
             % 2. Get the EMG bad time series 
             t_list = obj.emg.scanThresholdCrossing(vThreshold); 

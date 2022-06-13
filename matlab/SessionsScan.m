@@ -37,7 +37,8 @@ classdef SessionsScan
             % the 1 direction with 2 pulses (pulse before release + pulse
             % at position hold 
             ss_num{1} = [4253 4256 4259 4262 4257 4260 4263 4258 4261];
-%             ss_num{2} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
+            ss_num{2} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
+%             ss_num{1} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
 %             ss_num{1} = [4274 4265 4266 4263 4258];
             % export setup
             obj.export_cond.subject = [1:2];
@@ -87,8 +88,8 @@ classdef SessionsScan
                     ss_cond.tNo = [ss_tmp{subj_i}{ss_i}.trials.tNo];
                     ss_cond.ssNo = [ss_num{subj_i}(ss_i)]*ones(size(ss_tmp{subj_i}{ss_i}.trials));
                     ss_tmp{subj_i}{ss_i}.trials(2).outcome = 0;             % manual fail the trial avoid the nan ox data
-%                     ss_cond.sf = [ss_tmp{subj_i}{ss_i}.trials.outcome];   % relying on online judge
-                    ss_cond.sf = [[ss_tmp{subj_i}{ss_i}.trials.outcomeo] | [ss_tmp{subj_i}{ss_i}.trials.outcome]];   % relying on offline | online judge
+                    ss_cond.sf = [ss_tmp{subj_i}{ss_i}.trials.outcome];   % relying on online judge
+%                     ss_cond.sf = [[ss_tmp{subj_i}{ss_i}.trials.outcomeo] | [ss_tmp{subj_i}{ss_i}.trials.outcome]];   % relying on offline | online judge
 %                     ss_cond.pert = [1]*ones(size(ss_tmp{subj_i}{ss_i}.trials)); % perterturbation type... edt
                     ss_cond.pert = [ss_tmp{subj_i}{ss_i}.trials.ifpert]; % perterturbation type... edt
                     
@@ -159,9 +160,9 @@ classdef SessionsScan
                                 
                                 trial_idx = find(trialMask);
                                 % if trial is enough, get trials, 
-                                if (sum(trialMask))>=15
+                                if (sum(trialMask))>=trials_req(pert_i)
                                     trial_idx = find(trialMask);
-                                    trial_idx = trial_idx(1:15);
+                                    trial_idx = trial_idx(1:trials_req(pert_i));
                                 % if trial is not enough, get more trials
                                 % from repeating
                                 else

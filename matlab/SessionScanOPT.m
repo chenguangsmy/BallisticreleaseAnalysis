@@ -294,7 +294,7 @@ classdef SessionScanOPT
                               if isempty(datah.x{trial_idx})
                                   % do nothing
                               else
-                                  for marker_i = 1%:3 % only 3 marker used
+                                  for marker_i = 1:3 % only 3 marker used
                                       dataH_allm(:,:,marker_i) = datah.x{trial_idx}{marker_i};
                                   end
                               end
@@ -345,6 +345,14 @@ classdef SessionScanOPT
                 
                 
             end
+
+            % diagnize the nan
+            nan_idx_x = abs(obj.datah.x)>9;
+            nan_idx_y = abs(obj.datah.y)>9;
+            nan_idx_z = abs(obj.datah.z)>9;
+            obj.datah.x(nan_idx_x) = nan;
+            obj.datah.y(nan_idx_y) = nan;
+            obj.datah.z(nan_idx_z) = nan;
             
             obj = obj.rotate();  % change into robot axis
             
