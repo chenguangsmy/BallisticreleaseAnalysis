@@ -143,8 +143,8 @@ fce_list = [15 20 25];
 % load('data/processedData/ss4216_4226.mat', 'data');       % chenguang & Himanshu
 % load('data/processedData/ss4216_4239.mat', 'data');       % chenguang & Himanshu
 % load('data/processedData/ss4216_4239f.mat', 'data');       % chenguang & Himanshu, failed trials
-load('data/processedData/ss4253_4274.mat', 'data');       % chenguang 1 dir 2 pert with EMG
-% load('data/processedData/ss4253_4263.mat', 'data');       % chenguang 
+% load('data/processedData/ss4253_4274.mat', 'data');       % chenguang 1 dir 2 pert with EMG
+load('data/processedData/ss4253_4263.mat', 'data');       % chenguang 
 Data = data;
 Freq = 500;
 t_step = 1/500;
@@ -161,7 +161,7 @@ p = size(Data, 6); % perturbation type
 idx_last = 200;
 if_subtract = 0;
 
-epoc_type = 1;  % 1 perturb
+epoc_type = 2;  % 1 perturb
                 % 2 release
 plot_type = 2; % 1 displacement
                 % 2 force 
@@ -176,7 +176,7 @@ plot_type = 2; % 1 displacement
                 % 11 opt 2
                 % 12 opt 3
                 % 13 emg 1
-pert_type = 3; % choose option [2 3 4]
+pert_type = 1; % choose option [2 3 4]
 axh = zeros(d,r);
 xyi = 1;        % x, y
 
@@ -275,7 +275,7 @@ for ri = 1:r % subj
                                 dat = Data{ri,di,fi,li,ti,pi}.ox(xyi,idx,3);
                                 titlestr = 'opto3-position';
                             case 13
-                                channeli = 8;
+                                channeli = 1;
                                 dat = Data{ri,di,fi,li,ti,pi}.emg(channeli,idx);
                                 titlestr = ['EMG' num2str(channeli)];
 
