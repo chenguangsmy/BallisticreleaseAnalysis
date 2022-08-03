@@ -13,7 +13,7 @@ classdef SessionScanEMG
         brtime          % blackrock time
         freq
         fname_raw
-        
+        fname_rawm      % for .mat file
         CHANNELS_NUM = 128;
         AINPUTS_NUM  = 16;
         DATA_PER_SHORT = 10;
@@ -71,12 +71,15 @@ classdef SessionScanEMG
             % get RTMA time (task time)
             obj.time   = obj.getRTMAtimeAligned(); % to write
             fnameraw = sprintf('KingKongEMG.%05d.csv', ss_num);
+            fnamerawm= sprintf('KingKongEMG.%05d.mat', ss_num);
             fdiremg = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
             obj.fname_raw = [fdiremg '/' fnameraw];
+            obj.fname_rawm = [fdiremg '/' fnamerawm];
             try
                 obj = obj.readRawData();
                 rawdata_flag = 1;
             catch 
+                obj = obj.readRawDataM(); 
                 disp('SessionScanEMG: no raw EMG readed');
                 obj.data.emg = zeros(8,0);
                 rawdata_flag = 0;
@@ -164,6 +167,44 @@ classdef SessionScanEMG
             obj.data.emg = [data_tmp{:,3:10}'];
         end
         
+        function obj = readRawDataM(obj)
+            %data = readRawData(obj)
+            %   Read raw data from the *.mat file
+            data_tmp = load(obj.fname_rawm);
+            % concatinate each file
+            varnames = fieldnames(data_tmp);
+            num_trials = length(varnames);
+            t_tmp = [];
+            d_tmp = [];
+            for trial_i = 1:(num_trials/2)
+                t_tmp = [t_tmp; data_tmp.(['time' num2str(trial_i-1)])];
+                d_tmp = [d_tmp; data_tmp.(['dat' num2str(trial_i-1)])];
+            end
+%             t_tmp = [data_tmp{:,1}]';
+            idx_tmp = 1:length(t_tmp); 
+            [a, ia, ic] = unique(t_tmp);
+            time_first_idx = find([0; diff(ic) == 1]);
+            time_first = t_tmp(time_first_idx); 
+            ifplot = 0;
+            if (ifplot)
+                clf; hold on;
+                plot(idx_tmp, t_tmp, 'b.');
+                plot(time_first_idx, time_first, 'ro');
+            end
+            t = interp1(time_first_idx, time_first, idx_tmp, 'linear', 'extrap')'; 
+            if (ifplot)
+                clf; hold on;
+                plot(idx_tmp, t_tmp, 'bo');
+                plot(idx_tmp, t, 'r.');
+                legend('origin', 'introp');
+            end
+            obj.data.t = t;
+            obj.freq = mean(1./diff(t));
+%             obj.freq = [unique(data_tmp{:,2})];
+            obj.data.emg = d_tmp;
+        end
+
+
         function obj = preprocessRawData(obj, ifplot)
 
             if (~exist('ifplot', 'var'))
@@ -202,6 +243,7 @@ classdef SessionScanEMG
                 emg_stp4 = sqrt(emg_stp3)*2;                                                   % bad name, need chagne
 %                 emg_stp4 =  abs(emg(chi,:)/32767*5000/2000); % convert to mV % already mV since 2022-06-09
                 [emg_stp5, ~] = envelope(real(emg_stp4), 50, 'peak'); % check what it used to be?
+                emg_stp5 = emg_stp4; % do not do anything (rectify and envolope)
 %                 [emg_stp5, ~] = envelope(real(emg_stp4), 150, 'peak'); % check what it used to be?
 %                 ifplot = 1;
                 if (ifplot)

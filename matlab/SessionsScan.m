@@ -27,6 +27,13 @@ classdef SessionsScan
             % subject 1, CZ
 %             ss_num{1} = [4216 4217 4218 4219 4220]; % CZ            
 %             ss_num{1} = [ 4217];
+%             ss_num{1} = [4300 4301 4303 4304]; %CZ testing
+%             ss_num{2} = [4310 4311 4313 4314]; % HA testing, 4315 & 4312 as MVF
+            ss_num = {...[4300 4301 4303 4304] ...  %CZ testing
+                      [4310 4311 4313 4314]...      %HA testing
+                      [4324 4325 4327 4328]...      %NN testing 
+                      [4336 4337 4339 4340 4341]};  %HM testing 
+                      
             % subject 2, HA
 %             ss_num{2} = [4204 4205 4206 4208]
 %             ss_num{2} = [4222 4223 4224 4225 4226];   % HA 
@@ -36,12 +43,12 @@ classdef SessionsScan
 
             % the 1 direction with 2 pulses (pulse before release + pulse
             % at position hold 
-            ss_num{1} = [4253 4256 4259 4262 4257 4260 4263 4258 4261];
-            ss_num{2} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
+%             ss_num{1} = [4253 4256 4259 4262 4257 4260 4263 4258 4261];
+%             ss_num{2} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
 %             ss_num{1} = [4274 4265 4266 4267 4269 4270 4271 4272 4273];
 %             ss_num{1} = [4274 4265 4266 4263 4258];
             % export setup
-            obj.export_cond.subject = [1:2];
+            obj.export_cond.subject = [1:size(ss_num)];
             obj.export_cond.direction = [0 2 4 6];
             obj.export_cond.fce = [15 20 25];
             obj.export_cond.disp = [0.025 0.05 0.075];
@@ -131,12 +138,13 @@ classdef SessionsScan
                 4, ...                                       % directions
                 3, ...                                       % fce
                 3, ...                                       % dist
-                15, ...                                      % trials
+                9, ...15, ...                                      % trials
                 4);                                          % pert
 %                 1);                                          % pert
             % one direction
             pert_export_code = [0 1 6]; % each pulse
-            trials_req =       [20 10 10];      % each perturb
+%             trials_req =       [20 10 10];      % each perturb
+             trials_req =       [9 nan nan];      % each perturb
             % four directions
 %             pert_export_code = [0 nan nan];   
 %             trials_req =       [15 nan nan];
@@ -206,9 +214,10 @@ classdef SessionsScan
                 4, ...                                       % directions
                 3, ...                                       % fce
                 3, ...                                       % dist
-                15, ...                                      % trials
+                9, ...                                      % trial
                 4);                                          % pert
-%                 1);                                          % pert
+%               1);                                          % pert
+            TRIALS_REQ = 9; % 15
 
             for subj_i = 1:length(obj.export_cond.subject)
                 for direction_i = 1:4
@@ -230,14 +239,14 @@ classdef SessionsScan
                                 
                                 trial_idx = find(trialMask);
                                 % if trial is enough, get trials, 
-                                if (sum(trialMask))>=15
+                                if (sum(trialMask))>=TRIALS_REQ
                                     trial_idx = find(trialMask);
-                                    trial_idx = trial_idx(1:15);
+                                    trial_idx = trial_idx(1:TRIALS_REQ);
                                 % if trial is not enough, get more trials
                                 % from repeating
                                 else
                                     trials_qualify_num = sum(trialMask);
-                                    trials_lack = 15 - trials_qualify_num;
+                                    trials_lack = TRIALS_REQ - trials_qualify_num;
 
                                     for trials_lacki = 1:trials_lack
                                         trial_idx(trials_qualify_num+trials_lacki) = ...
@@ -274,7 +283,11 @@ classdef SessionsScan
 
             sessions_rot = [4218 4219 4220 ...
                             4225 4226 ...
-                            4237 4238 4239]; 
+                            4237 4238 4239 ...
+                            4303 4304 ... 
+                            4313 4314 ...
+                            4327 4328 ...
+                            4339 4340 4341]; 
                 % first assume these sessions. These can be read from .conf
                 % in the future. 
                 

@@ -467,9 +467,32 @@ classdef TrialScan
             time = obj.time;
             idx = find(obj.data.ts == 5);
             idx_msg = find(obj.data.ts_msg == 5);
-            if isempty(idx)
+            if (isempty(idx) && sum(~isnan(obj.data.ts))~=0)
                 time_offset = obj.data.t(end); % not at all moved
                 time_offset_msg = obj.data.t(end);
+            elseif (isempty(idx) && sum(~isnan(obj.data.ts))==0) % when no WAM data
+                % detect the time to move using force data 
+                release_idx = find(diff(obj.data.f(1,:))<-2);
+                f_abs = abs(obj.data.f(1,:)); 
+                release_idx = release_idx(mean((f_abs(release_idx' + (-10:-2))),2)>10);
+                % test plot 
+                if (0)
+                    clf; hold on;
+                    plot(obj.data.t, f_abs(1,:), 'b');
+                    plot(obj.data.t(release_idx), f_abs(1,release_idx), 'r*');
+                end
+
+                if (~isempty(release_idx))
+                    release_idx = release_idx(1);
+                    time_offset = obj.data.t(release_idx);
+                    obj.data.ts(1:release_idx) = 4;     % manually add a task_state
+                    obj.data.ts(release_idx:end) = 5;
+                    time_offset_msg = obj.data.t(release_idx);
+
+                else 
+                    time_offset = obj.data.t(end); % not at all moved
+                    time_offset_msg = obj.data.t(end);
+                end
             else
                 time_offset = obj.data.t(idx(1)); % time from WAM
                 time_offset_msg = obj.data.t(idx_msg(1));  % time from message
@@ -1352,6 +1375,7 @@ classdef TrialScan
         
         ts_valid = [1:7];
         idx = ismember(obj.data.ts, ts_valid);
+        idx = idx | isnan(obj.data.ts); % when did not record WAM data, using this function
 %         
 %         wam_t = timepoints(ismember(obj.data.ts, ts_valid));
 %         wam_t = reshape(wam_t, 1, length(wam_t));
@@ -1371,7 +1395,7 @@ classdef TrialScan
         %dat.t = obj.data.t(idx);
 %         dat.t = obj.data.t(idx);
         dat.t = obj.data.t_shift(idx);      % arrange t from robot recorded task-state
-        dat.t = obj.data.t_shift_msg(idx);  % arrange t from matlab recorded task-state
+%         dat.t = obj.data.t_shift_msg(idx);  % arrange t from matlab recorded task-state
         %wamt_org= dat.t;
         %t_const = min(dat.t):2e-3:max(dat.t);
         %dat.t = t_const;
@@ -1496,10 +1520,19 @@ classdef TrialScan
 %             plot(obj.position_t, obj.position_h(2,:));
 %             subplot(2,1,2);
 %             plot(dat.t, dat.x(2,:));
+              switch obj.tarR
+                  case 0 
+                    tar_PN = 1; 
+                  case 4
+                    tar_PN = -1;
+                  otherwise 
+                    tar_PN = 1; 
+              end
               clf;
 %               time = dat.t;
-%               t = obj.data.t_shift(idx);
-                t = obj.data.t_shift_msg(idx);
+              t = dat.t;
+%             t = obj.data.t_shift(idx);
+%             t = obj.data.t_shift_msg(idx);
               axh(1) = subplot(4,1,1);
               plot(t, dat.Fp);
 %               plot(t, dat.mvst);
@@ -1521,7 +1554,11 @@ classdef TrialScan
               end
 %               plot(t, dat.x(1,:) -x_avg(1));
               tar_offset = -0.483;
-                ylim([-0.49 -0.40]);
+%               ylim([-0.49 -0.40]);
+%               ylim([-0.53 -0.46]);
+                yl_rangemin = min([tar_offset+obj.tarL*tar_PN, tar_offset]);
+                yl_rangemax = max([tar_offset+obj.tarL*tar_PN, tar_offset]);
+                ylim([yl_rangemin - 0.05 yl_rangemax + 0.05]);
               % do a vertical line indicating ts5, and start from there 
               idx_hold = find(obj.data.ts == 6);
 
@@ -1540,10 +1577,10 @@ classdef TrialScan
                   t_hold = obj.data.t_shift(idx_hold(1));
                   t_hold_dur = 2.5; % s
                   subplot(axh(2));
-                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL+0.01)*[1 1], 'color', 'r');
-                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL-0.01)*[1 1], 'color', 'r');
-                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL+0.015)*[1 1], 'color', 'g');
-                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL-0.015)*[1 1], 'color', 'g');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL*tar_PN+0.01)*[1 1], 'color', 'r');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL*tar_PN-0.01)*[1 1], 'color', 'r');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL*tar_PN+0.015)*[1 1], 'color', 'g');
+                  line([t_hold t_hold + t_hold_dur], (tar_offset+obj.tarL*tar_PN-0.015)*[1 1], 'color', 'g');
                   
                   subplot(axh(3));
                   line([t_hold t_hold + t_hold_dur], (0.015)*[1 1], 'color', 'r');
@@ -1562,9 +1599,9 @@ classdef TrialScan
               
               linkaxes(axh, 'x');
               % xlim for better read
-%               xlim([[-0.01 0.02]]);
+              xlim([[-0.01 0.02]]);
 %               xlim([-0.2 4]);
-              xlim([-0.2 0.8]);
+%               xlim([-0.2 1.2]);
 %                 xlim([-8 2]);
 %                 xlim([-5 0])
 

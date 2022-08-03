@@ -2150,6 +2150,16 @@ classdef (HandleCompatible)SessionScan < handle
             clf; 
             ernie_timeh = interp1(wam_time, ernie_time, obj.wam.time, 'linear', 'extrap');
             obj.wam_t  = interp1(t_interest{2}, bk_time{2}, ernie_timeh, 'linear', 'extrap'); 
+            if (isempty(obj.wam.time)) % When did not save wam file 
+                obj.wam.time = wam_time(1):1/500:wam_time(end);
+                ernie_timeh = interp1(wam_time, ernie_time, obj.wam.time, 'linear', 'extrap');
+                obj.wam_t = interp1(t_interest{2}, bk_time{2}, ernie_timeh, 'linear', 'extrap');
+                obj.wam.tp = nan(3,length(obj.wam.time));
+                obj.wam.tv = nan(3,length(obj.wam.time));
+                obj.wam.jt= nan(4,length(obj.wam.time));
+                obj.wam.cf = zeros(3,length(obj.wam.time));
+                obj.wam.state = nan(1,length(obj.wam.time));
+            end
             if (size(obj.wam_t,1) > size(obj.wam_t,2)) % a thin matrix
                 obj.wam_t = obj.wam_t';
             end

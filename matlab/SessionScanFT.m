@@ -25,6 +25,8 @@ classdef SessionScanFT
         FT
         elapse
         force0
+
+        cali_list = [4315 4312]; % move this to calibration file later, for MVF which need original displacement
     end
     
     methods
@@ -38,6 +40,10 @@ classdef SessionScanFT
             Data = readtable([fdir '/' fname]);
             if (exist('fname_other', 'var'))
                 Data = readtable([fdir '/' fname_other]);
+            end
+            % deal with exception that end line is invalid 
+            if (sum(isnan(Data{end,:})))
+                Data = Data(1:end-1,:);
             end
             Data = dealRDTError(Data);
             obj.force_origin = [Data.Fx' + Data.Fx0'
@@ -55,6 +61,10 @@ classdef SessionScanFT
             obj.RDT = [Data.RDT]';           % read-time sequence
             obj.FT = [Data.FT]';             % FT sequence
             obj.elapse = [Data.elapse]';     % read time elapse, wrongly elapse... Change code! 
+
+            if (sum(ss_num == obj.cali_list)) 
+                obj.force_net = obj.force_origin;
+            end
             obj = forceFTconvert(obj);
             %plotForce(obj)
             obj = obj.dealwithExceptions(ss_num);
@@ -197,6 +207,7 @@ classdef SessionScanFT
 %             obj.force = obj.FTrot_M * obj.force_net;
 %             obj.force = obj.FTrot_M1 * obj.force_net; % raise-up configuration
             obj.force = obj.FTrot_M2 * obj.force_net; % joystick configuration
+
             %obj.force_net = obj.FTrot_M * obj.force_net;
         end
         function plotElapse(obj)
