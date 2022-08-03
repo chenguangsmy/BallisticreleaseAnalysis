@@ -5,7 +5,8 @@ classdef ballisticReleaseTaksPlots
     properties
         data_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData';
 %         data_name = 'ss4253_4263'
-        data_name = 'ss4253_4274'
+%         data_name = 'ss4253_4274'
+        data_name = 'ss4310_4341'
         data
         cond
     end
@@ -30,6 +31,7 @@ classdef ballisticReleaseTaksPlots
             %PLOTEMG_RELEASE plot out the emg data at the time of release
             % use the mean and std
             %   Detailed explanation goes here
+            for subj_i  = 1:3
             fh = figure('name', 'EMG', 'unit', 'inch', 'position', [0 0 6 12]);
             Fs = 500;
             col_type = colormap('lines');
@@ -43,7 +45,7 @@ classdef ballisticReleaseTaksPlots
             cols = 1;
             rows = 3; % only plot position and the muscles 
             axh = zeros(rows, cols);
-            subj_i  = 1;
+            
             dir_i   = 1;
             pert_i  = 1;
             for fce_i = 1:3
@@ -52,7 +54,7 @@ classdef ballisticReleaseTaksPlots
                     % make enough space for data
                     dat.row = length(trials_list);
                     dat.col = sum(obj.data{subj_i,dir_i,fce_i,dist_i,1,pert_i}.t > t_range(1) & ...
-                        obj.data{1,1,fce_i,dist_i,1,1}.t < t_range(2));
+                        obj.data{subj_i,1,fce_i,dist_i,1,1}.t < t_range(2));
 %                     dat.t = t_range(1):1/Fs:t_range(2);
                     dat.t = linspace(t_range(1), t_range(2), dat.col);
                     dat.pos = nan(dat.row, dat.col);
@@ -66,7 +68,8 @@ classdef ballisticReleaseTaksPlots
                         % stack the data into matrices
                         index_t = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t > t_range(1) & ...
                             obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t < t_range(2);
-                        dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.x(1,index_t),dat.t,'spline');
+%                         dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.x(1,index_t),dat.t,'spline');
+                        dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.ox(1,index_t),dat.t,'spline');
                         dat.fce(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.f(1,index_t),dat.t,'spline');
 %                         dat.emg(:,trial_idx,1:sum(index_t))=obj.data{subj_i,dir_i,fce_i,tar_i,trial_i,pert_i}.emg(:,index_t);
                         for ch_i = 1:8
@@ -101,6 +104,7 @@ classdef ballisticReleaseTaksPlots
                 linkaxes(axh, 'x');
             end
             sgtitle('variate force');
+            end
         end
 
 
@@ -121,7 +125,7 @@ classdef ballisticReleaseTaksPlots
             cols = 3;
             rows = 2 + length(emg_pair); % only plot position and the muscles 
             axh = zeros(rows, cols);
-            subj_i  = 1;
+            subj_i  = 3;
             dir_i   = 1;
             pert_i  = 1;
             for fce_i = 1:3
