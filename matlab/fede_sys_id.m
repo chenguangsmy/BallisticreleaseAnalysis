@@ -5,9 +5,8 @@ clc, clear, close all
 % load('ss4129_4137.mat', 'data');  % 6N and 12N perturbation on x, only chenguang,
 % load('ss4129_4179.mat', 'data');  % 6N and 12N perturbation on x,
 % himanshu and chenguang
-% load('ss4181_4202.mat', 'data');  % 6N and 12N perturbation on x, himanshu and chenguang
-% load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4216_4220.mat', 'data');  % just release, Chenguang
-load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/ss4253_4274.mat', 'data'); % release and perturb, Chenguang and Himanshu
+load('ss4181_4202.mat', 'data');  % 6N and 12N perturbation on x, himanshu and chenguang
+
 Data = data;
 Freq = 500;
 t_step = 1/500;
@@ -58,8 +57,7 @@ for ri = 1:r % subj
                                 end
                             case 2
                                 idx = find(Data{ri,ci,fi,di,ti,li}.ts==5 | Data{ri,ci,fi,di,ti,li}.ts==6);
-%                                 idx = (idx(1)-250):idx(end);
-                                idx = (idx(1)-600):idx(end);
+                                idx = (idx(1)-250):idx(end);
                                 %idx = (idx(1)):idx(end);
                         end
 
@@ -307,62 +305,62 @@ p_damp = anovan(BBB,{Force Disp},'model','interaction','varnames',{'Force','Disp
 p_mass = anovan(MMM,{Force Disp},'model','interaction','varnames',{'Force','Displacement'})
 
 %ANOVA-test on pulses
-% wind_start = 20;
-% idx = 1;
-% for i = 1:3
-%     for j = 1:3
-%         for k = wind_start:length(results.wind_v)
-%             
-%             KKK_fh(idx,1) = results.K_p{1,1}.p(i,j,k);
-%             BBB_fh(idx,1) = results.B_p{1,1}.p(i,j,k);
-%             MMM_fh(idx,1) = results.M_p{1,1}.p(i,j,k);
-% 
-%             KKK_m(idx,1) = results.K_p{1,2}.p(i,j,k);
-%             BBB_m(idx,1) = results.B_p{1,2}.p(i,j,k);
-%             MMM_m(idx,1) = results.M_p{1,2}.p(i,j,k);
-% 
-%             KKK_ph(idx,1) = results.K_p{1,3}.p(i,j,k);
-%             BBB_ph(idx,1) = results.B_p{1,3}.p(i,j,k);
-%             MMM_ph(idx,1) = results.M_p{1,3}.p(i,j,k);
-% 
-% 
-%             if i == 1
-%                 Forcep(idx,1) = 15;
-%             elseif i == 2
-%                 Forcep(idx,1) = 20;
-%             elseif i == 3
-%                 Forcep(idx,1) = 25;
-%             end
-% 
-%             if j == 1
-%                 Dispp(idx,1) = 25;
-%             elseif j == 2
-%                 Dispp(idx,1) = 50;
-%             elseif j == 3
-%                 Dispp(idx,1) = 75;
-%             end
-% 
-%             idx = idx+1;
-%         end
-%     end
-% end
-% 
-% 
-% p_stiff_fh = anovan(KKK_fh,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% p_damp_fh = anovan(BBB_fh,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% p_mass_fh = anovan(MMM_fh,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% 
-% p_stiff_m = anovan(KKK_m,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% p_damp_m = anovan(BBB_m,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% p_mass_m = anovan(MMM_m,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% 
-% p_stiff_ph = anovan(KKK_ph,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% p_damp_m = anovan(BBB_ph,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% p_mass_m = anovan(MMM_ph,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
-% 
+wind_start = 20;
+idx = 1;
+for i = 1:3
+    for j = 1:3
+        for k = wind_start:length(results.wind_v)
+            
+            KKK_fh(idx,1) = results.K_p{1,1}.p(i,j,k);
+            BBB_fh(idx,1) = results.B_p{1,1}.p(i,j,k);
+            MMM_fh(idx,1) = results.M_p{1,1}.p(i,j,k);
+
+            KKK_m(idx,1) = results.K_p{1,2}.p(i,j,k);
+            BBB_m(idx,1) = results.B_p{1,2}.p(i,j,k);
+            MMM_m(idx,1) = results.M_p{1,2}.p(i,j,k);
+
+            KKK_ph(idx,1) = results.K_p{1,3}.p(i,j,k);
+            BBB_ph(idx,1) = results.B_p{1,3}.p(i,j,k);
+            MMM_ph(idx,1) = results.M_p{1,3}.p(i,j,k);
+
+
+            if i == 1
+                Forcep(idx,1) = 15;
+            elseif i == 2
+                Forcep(idx,1) = 20;
+            elseif i == 3
+                Forcep(idx,1) = 25;
+            end
+
+            if j == 1
+                Dispp(idx,1) = 25;
+            elseif j == 2
+                Dispp(idx,1) = 50;
+            elseif j == 3
+                Dispp(idx,1) = 75;
+            end
+
+            idx = idx+1;
+        end
+    end
+end
+
+
+p_stiff_fh = anovan(KKK_fh,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+p_damp_fh = anovan(BBB_fh,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+p_mass_fh = anovan(MMM_fh,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+
+p_stiff_m = anovan(KKK_m,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+p_damp_m = anovan(BBB_m,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+p_mass_m = anovan(MMM_m,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+
+p_stiff_ph = anovan(KKK_ph,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+p_damp_m = anovan(BBB_ph,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+p_mass_m = anovan(MMM_ph,{Forcep Dispp},'model','interaction','varnames',{'Force','Displacement'})
+
 %% FIGURES
 clc
-% close all,
+close all,
 
 tpause = 0.05; %Speed of plotting
 wind_start = 20; %From which time window to start showing
@@ -413,8 +411,7 @@ ylabel('Displacement [mm]')
 zlabel('Stiffness [N/m]')
 zlim([0 1000])
 for widx = wind_start:length(results.wind_v)
-% for widx = 10:length(results.wind_v)
-    for p = 1%:3
+    for p = 1:3
         pplot = plot3(FF,XX,results.K_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
         if p == 1
             pplot(1).Marker = "x";
@@ -423,20 +420,20 @@ for widx = wind_start:length(results.wind_v)
             pplot(1).LineStyle = 'none';
             pplot(2).LineStyle = 'none';
             pplot(3).LineStyle = 'none';
-%         elseif p == 2
-%             pplot(1).Marker = "o";
-%             pplot(2).Marker = "o";
-%             pplot(3).Marker = "o";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
-%         elseif p == 3
-%             pplot(1).Marker = "+";
-%             pplot(2).Marker = "+";
-%             pplot(3).Marker = "+";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+        elseif p == 2
+            pplot(1).Marker = "o";
+            pplot(2).Marker = "o";
+            pplot(3).Marker = "o";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
+        elseif p == 3
+            pplot(1).Marker = "+";
+            pplot(2).Marker = "+";
+            pplot(3).Marker = "+";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
         end
     end
     grid on
@@ -460,7 +457,7 @@ ylabel('Displacement [mm]')
 zlabel('Damping [Ns/m]')
 zlim([0 50]) 
 for widx = wind_start:length(results.wind_v)
-    for p = 1%:3
+    for p = 1:3
         pplot = plot3(FF,XX,results.B_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
         if p == 1
             pplot(1).Marker = "x";
@@ -469,20 +466,20 @@ for widx = wind_start:length(results.wind_v)
             pplot(1).LineStyle = 'none';
             pplot(2).LineStyle = 'none';
             pplot(3).LineStyle = 'none';
-%         elseif p == 2
-%             pplot(1).Marker = "o";
-%             pplot(2).Marker = "o";
-%             pplot(3).Marker = "o";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
-%         elseif p == 3
-%             pplot(1).Marker = "+";
-%             pplot(2).Marker = "+";
-%             pplot(3).Marker = "+";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+        elseif p == 2
+            pplot(1).Marker = "o";
+            pplot(2).Marker = "o";
+            pplot(3).Marker = "o";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
+        elseif p == 3
+            pplot(1).Marker = "+";
+            pplot(2).Marker = "+";
+            pplot(3).Marker = "+";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
         end
     end
     grid on
@@ -511,7 +508,7 @@ ylabel('Displacement [mm]')
 zlabel('Mass [kg]')
 zlim([0 5])
 for widx = wind_start:length(results.wind_v)
-    for p = 1%:3
+    for p = 1:3
         pplot = plot3(FF,XX,results.M_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
         if p == 1
             pplot(1).Marker = "x";
@@ -520,20 +517,20 @@ for widx = wind_start:length(results.wind_v)
             pplot(1).LineStyle = 'none';
             pplot(2).LineStyle = 'none';
             pplot(3).LineStyle = 'none';
-%         elseif p == 2
-%             pplot(1).Marker = "o";
-%             pplot(2).Marker = "o";
-%             pplot(3).Marker = "o";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
-%         elseif p == 3
-%             pplot(1).Marker = "+";
-%             pplot(2).Marker = "+";
-%             pplot(3).Marker = "+";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+        elseif p == 2
+            pplot(1).Marker = "o";
+            pplot(2).Marker = "o";
+            pplot(3).Marker = "o";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
+        elseif p == 3
+            pplot(1).Marker = "+";
+            pplot(2).Marker = "+";
+            pplot(3).Marker = "+";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
         end
     end
     grid on
@@ -557,7 +554,7 @@ ylabel('Displacement [mm]')
 zlabel('Model FIT [%]')
 zlim([0 100])
 for widx = wind_start:length(results.wind_v)
-    for p = 1%:3
+    for p = 1:3
         pplot = plot3(FF,XX,results.FIT_p{p}.p(:,:,widx),'k','MarkerSize',10); hold on
         if p == 1
             pplot(1).Marker = "x";
@@ -566,20 +563,20 @@ for widx = wind_start:length(results.wind_v)
             pplot(1).LineStyle = 'none';
             pplot(2).LineStyle = 'none';
             pplot(3).LineStyle = 'none';
-%         elseif p == 2
-%             pplot(1).Marker = "o";
-%             pplot(2).Marker = "o";
-%             pplot(3).Marker = "o";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
-%         elseif p == 3
-%             pplot(1).Marker = "+";
-%             pplot(2).Marker = "+";
-%             pplot(3).Marker = "+";
-%             pplot(1).LineStyle = 'none';
-%             pplot(2).LineStyle = 'none';
-%             pplot(3).LineStyle = 'none';
+        elseif p == 2
+            pplot(1).Marker = "o";
+            pplot(2).Marker = "o";
+            pplot(3).Marker = "o";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
+        elseif p == 3
+            pplot(1).Marker = "+";
+            pplot(2).Marker = "+";
+            pplot(3).Marker = "+";
+            pplot(1).LineStyle = 'none';
+            pplot(2).LineStyle = 'none';
+            pplot(3).LineStyle = 'none';
         end
     end
     grid on
