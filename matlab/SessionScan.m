@@ -126,7 +126,8 @@ classdef (HandleCompatible)SessionScan < handle
                 disp('no ft and wam data here! ');
                 flag_noFW_data = 1;
             end
-            % cg: currently we are not focusing on the EMG and OPT -Nov2021
+            % cg: we use EMG and OPT as a reference in the movement Aug10th, f2022
+            if(0) % the key to load EMG data 
             try 
                 if (flag_progress)
                     disp('Loading (intermed/raw) EMG...');
@@ -138,7 +139,8 @@ classdef (HandleCompatible)SessionScan < handle
 
 %                 disp('no EMG data here! ')
             end
-            
+            end
+
             try 
                 if (flag_progress)
                     disp('Loading (intermed/raw) OPTOTRAK...');

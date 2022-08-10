@@ -1550,7 +1550,9 @@ classdef TrialScan
               if length(size(dat.ox))==2 % only one marker
                     plot(t, dat.ox(1,:));
               else % multiple markers
-                    plot(t,dat.ox(1,:,1));
+%                     plot(t,dat.ox(1,:,1), 'g.'); % marker 1
+%                     plot(t,dat.ox(1,:,2), 'g.');   % marker 2
+                    plot(t,dat.ox(1,:,3), 'g.');   % marker 3
               end
 %               plot(t, dat.x(1,:) -x_avg(1));
               tar_offset = -0.483;
@@ -1559,6 +1561,8 @@ classdef TrialScan
                 yl_rangemin = min([tar_offset+obj.tarL*tar_PN, tar_offset]);
                 yl_rangemax = max([tar_offset+obj.tarL*tar_PN, tar_offset]);
                 ylim([yl_rangemin - 0.05 yl_rangemax + 0.05]);
+
+                ylim([yl_rangemin, max(yl_rangemax, -0.08)]); % for debugging optotrak position
               % do a vertical line indicating ts5, and start from there 
               idx_hold = find(obj.data.ts == 6);
 
@@ -1599,9 +1603,9 @@ classdef TrialScan
               
               linkaxes(axh, 'x');
               % xlim for better read
-              xlim([[-0.01 0.02]]);
+%               xlim([[-0.01 0.02]]);
 %               xlim([-0.2 4]);
-%               xlim([-0.2 1.2]);
+              xlim([-0.2 1.2]);
 %                 xlim([-8 2]);
 %                 xlim([-5 0])
 

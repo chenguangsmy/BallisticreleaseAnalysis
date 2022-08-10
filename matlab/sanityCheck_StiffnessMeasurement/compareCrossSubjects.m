@@ -59,47 +59,64 @@ for si = 1:r % subj
                         if (isempty(Data{si,ri,ci,di,ti,li}))
                             continue;
                         end
-                        switch epoc_type
-                            case 1
-                                idx = find(Data{si,ri,ci,di,ti,li}.Fp(2,:)~=0);
-                                idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
-                            case 2
-                                idx = find(Data{si,ri,ci,di,ti,li}.ts==5 | Data{si,ri,ci,di,ti,li}.ts==6);
-                                idx = (idx-100):idx(end);
-%                                 idx = (idx(1)):idx(end);
-                        end
-                        time = t_step*(idx-idx(1));
+
                         switch plot_type
-                            case 2
-                                dat = Data{si,ri,ci,di,ti,li}.f(2,idx);
-                                titlestr = 'force';
                             case 1
-                                dat = Data{si,ri,ci,di,ti,li}.x(2,idx);
-                                dat = dat - dat(1);
+                                dat = Data{si,ri,ci,di,ti,li}.x(xyi,idx);
+                                %dat = dat - dat(1);
                                 titlestr = 'displacement';
+                            case 2
+                                dat = Data{si,ri,ci,di,ti,li}.f(xyi,idx);
+                                titlestr = 'force';
                             case 3
-                                dat = Data{si,ri,ci,di,ti,li}.Fp(2,idx);
+                                dat = Data{si,ri,ci,di,ti,li}.Fp(xyi,idx);
                                 titlestr = 'Fp';
                             case 4
-                                dat = Data{si,ri,ci,di,ti,li}.v(2,idx);
+                                dat = Data{si,ri,ci,di,ti,li}.v(xyi,idx);
                                 titlestr = 'velocity';
                             case 5
-                                dat = Data{si,ri,ci,di,ti,li}.tq(4,idx);
-                                titlestr = 'torque4';
+                                dat = Data{si,ri,ci,di,ti,li}.tq(3,idx);
+                                titlestr = 'torque3';
                             case 6
                                 dat = Data{si,ri,ci,di,ti,li}.x(:,idx);
                                 dat_submean = dat - mean(dat(:,1:50),2);
                                 dat_norm = sqrt(dat_submean(1,:).^2 + dat_submean(2,:).^2 + dat_submean(3,:).^2);
-                                dat = dat_norm .* sign(dat_submean(2,:));
+                                dat = dat_norm .* sign(dat_submean(xyi,:));
                                 titlestr = 'norm displacement';
                             case 7 % the force mode
                                 dat = Data{si,ri,ci,di,ti,li}.f(:,idx);
-                                dat_submean = dat;% - mean(dat(:,1:50),2);
+                                dat_submean = dat - mean(dat(:,1:50),2);
                                 dat_norm = sqrt(dat_submean(1,:).^2 + dat_submean(2,:).^2 + dat_submean(3,:).^2);
-                                dat = dat_norm .* sign(dat_submean(2,:));
+                                dat = dat_norm .* sign(dat_submean(xyi,:));
                                 titlestr = 'norm force';
-                                
+                            case 8 % optotrak x
+                                switch length(size(Data{si,ri,ci,di,ti,li}.ox))
+                                    case 2
+                                        dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx);
+                                    case 3
+                                        dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,1);
+                                end
+                                titlestr = 'opto-position';
+                            case 9 % optotrak v
+                                switch length(size(Data{si,ri,ci,di,ti,li}.ov))
+                                    case 2
+                                        dat = Data{si,ri,ci,di,ti,li}.ov(xyi,idx);
+                                    case 3
+                                        dat = Data{si,ri,ci,di,ti,li}.ov(xyi,idx,1);
+                                end
+                                titlestr = 'opto-velocity';
+                            case 10 
+                                dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,1);
+                                titlestr = 'opto1-position';
+                            case 11
+                                dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,2);
+                                titlestr = 'opto2-position';
+                            case 12 
+                                dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,3);
+                                titlestr = 'opto3-position';
                         end
+
+
                         if (if_subtract)
                             dat = dat - mean(dat(1:50));
                         end
@@ -180,7 +197,31 @@ for si = 1:r % subj
                                 dat_norm = sqrt(dat_submean(1,:).^2 + dat_submean(2,:).^2 + dat_submean(3,:).^2);
                                 dat = dat_norm .* sign(dat_submean(2,:));
                                 titlestr = 'norm force';
-                                
+                            case 8 % optotrak x
+                                switch length(size(Data{si,ri,ci,di,ti,li}.ox))
+                                    case 2
+                                        dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx);
+                                    case 3
+                                        dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,1);
+                                end
+                                titlestr = 'opto-position';
+                            case 9 % optotrak v
+                                switch length(size(Data{si,ri,ci,di,ti,li}.ov))
+                                    case 2
+                                        dat = Data{si,ri,ci,di,ti,li}.ov(xyi,idx);
+                                    case 3
+                                        dat = Data{si,ri,ci,di,ti,li}.ov(xyi,idx,1);
+                                end
+                                titlestr = 'opto-velocity';
+                            case 10 
+                                dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,1);
+                                titlestr = 'opto1-position';
+                            case 11
+                                dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,2);
+                                titlestr = 'opto2-position';
+                            case 12 
+                                dat = Data{si,ri,ci,di,ti,li}.ox(xyi,idx,3);
+                                titlestr = 'opto3-position';
                         end
                         if (if_subtract)
                             dat = dat - mean(dat(1:50));

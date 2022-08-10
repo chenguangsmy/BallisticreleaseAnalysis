@@ -29,11 +29,13 @@ classdef SessionsScan
 %             ss_num{1} = [ 4217];
 %             ss_num{1} = [4300 4301 4303 4304]; %CZ testing
 %             ss_num{2} = [4310 4311 4313 4314]; % HA testing, 4315 & 4312 as MVF
-            ss_num = {...[4300 4301 4303 4304] ...  %CZ testing
-                      [4310 4311 4313 4314]...      %HA testing
-                      [4324 4325 4328 4329]...      %NN testing 
-                      [4336 4337 4339 4340 4341]};  %HM testing 
-                      
+            ss_num = {...[4300 4301 4303 4304] ...              %CZ testing
+                      [4310 4311 4313 4314]...                  %HA testing
+                      [4325 4326 4328 4329]...                  %NN testing 
+                      [4336 4337 4339 4340 4341]...             %HM testing 
+                      [4351 4352 4353 4355 4356]...   %MR testing
+                      };  
+%                       [4349 4351 4352 4353 4354 4355 4356]...   %MR testing
             % subject 2, HA
 %             ss_num{2} = [4204 4205 4206 4208]
 %             ss_num{2} = [4222 4223 4224 4225 4226];   % HA 
@@ -196,7 +198,7 @@ classdef SessionsScan
                 end
             end
             
-            save(['data/processedData/' obj.filename '.mat'], 'data', '-v7.3');
+            save(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/' obj.filename '.mat'], 'data', '-v7.3');
         end
         
         function data = SessionsExportf(obj)
@@ -287,7 +289,8 @@ classdef SessionsScan
                             4303 4304 ... 
                             4313 4314 ...
                             4328 4329 ...
-                            4339 4340 4341]; 
+                            4339 4340 4341 ...
+                            4354 4355 4356]; 
                 % first assume these sessions. These can be read from .conf
                 % in the future. 
                 
