@@ -100,7 +100,7 @@ for f_sel= 1:3
                 results.lhs{f_sel,d_sel,i} = sqrt(diff_hs);
 
                 for tt = length(results.arm{f_sel,d_sel,i}):-1:1
-                    if results.arm{f_sel,d_sel,i}(tt) >= 0.3
+                    if results.arm{f_sel,d_sel,i}(tt) >= 0.4
                         results.hand{f_sel,d_sel,i}.x(tt) = [];
                         results.hand{f_sel,d_sel,i}.y(tt) = [];
                         results.hand{f_sel,d_sel,i}.z(tt) = [];

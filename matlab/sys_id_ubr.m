@@ -58,12 +58,28 @@ for f_sel= 1:3
                 M_est_up_s(i) = DEN_UPs{1}(1)/NUM_UPs{1}(3);
                 FIT_up_s(i) = sysUP_s.Report.Fit.FitPercent;
 
-                results.K_up_tr(f_sel,d_sel,i) = K_est_up_s(i);
-                results.B_up_tr(f_sel,d_sel,i) = B_est_up_s(i);
-                results.M_up_tr(f_sel,d_sel,i) = M_est_up_s(i);
+                up_omegan_s(i) = sqrt(K_est_up_s(i)/M_est_up_s(i));
+                up_dampr_s(i) = B_est_up_s(i)/(2*sqrt(K_est_up_s(i)*M_est_up_s(i)));
+
+                
             end
 
         end
+
+        %Remove Outliers 10th-90th percentile
+        K_est_up_s = rmoutliers(K_est_up_s,'median');
+        B_est_up_s = rmoutliers(B_est_up_s,'median');
+        M_est_up_s = rmoutliers(M_est_up_s,'median');
+        FIT_up_s = rmoutliers(FIT_up_s,'median');
+        up_omegan_s = rmoutliers(up_omegan_s,'median');
+        up_dampr_s = rmoutliers(up_dampr_s,'median');
+        
+        results.K_up_tr{f_sel,d_sel,:} = K_est_up_s;
+        results.B_up_tr{f_sel,d_sel,:} = B_est_up_s;
+        results.M_up_tr{f_sel,d_sel,:} = M_est_up_s;
+
+        results.up_omegan_tr{f_sel,d_sel,:} = up_omegan_s;
+        results.up_dampr_tr{f_sel,d_sel,:} = up_dampr_s;
 
         %Average and STD of Impedance and FIT over trials
         K_est_up_avg = mean(K_est_up_s);
@@ -74,6 +90,12 @@ for f_sel= 1:3
         M_est_up_std = std(M_est_up_s);
         FIT_est_up_avg = mean(FIT_up_s);
         FIT_est_up_std = std(FIT_up_s);
+        omegan_avg = mean(up_omegan_s);
+        omegan_std = std(up_omegan_s);
+        dampr_avg = mean(up_dampr_s);
+        dampr_std = std(up_dampr_s);
+
+        clearvars K_est_up_s B_est_up_s M_est_up_s up_omegan_s up_dampr_s FIT_up_s
 
         force_up_avg = mean(force_interp);
         force_up_avg_t =-(force_up_avg-force_up_avg(1));
@@ -116,6 +138,11 @@ for f_sel= 1:3
 
         results.up_omegan(f_sel,d_sel) = sqrt(results.K_up(f_sel,d_sel)/results.M_up(f_sel,d_sel));
         results.up_dampr(f_sel,d_sel) = results.B_up(f_sel,d_sel)/(2*sqrt(results.K_up(f_sel,d_sel)*results.M_up(f_sel,d_sel)));
+        
+        results.up_omegan_avg(f_sel,d_sel) = omegan_avg;
+        results.up_omegan_std(f_sel,d_sel) = omegan_std;
+        results.up_dampr_avg(f_sel,d_sel) = dampr_avg;
+        results.up_dampr_std(f_sel,d_sel) = dampr_std;
     end
 end
 results.M_avg_tt = mean(results.M_up_avg(:));
