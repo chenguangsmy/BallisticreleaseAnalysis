@@ -117,12 +117,24 @@ classdef SessionScanEMG
                 amps = readConfigChannelAmp(obj.ss_num);
                 obj = obj.convertTomV(amps);
                 
+                [obj.amp_norm, exist_flag] = readConfigChannelMVF(obj.ss_num);
+
+                % visualize spectrumgram to see time-related frequency
+                % signal 
+                ifplot = 1; 
+                if(ifplot )
+                    for ch_i = 1:8
+                        figure(ch_i);
+                        spectrogram(obj.data.emg(ch_i,:), 5*2e3, 4*2e3, 2^13);
+                        title(['channel ' num2str(ch_i)]);
+                    end
+                end
+
                 % do the frequency-based processing 
                 % preprocess data (filter, and take the envolope)-
                 obj = obj.preprocessRawData(1);
                 
                 % convert chanel to the MVF
-                [obj.amp_norm, exist_flag] = readConfigChannelMVF(obj.ss_num);
                 obj.mvf_shrink = exist_flag;
                 obj = obj.normalizebyMVF(obj.amp_norm); % already
 
@@ -235,13 +247,14 @@ classdef SessionScanEMG
             fprintf('>> EMG sanity check: Sample Theory: %d, Pract: %d, miss: %d points in %.2f(s)', ...
                 round(t_sample_should), t_sample_prac, round(t_sample_should-t_sample_prac), t_tmp_range);
 %             t_tmp = [data_tmp{:,1}]';
-            ifplot = 1;
+            ifplot = 0;
             if (ifplot)
                 clf; 
                 hold on;
-                plot(t_tmp(1)+((1:length(t_tmp))/2000), t_tmp(1)+((1:length(t_tmp))/2000), 'b.'); 
+%                 plot(t_tmp(1)+((1:length(t_tmp))/2000), t_tmp(1)+((1:length(t_tmp))/2000), 'b.'); 
+                plot(t_tmp(end)+((-length(t_tmp):-1)/2000), t_tmp(end)+((-length(t_tmp):-1)/2000), 'b.'); 
                 plot(t_tmp(1)+((1:length(t_tmp))/2000), t_tmp, 'r.'); 
-                xlabel('time start from 1st data (s)');
+                xlabel('time start from last data (s)');
                 ylabel('time when data recorded (s)');
             end
             idx_tmp = 1:length(t_tmp); 
@@ -256,15 +269,19 @@ classdef SessionScanEMG
             end
 %             t = interp1(time_first_idx, time_first, idx_tmp, 'linear', 'extrap')'; 
 %             t = (idx_tmp-1)*(1/sample_freq) + t_tmp(1); 
-              t_first = min(t_tmp); 
+%               t_first = min(t_tmp); % should be some value, 
               t_last = max(t_tmp) + (sum(t_tmpidx)-1)*1/sample_freq; 
+              t_first = t_last - (length(t_tmp)-1) * 1/sample_freq;
               t = linspace(t_first,t_last,length(t_tmp));
-
+            ifplot = 1; 
             if (ifplot)
                 clf; hold on;
                 plot(idx_tmp, t_tmp, 'bo');
                 plot(idx_tmp, t, 'r.');
                 legend('origin', 'introp');
+                xlabel('index of time');
+                ylabel('actual time(s)');
+                title('time acquire from *.mat and reconstruct');
             end
             obj.data.t = t;
             obj.freq = mean(1./diff(t));
@@ -297,66 +314,66 @@ classdef SessionScanEMG
 
             % look the power spectrum, and spectrugram for each of the
             % channel (see if there is noise throughout the session) 
-            for chi = 1:8 % what is the dimension of p_tmp and f_tmp???
-                [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_raw1(chi,:), 2000);
+            ifcheckpointOn = 1;
+            if (ifcheckpointOn)
+                for chi = 1:8
+                    [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_raw1(chi,:), 2000);
+                end
+                if (ifplot) % the raw data
+                    figure('name', ['raw spectrum of Session' num2str(obj.ss_num)])
+                    hold on;
+                    for chi = 1:8
+                        plot(f_tmp(chi,:), log(p_tmp(chi,:)));
+                    end
+                    legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
+                end
             end
-            if (ifplot) % the raw data 
-                figure('name', ['raw spectrum of Session' num2str(obj.ss_num)])
-                hold on; 
+
+            [t_filter1, emg_filter1] = obj.removeLineNoise(t_raw, emg_raw1);
+
+            ifcheckpointOn = 1;
+            if (ifcheckpointOn)
+                for chi = 1:8 % what is the dimension of p_tmp and f_tmp???
+                    [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_filter1(chi,:), 2000);
+                end
+
+                figure('name', ['line noise removal of spectrum of Session' num2str(obj.ss_num)])
+                hold on;
                 for chi = 1:8
                     plot(f_tmp(chi,:), log(p_tmp(chi,:)));
                 end
                 legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
             end
 
-            [t_filter1, emg_filter1] = obj.removeLineNoise(t_raw, emg_raw1);
 
-            if (ifplot) % the raw data 
-            for chi = 1:8 % what is the dimension of p_tmp and f_tmp???
-                [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_filter1(chi,:), 2000);
+            [t_filter2,emg_filter2] = obj.removeOPTONoise(t_filter1, emg_filter1, ifplot);
+
+            ifMotionNoiseRemoval = 1;
+            if (ifMotionNoiseRemoval)
+                [t_filter3, emg_filter3] = obj.removeMotionNoise(t_filter2, emg_filter2);
+            else
+                t_filter3 = t_filter2;
+                emg_filter3 = emg_filter2;
             end
 
-            figure('name', ['line noise removal of spectrum of Session' num2str(obj.ss_num)])
-            hold on; 
-            for chi = 1:8
-                plot(f_tmp(chi,:), log(p_tmp(chi,:)));
-            end
-            legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
-            
+            ifCheckpointOn = 1;
+            if (ifCheckpointOn) % the raw data
+                for chi = 1:8 % what is the dimension of p_tmp and f_tmp???
+                    [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_filter2(chi,:), 2000);
+                end
+
+                figure('name', ['motion noise removal of spectrum of Session' num2str(obj.ss_num)])
+                hold on;
+                for chi = 1:8
+                    plot(f_tmp(chi,:), log(p_tmp(chi,:)));
+                end
+                legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
             end
 
 
-            [t_filter2,emg_filter2] = removeOptNoise(t_filter1, emg_filter1, p_tmp, f_tmp, ifplot);
-%             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%             for ch_i = 1:8
-% %             % See the power spectrum of the raw data
-%              figure(ch_i)
-%              x = emg_raw(ch_i,:);
-% %             x = emg_filter(7,:);
-%              Fs = 1000;
-%              N = length(x(1,:));
-% % %             xdft = fft(emgtmp);
-%              xdft = fft(x);
-%              xdft = xdft(:,1:N/2+1);
-%              psdx = (1/(Fs*N)) * abs(xdft).^2;
-%              psdx(2:end-1) = 2*psdx(2:end-1);
-%              freq = 0:Fs/length(x):Fs/2;
-% % 
-%              plot(freq,10*log10(psdx));
-%              grid on
-%              title('Periodogram Using FFT')
-%              xlabel('Frequency (Hz)')
-%              ylabel('Power/Frequency (dB/Hz)')
-%             end
-%             %%%%%%%%%%%%%%%%%%%%%%%%%
-%             % do a high-pass filter
-%             x = hiaghpass(emg(1,:)', 200, Fs);
-%             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            [t_filter, emg_filter] = removeMotionNoise(t_filter2, emg_filter2);
-            %
-            t = t_filter; 
-            emg_int = emg_filter;
+
+            t = t_filter3; 
+            emg_int = emg_filter3;
             emg_processed = zeros(size(emg_int));
             emg_processed0= zeros(size(emg_int));
                 
@@ -425,6 +442,7 @@ classdef SessionScanEMG
                     legend('raw', 'line noise removed', 'highpass', 'rectified', 'envelop');
                     xlabel('time (s)');
                     if (obj.mvf_shrink)
+                        plot(t, emg_evl./obj.amp_norm(chi)*100, 'LineWidth', 1);
                         ylabel('intensity (%)');
                         ylim([-10 200]);
                     else
@@ -639,6 +657,178 @@ classdef SessionScanEMG
 
         end
 
+        function [t_filter, emg_filter] = removeOPTONoise(obj, t, emg, ifplot)
+            % might need de-trend (cg)
+            if (~exist('ifplot', 'var'))
+                ifplot = 0;
+            else
+
+            end
+
+            % The octives of the line nosie, below 1000Hz
+            freq_interested_center = 100:200:1000;
+            freq_interested = freq_interested_center + [-20 20]';
+            freq_interested = freq_interested(:);
+
+            Fs = 2000;
+            t_filter = t;
+            emg_filter = zeros(8, size(t_filter,1));
+            [tmp, ~] = pspectrum(emg(1,:), 2000); % only care about the size
+            p_tmp_raw = zeros(8,size(tmp,1));
+            f_tmp_raw = zeros(8,size(tmp,1));
+
+            for ch_i = 1:size(emg,1)
+                [p_tmp, f_tmp_raw(ch_i,:)] = pspectrum(emg(ch_i,:), 2000);
+                p_tmp_raw(ch_i,:) = pow2db(p_tmp);
+            end
+
+            % 1. Show a spectrum at the begining of the peak finding.
+            ...ifplot = 0;
+            if(ifplot)
+                figure('name', 'Sanity Check inSessionScanEMG::removeLineNoise');
+                hold on;
+                for ch_i = 1:size(emg,1)
+                    plot(f_tmp_raw(ch_i,:), p_tmp_raw(ch_i,:));
+                end
+                xlabel('freuency (Hz)');
+                ylabel('intensity log(P) (dB)'); % ... check! not sure about the unit!!!
+                legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
+            end
+
+            % 2. find peak and see if it is intersected with the line frequency
+            locs_cell = cell(8,1);
+            for ch_i = 1:size(emg,1) % each channel
+                % find peaks in the spectrum
+                pwdb_tmp = p_tmp_raw(ch_i,:);
+                p_val_subtracted = pwdb_tmp - smooth(pwdb_tmp)';
+                [~, locs] = findpeaks(p_val_subtracted, 'MinPeakHeight', 0.1);
+                f_peak_loc = round(f_tmp_raw(ch_i,locs)/10)*10; % give a ±2 
+%                 f_peak_loc = round(f_tmp_raw(ch_i,locs)/10)*10 % display so that I know...
+                if (~isempty(intersect(f_peak_loc,freq_interested)))
+                    locs_cell{ch_i} = intersect(f_peak_loc,freq_interested);
+                    % report and remove
+                    disp('there is A OPTO_MARKER noise!');
+                    freq_list = intersect(f_peak_loc,freq_interested);
+                    % build up a filter based on the frequencies
+                    filter_arr = [];
+                    for f0_i = 1:length(freq_list)
+                        f0 = freq_list(f0_i);
+                        f = fdesign.notch('N,F0,BW',2,f0,3,Fs);
+                        h(f0_i) = design(f);
+
+                        if (f0_i) == 1
+                            filter_arr = [filter_arr 'h(' num2str(f0_i) ')'];
+                        else
+                            filter_arr = [filter_arr ',h(' num2str(f0_i) ')'];
+                        end
+                    end
+                    % concatinate the filter 
+                    eval(['hd = dfilt.cascade(' filter_arr ');']);
+                    emg_tmp = emg(ch_i,:);
+                    emg_out = filter(hd, emg_tmp);
+                    emg_filter(ch_i,:) = emg_out;
+                else
+                    % no line noise detected
+                    emg_filter(ch_i,:) = emg(ch_i,:);
+                end
+
+                ifplot = 0;
+                if (ifplot)
+                    figure(); hold on;
+                    plot(f_tmp_raw(ch_i,:),p_tmp_raw(ch_i,:));
+                    plot(f_tmp_raw(ch_i,locs), pwdb_tmp(locs), 'rs');
+                    xlabel('frequency (Hz)');
+                    ylabel('relative noise intensity (dB)' );
+                    title(['channel ' num2str(ch_i)]);
+                    legend('raw data', 'captured peak');
+                end
+
+            end
+            % calculate the filtered power spectrum
+            p_tmp_filtered = zeros(size(p_tmp_raw));
+            f_tmp_filtered = zeros(size(f_tmp_raw));
+            for ch_i = 1:size(emg,1)
+                [p_tmp_ftd, f_tmp_filtered(ch_i,:)] = pspectrum(emg_filter(ch_i,:),Fs);
+                p_tmp_filtered(ch_i,:) = pow2db(p_tmp_ftd);
+            end
+
+            % after noise removal 
+            ...ifplot = 0;
+            if (ifplot)
+                figure('name', 'after lineNoise Removal');
+                hold on;
+                for ch_i = 1:size(emg,1)
+                    [p_tmp, f_tmp] = pspectrum(emg_filter(ch_i,:),Fs);
+                    plot(f_tmp, pow2db(p_tmp));
+                    xlabel('frequency (Hz)');
+                    ylabel('?intensity (dB)');
+                end
+                xline(freq_interested);
+                legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
+            end
+
+            ifplot = 1; % the summary plot of the processing
+            if (ifplot)
+                figure('position', [0 0 552 1000]);
+                % a 8-by-1 figure shows the power intensity of all the band (to avoid the
+                % overleat)
+                clear lnh;
+                for ch_i = 1:8 % plot the origin power spectrum and filtered power spectrum
+                    subplot(8,1,ch_i); hold on;
+                    lnh(1) = plot(f_tmp_raw(ch_i,:), p_tmp_raw(ch_i,:), 'b-');
+                    lnh(2) = plot(f_tmp_filtered(ch_i,:), p_tmp_filtered(ch_i,:), 'r-');
+                    xlabel('frequency (Hz)');
+                    ylabel('dB');
+                    title(['channel ' num2str(ch_i)]);
+
+                    if (~isempty(locs_cell{ch_i}))
+                        loc_tmp = reshape(locs_cell{ch_i}, length(locs_cell{ch_i}), 1);
+                        [~, loc] = min(abs(f_tmp_raw(ch_i,:) - loc_tmp),[],2);
+                        lnh(3) = plot(f_tmp_raw(ch_i,loc), p_tmp_raw(ch_i,loc), 'rs');
+                    end
+                end
+                switch length(lnh)
+                    case 2 % not detected peak
+                        legend(lnh, {'before', 'after'});
+                    case 3 % more than 1 peak(s)
+                        legend(lnh, {'before', 'after', 'detected peak'});
+                end
+                sgtitle(['Session' num2str(obj.ss_num) ' Power spectrum of Line Noise Removal']);
+            end
+        end
+
+        function [t_filter, emg_filter] = removeMotionNoise(obj, t_filter, emg_filter, ifplot)
+            % remove motion noise with crazy values
+            if (~exist('ifplot', 'var'))
+                ifplot = 0;
+            else
+
+            end
+
+            chs = readConfigMotionNoiseChannel(obj.ss_num); 
+
+            emg_filter1 = emg_filter; 
+            emg_filter2 = emg_filter;
+            for ch_i = 1:length(chs)
+                ch = chs(ch_i);
+                emg_filter1(ch,:) = filloutliers(emg_filter(ch,:), 'clip', 'movmedian', [200 200]);
+                t_outlair_idx = abs(emg_filter(ch,:) - emg_filter1(ch,:)) > 3*std(emg_filter1(ch,:));
+                emg_filter2(ch,:) = emg_filter(ch,:);
+                emg_filter2(ch,t_outlair_idx) = emg_filter1(ch,t_outlair_idx);
+
+
+                if (ifplot)
+                    clf; hold on;
+                    plot(t_filter, emg_filter(ch,:));
+                    plot(t_filter, emg_filter2(ch,:));
+                    legend('before filter', 'after filter');
+                    title(['filter high magnitude outlairs for channel' num2str(ch)]);
+                end
+            end
+            emg_filter = emg_filter2;
+        end
+
+
         function [t_list] = scanThresholdCrossing(obj, threshold)
             % [t_list, ch_list] = scanThresholdCrossing(threshold)
             % return of a list of time and channel number as threshold 
@@ -803,6 +993,30 @@ else % default value
 end
 end
 
+function chs = readConfigMotionNoiseChannel(ssnum)
+% read the channel-map, channel map to the muscles
+filename = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/config/manualSetEMGMotionNoise.conf';
+fid = fopen(filename);
+C = textscan(fid, '%s\n','CommentStyle','#');
+fclose(fid);
+for li = 1:size(C{1}, 1)
+    str = C{1}{li};
+    freadtmp = textscan(str,'%d,');
+    ss_num = freadtmp{1}(1);
+    if ss_num ~= ssnum
+        continue;
+    end
+    chs_str = freadtmp{1}(2:end);
+end
+if exist('chs_str', 'var')    % defined by the config file
+    chs = double(chs_str)';
+    clear chs_str;
+else % default value
+    chs = [];    % no channel contains noise
+end
+end
+
+
 function amp = readConfigChannelAmp(ssnum)
 % find the amplifier gain on each channel
 % return value:
@@ -856,100 +1070,6 @@ else
 end
 end
 
-function [t_filter, emg_filter] = removeOptNoise(t, emg, p_tmp, f_tmp, ifplot)
-% p_tmp is the matrix of power spectrum ;
-% f_tmp is the matrix of the frequency of power spectrum; 
-if (~exist('ifplot', 'var'))
-    ifplot = 0;
-else
-    ifplot = 1; 
-end
-if (ifplot)
-    figure(); hold on;
-for chi = 1:8 
-    pspectrum(emg(chi,:),2000); 
-end
-title('spectrum of the detrend data');
-legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
-end
-
-emg_filter = emg;
-t_filter = t;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% A array with session number at the begining and the channels later 
-chs = [6 8]; % should be session dependent 
-
-freq_rmv = [140 160 240 260 340 360 440 460 540 560 640 660 740 760 840 860 940 960];
-Fs = 2000;
-ifplot = 1;
-% if(ifplot)
-%     figure();
-% end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-for ch_i = chs 
-    emg_tmp = emg(ch_i,:);
-    for f0_i = 1:length(freq_rmv)
-        f0 = freq_rmv(f0_i);
-        f = fdesign.notch('N,F0,BW',2,f0,3,Fs);
-        h(f0_i) = design(f); 
-%         if f0_i == 1
-%             hd = h(1);
-%         else
-%             hd = addstage(hd, h(f0_i));
-%         end
-    end
-    % change the filter name, 
-    % also change the filter writing way.
-
-    hd = dfilt.cascade(h(1), h(2), h(3), h(4), h(5), h(6), h(7), ...
-        h(8), h(9), h(10), h(11), h(12), h(13), h(14), h(15), h(16), h(17), h(18));
-
-%     hfvt = fvtool(hd, 'Color', 'white'); % plot the figure of filter
-    % cascade the filter 
-    emg_out = filter(hd, emg_tmp); 
-    
-    if(ifplot)
-%         clf; 
-        hold on; 
-        [p1, f1] = pspectrum(emg_tmp, 2000);
-        [p2, f2] = pspectrum(emg_out, 2000);
-        plot(f1, log(p1), 'b');
-        plot(f2, log(p2), 'g-'); 
-        legend('raw', 'filtered');
-        title(['channel' num2str(ch_i)]);
-    end
-    
-    emg_filter(ch_i,:) = emg_out;
-end
-
-end
-
-function [t_filter, emg_filter] = removeMotionNoise(t_filter, emg_filter, ifplot)
-% remove motion noise with crazy values
-if (~exist('ifplot', 'var'))
-    ifplot = 0;
-else
-
-end
-
-for ch_i = 1:size(emg_filter)
-    emg_filter1(ch_i,:) = filloutliers(emg_filter(ch_i,:), 'clip', 'movmedian', [200 200]);
-    t_outlair_idx = abs(emg_filter(ch_i,:) - emg_filter1(ch_i,:)) > 3*std(emg_filter1(ch_i,:));
-    emg_filter2(ch_i,:) = emg_filter(ch_i,:);
-    emg_filter2(ch_i,t_outlair_idx) = emg_filter1(ch_i,t_outlair_idx);
-
-
-    if (ifplot)
-        clf; hold on;
-        plot(t_filter, emg_filter(ch_i,:));
-        plot(t_filter, emg_filter2(ch_i,:));
-        legend('before filter', 'after filter');
-        title('filter high magnitude outlairs');
-    end
-end
-emg_filter = emg_filter2;
-end
 
 function if_calibSS = findCalibSS(ss_num)
     % remove this into some .conf file in the future

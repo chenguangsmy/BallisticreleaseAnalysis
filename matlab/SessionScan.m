@@ -39,6 +39,7 @@ classdef (HandleCompatible)SessionScan < handle
         wam_t
         emg_h
         emg_t
+        emg_evl
         opt_t           % optotrak time
         data            % all the data including force and wam information (aligned)
         %%% other variables
@@ -127,14 +128,16 @@ classdef (HandleCompatible)SessionScan < handle
                 flag_noFW_data = 1;
             end
             % cg: we use EMG and OPT as a reference in the movement Aug10th, f2022
-            if(0) % the key to load EMG data 
+            ifemg = 1;
+            if(ifemg) % the key to load EMG data 
             try 
                 if (flag_progress)
                     disp('Loading (intermed/raw) EMG...');
                 end
-                obj.emg = SessionScanEMG(obj.ssnum);
+                obj.emg = SessionScanEMG(obj.ssnum, 0); % normal blocks
                 obj.emg_t = obj.emg.data.t;
                 obj.emg_h = obj.emg.data.emg;
+                obj.emg_evl=obj.emg.data.emgevl; % envolope
             catch
 
 %                 disp('no EMG data here! ')
@@ -261,7 +264,9 @@ classdef (HandleCompatible)SessionScan < handle
                     end
                 end
             end
+
             
+            % deal with the trial sucess/failure
             [s,f] = readManualSetsf(obj.ssnum);
             
             if (~isempty(s)) %specify good trials
@@ -301,7 +306,11 @@ classdef (HandleCompatible)SessionScan < handle
             
             % remove error task conditions to avoid code error 
             obj = obj.dealingSessionsExceptions(); % nothing here 
-            obj = obj.dealingEMGOpenLoopNoise();   % bad EMG to 0 
+            obj = obj.dealingEMGOpenLoopNoise();   % bad EMG to 0
+            if_calibSS = findCalibSS(obj.ssnum);
+            if (~if_calibSS)
+                obj = obj.dealingOPTMarkersErr();      % bad OPT markers
+            end
             end
         end
         function obj = dealingSessionsExceptions(obj)
@@ -595,6 +604,7 @@ classdef (HandleCompatible)SessionScan < handle
             
             if (~isempty(obj.emg_t) && ~isempty(obj.emg_h))
                 obj.data.emg = interp1(obj.emg_t', obj.emg_h', obj.wam_t', 'linear', 'extrap')';
+                obj.data.emgevl=interp1(obj.emg_t', obj.emg_evl', obj.wam_t', 'linear', 'extrap')';
                 
                 
                 if (ifplot)
@@ -823,6 +833,7 @@ classdef (HandleCompatible)SessionScan < handle
                         ch_trials_str = freadtmp{2}{1};
                         trials_lists = textscan(ch_trials_str,'%s', 'Delimiter',';');
                         for ch_i = 1:8
+                            ch_trials{ch_i} = [];
                             if (~isempty(trials_lists{1}{ch_i}))
                                  strtmp = textscan(trials_lists{1}{ch_i},'%d', 'Delimiter',',');
                                  ch_trials{ch_i} = strtmp{1}';
@@ -888,8 +899,10 @@ classdef (HandleCompatible)SessionScan < handle
                         for ch_i = 1:8
                             if (~isempty(trials_lists{1}{ch_i}))
                                  strtmp = textscan(trials_lists{1}{ch_i},'%d', 'Delimiter',',');
-                                 ch_trials{ch_i} = strtmp{1}';
+                            else 
+                                strtmp{1} = [];
                             end
+                            ch_trials{ch_i} = strtmp{1}';
                         end
                         trials_list = ch_trials;
                     end
@@ -901,16 +914,150 @@ classdef (HandleCompatible)SessionScan < handle
             % read the config from config file 
             % the trials will be set according to the pre-setted config
             trials_list = readBadEmgTrials(obj);
+            
             for ch_i = 1:8
                 for trial_i = 1:length(trials_list{ch_i})
                     % for specific trial, nan the emg data
                     trial_idx = trials_list{ch_i}(trial_i);
                     obj.trials(trial_idx).data.emg(ch_i,:) = nan;
+                    try 
+                        obj.trials(trial_idx).data.emgevl(ch_i,:) = nan;
+                    end
                 end
             end
+        end
+        function obj = dealingOPTMarkersErr(obj)
+            rot_sessions = [4218 4219 4220 ...
+                            4225 4226 ...
+                            4237 4238 4239 ...
+                            4303 4304 ... 
+                            4313 4314 ...
+                            4328 4329 ...
+                            4339 4340 4341 ...
+                            4354 4355 4356];
+            % replace the recording error trial with the closest other
+            % trial data 
+            % especially useful for marker2(elbow) and marker3(shoulder)
 
+            % 1. read bad trials
+            marker_val = [obj.trials.opt_v];
+            markers_list = [];
+            trials_list = [];
+            marker_max = 3; 
+            if (sum(rot_sessions==obj.ssnum))
+                marker_max = 2; % 3rd marker cannot be recorded.
+            end
+            for marker_i = 1:marker_max
+                trials_list_tmp = find(marker_val(marker_i,:) == 0);
+                trials_nstt_tmp = find(isnan([obj.trials.tarF]));
+                trials_list_tmp = setdiff(trials_list_tmp, trials_nstt_tmp);
+                markers_list_tmp = ones(size(trials_list_tmp))*marker_i;
+                markers_list = [markers_list, markers_list_tmp];
+                trials_list = [trials_list, trials_list_tmp];
+            end
+            % the return should be an n-by-1 values (marker), and an n-by-1
+            % values (trials_list)
+            % 2. for current trial, find the similarest trial. 
+            trials_all = find([obj.trials.outcome] == 1);
             
+            for trial_i = 1:length(trials_list) % not consider 1st trial
+                clear data_org
+                trial_i_tmp = trials_list(trial_i); 
+                marker_i_tmp = markers_list(trial_i);
+                if trial_i_tmp == 1
+                    continue
+                end
+                ifplot = 1;
+                if (ifplot)     % see if this trial has a lost data
+                    clf; 
+                    hold on;
+                    plot(obj.trials(trial_i_tmp).data.t_shift,obj.trials(trial_i_tmp).data.ox(:,:,1), 'r.');
+                    plot(obj.trials(trial_i_tmp).data.t_shift,obj.trials(trial_i_tmp).data.ox(:,:,2), 'g.');
+                    plot(obj.trials(trial_i_tmp).data.t_shift,obj.trials(trial_i_tmp).data.ox(:,:,3), 'b.');
+                end
+                marker_lost = markers_list(trial_i); 
+                trial_lost = trial_i_tmp; % the index of trials_lost                
+                trials_rest= setdiff(trials_all, unique(trials_list)); %? how to get a array with certain trials that 'able to use'?
+                %find the possible trials for the current trial & marker
+                trials_rest_cond = ...
+                    [obj.trials(trials_rest).tarF] == obj.trials(trial_i_tmp).tarF & ...
+                    [obj.trials(trials_rest).tarL] == obj.trials(trial_i_tmp).tarL; 
+                
+                % if there is the same condition 
+                if sum(trials_rest_cond)>1
+                    trials_rest_cond_idx = trials_rest(trials_rest_cond);
+                else
+                    if markers_list(trial_i) == 1
+                        disp('DealingWithOPTRecordingError: cannot find suitable replacement for Marker1!')
+                    else % marker 2 or 3 
+                        trials_rest_cond = ...
+                            [obj.trials(trials_rest).tarL] == obj.trials(trial_i_tmp).tarL; 
+                            trials_rest_cond_idx = trials_rest(trials_rest_cond);
+                    end
 
+                    if sum(trials_rest_cond) == 0
+                        % rare case no data in one condition
+                        trials_rest_cond = true(size(trials_rest));
+                        trials_rest_cond_idx = trials_rest(trials_rest_cond);
+                    end
+                end
+                t_idx = obj.trials(trial_lost).data.t_shift>-0.5 & obj.trials(trial_lost).data.t_shift<0;
+                ox_contnan = isnan(obj.trials(trial_lost).data.ox(marker_lost,t_idx,1)); % has nan value
+
+                if sum(ox_contnan) == 0
+                    % if the position reading is valid before release
+                    % find depend on the position of the 0.5s before release
+                    x_bef_rel = mean(obj.trials(trial_lost).data.ox(:,t_idx,marker_lost),2);
+                    x_bef_rel_others = zeros(3,sum(trials_rest_cond));
+                    for trial_j = 1:length(trials_rest_cond_idx)
+                        trial_subs = trials_rest_cond_idx(trial_j);     % trial substitute
+                        t_idx_j = obj.trials(trial_subs).data.t_shift>-0.5 & obj.trials(trial_subs).data.t_shift<0;
+                        x_bef_rel_others(:,trial_j) = mean(obj.trials(trial_subs).data.ox(:,t_idx_j,marker_lost),2);
+                    end
+                    % find the cloest one
+                    x_pos_dist = x_bef_rel_others - repmat(x_bef_rel,1,length(trials_rest_cond_idx));
+                    x_pos_dist_card = vecnorm(x_pos_dist);
+                    [minval, minidx] = min(x_pos_dist_card);
+                    %
+                    trial_idx_sup = trials_rest_cond_idx(minidx);
+                    % interp the old data into the new
+                    data_org(:,:,marker_i_tmp) = obj.trials(trial_lost).data.ox(:,:,marker_i_tmp);
+                    trial_lost
+                    obj.trials(trial_lost).data.ox(:,:,marker_i_tmp) = (interp1(...
+                        obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
+                        obj.trials(trial_lost).data.t_shift', 'linear', 'extrap'))';
+
+                else
+                    % else, if the position reading is nan before release
+                    % use trial 1 to suppliment
+                    %trials_rest_cond_idx
+                    trial_idx_sup = trials_rest_cond_idx(1);
+                    data_org(:,:,marker_i_tmp) = obj.trials(trial_lost).data.ox(:,:,marker_i_tmp);
+                    obj.trials(trial_lost).data.ox(:,:,marker_i_tmp) = (interp1(...
+                        obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
+                        obj.trials(trial_lost).data.t_shift', 'linear', 'extrap'))';
+                end
+                ifplot = 1;
+                if(ifplot)
+                    clear axhtmp lnhtmp;
+                    axhtmp(1) = subplot(2,1,1);
+                    plot(obj.trials(trial_idx_sup).data.t_shift,obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp), 'b.');
+                    title('suppliment trial');
+                    axhtmp(2) = subplot(2,1,2); hold on;
+                    lnhtmp{1} = plot(obj.trials(trial_lost).data.t_shift,data_org(:,:,marker_i_tmp), 'g.');
+                    lnhtmp{2} = plot(obj.trials(trial_lost).data.t_shift,obj.trials(trial_lost).data.ox(:,:,marker_i_tmp), 'r.');
+                    legend([lnhtmp{1}(1), lnhtmp{2}(1)], 'raw', 'replaced');
+                    title('lost trial reconstruct');
+                    linkaxes(axhtmp, 'x');
+                    sgtitle({'reconstructing data on other trial', ...
+                        ['ss' num2str(obj.ssnum)  ...
+                        ' tr' num2str(trial_i_tmp) ...
+                        ' mkr' num2str(marker_i_tmp)]});
+                end
+
+
+
+            end
         end
 
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1463,6 +1610,66 @@ classdef (HandleCompatible)SessionScan < handle
             
         end
 
+        function fh = plotForceEMGEVL(obj, fh) 
+            % plot the force as well as the EMG 
+            % aim to show the 'MVF'  
+            if (~exist('fh', 'var'))
+                fh = figure();
+            else
+                fh = figure(fh); 
+            end
+            axh(1) = subplot(5,1,1);
+            plot(obj.data.t(1:end-1), obj.data.f(1,1:end-1));
+
+
+            axh(2) = subplot(5,1,2); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emgevl(1,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emgevl(2,1:end-1), 'b');
+
+            axh(3) = subplot(5,1,3); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emgevl(3,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emgevl(4,1:end-1), 'b');
+
+            axh(4) = subplot(5,1,4); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emgevl(5,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emgevl(6,1:end-1), 'b');
+
+            axh(5) = subplot(5,1,5); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emgevl(7,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emgevl(8,1:end-1), 'b');
+
+            linkaxes(axh, 'x');
+        end
+        function fh = plotForceEMG(obj, fh) 
+            % plot the force as well as the EMG 
+            % aim to show the 'MVF'  
+            if (~exist('fh', 'var'))
+                fh = figure();
+            else
+                fh = figure(fh); 
+            end
+            axh(1) = subplot(5,1,1);
+            plot(obj.data.t(1:end-1), obj.data.f(1,1:end-1));
+
+
+            axh(2) = subplot(5,1,2); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(1,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emg(2,1:end-1), 'b');
+
+            axh(3) = subplot(5,1,3); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(3,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emg(4,1:end-1), 'b');
+
+            axh(4) = subplot(5,1,4); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(5,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emg(6,1:end-1), 'b');
+
+            axh(5) = subplot(5,1,5); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(7,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),-obj.data.emg(8,1:end-1), 'b');
+
+            linkaxes(axh, 'x');
+        end
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % PLOT TRIALFY DATA ON SPECIFY ALIGNED EVENTS 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2467,4 +2674,17 @@ function [steadyValue, duration] = findSteadyValue(intMat, durat, ifplot)
         title('data selection demo');
     end
     return
+end
+function if_calibSS = findCalibSS(ss_num)
+    % remove this into some .conf file in the future
+    ss_list = [4315, 4312 ...
+        4324, 4327 ...
+        4335, 4338 ...
+        4349, 4354 ...
+        ];
+    if sum(ss_num==ss_list)
+        if_calibSS = true;
+    else
+        if_calibSS = false;
+    end
 end

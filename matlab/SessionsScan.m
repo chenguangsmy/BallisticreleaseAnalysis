@@ -11,6 +11,7 @@ classdef SessionsScan
         % cond.tNo
         % cond.ssNo
         % cond.sf
+        sessions
         trials TrialScan
         export_cond
         filename
@@ -72,6 +73,7 @@ classdef SessionsScan
                         num2str(ss_num_total)]);
                     % loading
                     ss_tmp{subj_i}{ss_i} = SessionScan(ss_num{subj_i}(ss_i));
+                    obj.sessions{subj_i}{ss_i} = ss_tmp{subj_i}{ss_i};
                 end
             end
             
@@ -126,6 +128,50 @@ classdef SessionsScan
             obj.SessionsExport();
         end
         
+        function [performc] = getTrialPerformance(obj) 
+            % tobe re-written for the multi sessions processing
+            performc = cell(max(obj.export_cond.subject), 1);
+            for subj_i = 1:max(obj.export_cond.subject)
+                performc{subj_i}.time_all = zeros(1,1);
+                performc{subj_i}.time_eachd= zeros(1,4);
+                performc{subj_i}.rate_all = zeros(1,1);
+                performc{subj_i}.rate_eachd= zeros(1,4);
+                performc{subj_i}.rate_eachc= zeros(1,4,3,3);
+                % time-all
+                trial_idx = obj.cond.subject == subj_i;
+                performc{subj_i}.time_all = max([obj.trials(trial_idx).edn_t]) - ...
+                                            min([obj.trials(trial_idx).bgn_t]);
+                trialLength = [obj.trials.edn_t] - [obj.trials.bgn_t];
+                % rate-all
+                performc{subj_i}.rate_all = sum([obj.cond.sf(trial_idx)])/sum(trial_idx);
+                for d_i = 1:length(obj.export_cond.direction)
+                % time_eachd
+                    trial_idx = obj.cond.subject == subj_i & ...
+                                obj.cond.direction == obj.export_cond.direction(d_i);
+                    performc{subj_i}.time_eachd(d_i) = sum(trialLength(trial_idx));
+                % rate_eachd
+                    performc{subj_i}.rate_eachd(d_i) = sum([obj.cond.sf(trial_idx)]) / ...
+                        sum(trial_idx);
+
+                    for f_i = 1:length(obj.export_cond.fce)
+                        for t_i = 1:length(obj.export_cond.disp)
+                            % rate_eachc
+                            trial_idx = obj.cond.subject == subj_i & ...
+                                obj.cond.direction == obj.export_cond.direction(d_i) & ...
+                                obj.cond.fce == obj.export_cond.fce(f_i) & ...
+                                obj.cond.disp == obj.export_cond.disp(t_i);  
+
+                            performc{subj_i}.rate_eachc(1,d_i,f_i,t_i) = ...
+                                sum([obj.cond.sf(trial_idx)])/sum(trial_idx);
+                        end
+                    end
+                end
+            end
+        end
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % to export data
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function data = SessionsExport(obj)
             %SessionsExport Export to formatted data matrix
             %   the formatted data matrix is a 6-D matrix, which is: 
@@ -143,6 +189,8 @@ classdef SessionsScan
                 9, ...15, ...                                      % trials
                 4);                                          % pert
 %                 1);                                          % pert
+            data_index_ss = zeros(size(data));
+            data_index_tr = zeros(size(data));
             % one direction
             pert_export_code = [0 1 6]; % each pulse
 %             trials_req =       [20 10 10];      % each perturb
@@ -191,6 +239,8 @@ classdef SessionsScan
                                     data{subj_i,direction_i,fce_i,disp_i,trial_idx_dest,pert_i} = ...
                                         obj.trials(trial_idx_from).export_as_formatted(); % need edition.
 %                                         obj.trials(trial_idx_from).export_as_formatted(1); % need edition.
+                                    data_index_ss(subj_i,direction_i,fce_i,disp_i,trial_idx_dest,pert_i) = obj.trials(trial_idx_from).ssnum;
+                                    data_index_tr(subj_i,direction_i,fce_i,disp_i,trial_idx_dest,pert_i) = obj.trials(trial_idx_from).tNo;
                                 end
                             end
                         end
@@ -198,7 +248,7 @@ classdef SessionsScan
                 end
             end
             
-            save(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/' obj.filename '.mat'], 'data', '-v7.3');
+            save(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/' obj.filename '.mat'], 'data', 'data_index_ss', 'data_index_tr', '-v7.3');
         end
         
         function data = SessionsExportf(obj)
@@ -271,7 +321,6 @@ classdef SessionsScan
             
             save(['data/processedData/' obj.filename 'f.mat'], 'data', '-v7.3');
         end
-        
 
         function obj = SessionsSpecifyRotation(obj)
             % Specify the roated sessions in this function

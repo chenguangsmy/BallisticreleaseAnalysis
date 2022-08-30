@@ -26,7 +26,8 @@ classdef SessionScanFT
         elapse
         force0
 
-        cali_list = [4315 4312]; % move this to calibration file later, for MVF which need original displacement
+        cali_list = [4315 4312 4324 4327 4335 4338 4349 4354]; 
+        % move this to calibration file later, for MVF which need original displacement
     end
     
     methods
