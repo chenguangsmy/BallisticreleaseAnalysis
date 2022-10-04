@@ -8,6 +8,7 @@ classdef TrialScan
          %  general for all tasks
         tNo     % trial number
         bNo     % block number
+        ssnum   % session number
         bgn     % bgn_idx in sessionScanObj 
         edn     % end_idx, avlid confliction
         bgn_t   % time for high_sample
@@ -35,6 +36,8 @@ classdef TrialScan
         time            % time after aligned 
         xyi             % xy index
         xyn             % xy name
+         % data quality description
+        opt_v = zeros(10,1)   % the optotrak marker valid
          % specific ballistic-realease
         opt
         opth
@@ -73,7 +76,7 @@ classdef TrialScan
             %   asign all general variables, and specific ballistic-release
             %   variables from the trial
                     %%% task states, is it useful?
-            ST_BGN = 1; 
+            ST_BGN = 1;
             ST_PRT = 2;
             ST_FCR = 3; % force ramp
             ST_FHD = 4; % force hold
@@ -83,6 +86,7 @@ classdef TrialScan
             ST_RST = 8;
             
             obj.tNo = trialNo;
+            obj.ssnum = sessionScanObj.ssnum;
             idx = find(sessionScanObj.Data.TrialNo == trialNo);
             if ~isempty(idx)
             obj.bgn = idx(1);
@@ -103,6 +107,7 @@ classdef TrialScan
             %%%%%%%%%%%%%%%% block of getting data %%%%%%%%%%%%%%%%%%%%%%%%
             data_idx = sessionScanObj.data.t >= obj.bgn_t & sessionScanObj.data.t <= obj.edn_t;
             obj.data.t  = sessionScanObj.data.t(data_idx);
+            obj.data.t_shift = obj.data.t; 
             obj.data.x  = sessionScanObj.data.x(:,data_idx);
             obj.data.v  = sessionScanObj.data.v(:,data_idx);
             obj.data.Fp = sessionScanObj.data.Fp(:,data_idx);
@@ -110,74 +115,22 @@ classdef TrialScan
             obj.data.ts = sessionScanObj.data.ts(:,data_idx);
             obj.data.f  = sessionScanObj.data.f(:,data_idx);
             obj.data.ftq  = sessionScanObj.data.ftq(:,data_idx);
+            obj.data.oval = nan(10,size(obj.data.x,2)); % whether each marker is valid
             % data from formatted data 
             obj.data.ts_msg = sessionScanObj.data.tsf(:,data_idx); % get from the formatted data
             obj.data.x_msg = sessionScanObj.data.x_msg(:,data_idx);
             obj.data.v_msg = sessionScanObj.data.v_msg(:,data_idx);
-            if (~isempty(sessionScanObj.opt))   % if use optotrak
-                data.optx=sessionScanObj.data.optx(:,data_idx);
-                data.opty=sessionScanObj.data.opty(:,data_idx);
-                data.optz=sessionScanObj.data.optz(:,data_idx);
-                if_splineInterp = 1; 
-                ifplot = 1;
-                if (if_splineInterp) 
-                    obj.data.ox = nan(3,length(obj.data.t),10); 
-                    for marker_i = 1:size(data.optx,1)
-                        % do the splineInterp here, for x, y, and z
-                        % QUESTION? DO WE NEED SPLINE?
-                        val_idx = (~isnan(data.optx(marker_i,:))) ... 
-                                 & (~isnan(data.opty(marker_i,:))) ...
-                                 & (~isnan(data.optz(marker_i,:))); 
-                        if (sum(val_idx) ~= 0)
-                            intpx = spline(obj.data.t(val_idx), ...
-                                data.optx(marker_i,val_idx),...
-                                obj.data.t);
-                            intpy = spline(obj.data.t(val_idx), ...
-                                data.opty(marker_i,val_idx),...
-                                obj.data.t);
-                            intpz = spline(obj.data.t(val_idx), ...
-                                data.optz(marker_i,val_idx),...
-                                obj.data.t);
-                        else
-                            intpx = nan(size(obj.data.t));
-                            intpy = nan(size(obj.data.t));
-                            intpz = nan(size(obj.data.t));
-                        end
-                        if (ifplot)
-                            clf; 
-                            subplot(3,1,1); title('x'); hold on;
-                            plot(obj.data.t, data.optx(marker_i,:), 'r.', 'MarkerSize', 10);
-                            plot(obj.data.t, intpx, 'b.');
-                            
-                            subplot(3,1,2); title('y'); hold on;
-                            plot(obj.data.t, data.opty(marker_i,:), 'r.', 'MarkerSize', 10);
-                            plot(obj.data.t, intpy, 'b.');
-                            
-                            subplot(3,1,3); title('z'); hold on;
-                            plot(obj.data.t, data.optz(marker_i,:), 'r.', 'MarkerSize', 10);
-                            plot(obj.data.t, intpz, 'b.');
-                        end
-                        data.optx(marker_i,:) = intpx;
-                        data.opty(marker_i,:) = intpy;
-                        data.optz(marker_i,:) = intpz;
-%                         if(marker_i == 1)
-%                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:); 
-%                                                     data.opty(marker_i,:); 
-%                                                     data.optz(marker_i,:); ];
-                        obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
-                        obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
-                        obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
-%                         end
-                        
-                    end
-                end
-            end 
+            obj.data.f_msg = sessionScanObj.data.f_msg(:,data_idx);
+            % data from optotrak 
+%             obj.data.ox = sessionScanObj.data.ox(:,data_idx,:);
             
             %%% optional: when emg data exists 
             if (isfield(sessionScanObj.data, 'emg'))
                 obj.data.emg = sessionScanObj.data.emg(:,data_idx);
+                obj.data.emgevl = sessionScanObj.data.emgevl(:,data_idx);
             else 
                 obj.data.emg = nan(8,length(data_idx));
+                obj.data.emgevl = nan(8,length(data_idx));
             end
             
             %%%%%%%%%%%%%%%% deal with perturbation, etc %%%%%%%%%%%%%%%%%%
@@ -248,11 +201,184 @@ classdef TrialScan
             try
                 obj.pert_f   = unique(sessionScanObj.Data.TaskJudging.pertdf_mag(maskTrial & maskHold));
             catch
-                 obj.pert_f  = [];
+                obj.pert_f  = [];
             end
-            
-%             obj.comboTT = getComboTT(obj,sessionScanObj);
-            
+
+            %             obj.comboTT = getComboTT(obj,sessionScanObj);
+
+            if (~isempty(sessionScanObj.opt))   % if use optotrak
+                data.optx=sessionScanObj.data.optx(:,data_idx);
+                data.opty=sessionScanObj.data.opty(:,data_idx);
+                data.optz=sessionScanObj.data.optz(:,data_idx);
+                data.ts  =sessionScanObj.data.ts(:,data_idx);
+                if_splineInterp = 1;
+                ifplot = 0;
+                if (ifplot)
+                    clf;
+                    markers_list = '.x-o+*|sd^v><ph';
+                    axh(1) = subplot(2,1,1); % task states
+                    plot(sessionScanObj.data.t(:,data_idx), sessionScanObj.data.ts(:,data_idx));
+                    axh(2) = subplot(2,1,2); % position
+                    hold on;
+                    for marker_i = 1:10
+                        plot(sessionScanObj.data.t(data_idx), sessionScanObj.data.optx(marker_i,data_idx), ['r' markers_list(marker_i)]);
+                        plot(sessionScanObj.data.t(data_idx), sessionScanObj.data.opty(marker_i,data_idx), ['g' markers_list(marker_i)]);
+                        plot(sessionScanObj.data.t(data_idx), sessionScanObj.data.optz(marker_i,data_idx), ['b' markers_list(marker_i)]);
+                    end
+                    linkaxes(axh, 'x');
+
+                    % valid ox zone: ts > 2 and ts < 7
+                end
+                ifplot = 0;
+                if (if_splineInterp)
+                    obj.data.ox = nan(3,length(obj.data.t),10);
+                    for marker_i = 1:3%size(data.optx,1)
+                        % do the splineInterp here, for x, y, and z
+                        % QUESTION? DO WE NEED SPLINE?
+                        % debugging: fix the interpretation in the not
+                        % nessasiry area
+                        val_idx = (~isnan(data.optx(marker_i,:))) ...  % togher with the ts
+                            & (~isnan(data.opty(marker_i,:))) ...
+                            & (~isnan(data.optz(marker_i,:)));
+                        val_idxts= (~isnan(data.optx(marker_i,:))) ...  % togher with the ts
+                            & (~isnan(data.opty(marker_i,:))) ...
+                            & (~isnan(data.optz(marker_i,:))) ...
+                            | (data.ts>2 & data.ts<7); % valid only in collected part
+                        obj.data.oval(marker_i,:) = val_idx;
+
+                        % judge whether marker is valid, write in opt_v
+                        % if marker continuously lost in ts5 for 10
+                        % datapoints, then it should be regarded as not
+                        % valid
+                        if (sum(val_idx)==0)
+                            % not valid at any data
+                            obj.opt_v(marker_i) = 0;
+                        else % when marker is valid, check wiether it valid during moving
+                            TS_MOV = 5;
+                            TS_HOLD = 6;
+                            opt_v_th = 10;
+                            nval_mov = (((isnan(data.optx(marker_i,:))) ...  % nan during TS_MOV
+                                & (isnan(data.opty(marker_i,:))) ...
+                                & (isnan(data.optz(marker_i,:))))) ...
+                                & (data.ts==TS_MOV | data.ts==TS_HOLD);
+                            % sum them up
+                            nval_mov_length = cumsum(nval_mov);
+                            max_cumsum = max(nval_mov_length);
+                            if (max_cumsum > opt_v_th)
+                                obj.opt_v(marker_i) = 0;
+                            else
+                                obj.opt_v(marker_i) = 1;
+                            end
+                            if (ifplot)
+                                clf;
+                                clear axhtmp
+                                axhtmp(1) = subplot(3,1,1); % the data
+                                plot(obj.data.t, data.optx(marker_i,:)); % either of x, y, z is representative
+                                xlabel('time');
+                                ylabel('data');
+                                axhtmp(2) = subplot(3,1,2); % whether valid
+                                plot(obj.data.t, nval_mov);
+                                xlabel('time');
+                                ylabel('isnan');
+                                axhtmp(3) = subplot(3,1,3); hold on; %
+                                plot(obj.data.t, nval_mov_length);
+                                yline(opt_v_th);         % threshold of being the enough amount
+                                xlabel('time');
+                                ylabel('nan count');
+                                title(axhtmp(1), 'data');
+                                title(axhtmp(2), 'isnan of data');
+                                title(axhtmp(3), 'length of nan data');
+
+                                linkaxes(axhtmp, 'x');
+                                sgtitle({['check data valid trial' num2str(obj.tNo) 'marker' num2str(marker_i)], ...
+                                    [num2str(obj.opt_v(marker_i))]});
+                            end
+                        end
+
+
+
+                        if (sum(val_idx) ~= 0)
+                            intpx = nan(size(obj.data.t));
+                            intpy = nan(size(obj.data.t));
+                            intpz = nan(size(obj.data.t));
+                            % fill with interped data
+                            % think: do we want to spline it for the
+                            % lacking data?
+                            if (max_cumsum > opt_v_th)
+                                % do nothing
+                                intpx(val_idxts) = data.optx(marker_i,val_idxts);
+                                intpy(val_idxts) = data.opty(marker_i,val_idxts);
+                                intpz(val_idxts) = data.optz(marker_i,val_idxts);
+                            else
+                                % do interp
+                                intpx(val_idxts) = spline(obj.data.t(val_idx), ...
+                                    data.optx(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                intpy(val_idxts) = spline(obj.data.t(val_idx), ...
+                                    data.opty(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                intpz(val_idxts) = spline(obj.data.t(val_idx), ...
+                                    data.optz(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                            end
+                            % if the data is interpretable (lost less
+                            % than 10 pts), do the spline interpolation
+
+                            % if the data is non-interpertable, give
+                            % the original data.
+                            intpx = interp1(obj.data.t(val_idxts),intpx(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                            intpy = interp1(obj.data.t(val_idxts),intpy(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                            intpz = interp1(obj.data.t(val_idxts),intpz(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                        else
+                            intpx = nan(size(obj.data.t));
+                            intpy = nan(size(obj.data.t));
+                            intpz = nan(size(obj.data.t));
+                        end
+                        if (ifplot && marker_i <4)
+                            clf;
+                            clear lnhtmp
+                            axh(1) = subplot(4,1,1); title('ts'); hold on;
+                            plot(obj.data.t, data.ts, 'b', 'MarkerSize', 10);
+                            ylim([0 10]);
+
+                            axh(2) = subplot(4,1,2); title('x'); hold on;
+                            lnhtmp(1) = plot(obj.data.t, data.optx(marker_i,:), 'r.', 'MarkerSize', 10);
+                            lnhtmp(2) = plot(obj.data.t, intpx, 'b.');
+                            legend(lnhtmp, {'original data', 'interp data'});
+
+                            axh(3) = subplot(4,1,3); title('y'); hold on;
+                            plot(obj.data.t, data.opty(marker_i,:), 'r.', 'MarkerSize', 10);
+                            plot(obj.data.t, intpy, 'b.');
+
+                            axh(4) = subplot(4,1,4); title('z'); hold on;
+                            plot(obj.data.t, data.optz(marker_i,:), 'r.', 'MarkerSize', 10);
+                            plot(obj.data.t, intpz, 'b.');
+
+                            sgtitle(['trial' num2str(obj.tNo) ' marker' num2str(marker_i)]);
+
+                            linkaxes(axh, 'x');
+                        end
+                        data.optx(marker_i,:) = intpx;
+                        data.opty(marker_i,:) = intpy;
+                        data.optz(marker_i,:) = intpz;
+                        %                         if(marker_i == 1)
+                        %                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:);
+                        %                                                     data.opty(marker_i,:);
+                        %                                                     data.optz(marker_i,:); ];
+                        obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
+                        obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
+                        obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
+                        %                         end
+
+                    end
+                end
+            end
+
+
+
             
             if isempty(setdiff(obj.tarR, [0,4])) %only y direction
                 obj.xyi = 1;
@@ -464,6 +590,10 @@ classdef TrialScan
         function obj = alignMOV(obj)
             %alignMOV align all trials at ST_MOV
             %   Just do linear shift, do NOT skew time
+            % When there is no data at all, do nothing and just return 
+            if (size(obj.data.t,2) == 0)
+                return
+            end
             time = obj.time;
             idx = find(obj.data.ts == 5);
             idx_msg = find(obj.data.ts_msg == 5);
@@ -1413,7 +1543,9 @@ classdef TrialScan
 %         dat.x_msg = obj.data.x_msg(:,idx);
 %         dat.v_msg = obj.data.v_msg(:,idx);
         if isfield(obj.data, 'emg')
-            dat.emg=obj.data.emg(:,idx);
+%             dat.emg=obj.data.emg(:,idx);
+            dat.emg=obj.data.emgevl(:,idx);
+            dat.emgrtf=obj.data.emg(:,idx);
         else 
             dat.emg=nan(8,length(idx));
         end
@@ -2030,6 +2162,17 @@ classdef TrialScan
 %             ylabel('y (m)');
 %         
 %         end
+        function obj = substituteOPTdata(obj1, marker_i)
+            % the best suitable trial was already found in sessionScan
+            % todo... copy the OPT data from the other trial to the current
+            % trial
+
+            % do a interptation 
+            % obj.data.ox(1,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(1,:,marker_i), obj.data.t);
+            % here t must be 0 at release
+            % obj.data.ox(2,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(1,:,marker_i), obj.data.t);
+            % obj.data.ox(3,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(1,:,marker_i), obj.data.t);
+        end
     end
 end
 

@@ -1,7 +1,14 @@
 classdef SessionScanEMG
     %SESSIONSCANEMG Summary of this class goes here
     %   Detailed explanation goes here
-    
+    %SESSIONSCANEMG scan from the intermediate mat file (which
+    %   contains the EMG continuous sitnal), or the raw file and
+    %   get a variable.
+    %   SessionScanEMG(ss_num, ifReadAgain)
+    %   Current setting is from the `intermediate` file
+    %   header read from %DT sequence% described above.
+
+
     %%%%%%%%%%%%%%%%
     % todo: have a bandstop notch filter
     %%%%%%%%%%%%%%%
@@ -61,9 +68,11 @@ classdef SessionScanEMG
             %                  or `ASeperateFile`
 
             if (~exist('ifReadAgain', 'var'))
-                ifReadAgain = 1;
+                ifReadAgain = 0;
             end
+
             obj.ss_num = ss_num;
+            obj.if_calibSS = findCalibSS(obj.ss_num);
             fdir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate';
             fdiremg = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
             fnameraw = sprintf('KingKongEMG.%05d.csv', ss_num);
@@ -75,65 +84,64 @@ classdef SessionScanEMG
             fname = sprintf('KingKong.%05d.mat', ss_num);
             filename_intermediate = [fdir '/' fname];
             % ... read the intermediate file
-            
-            load(filename_intermediate, 'Data'); 
-            DataInt = Data;
-            Dat = DataInt.QL.Data.RAW_CTSDATA.data;
-            N = size(Dat,2);
-            dat_all = reshape(Dat, obj.CHANNELS_NUM+obj.AINPUTS_NUM, ...
-                N*obj.DATA_PER_SHORT);
-            % message runs at 100Hz, and get 10 data points per msg
-            obj.dat = dat_all(obj.anin_idx+obj.anin_idx_offset,:);
-            time_msg = DataInt.QL.Data.RAW_CTSDATA.source_timestamp; 
-            % get brtime
-            obj.brtime = obj.getBRtimefromIntermediate(time_msg);
-            % get RTMA time (task time)
-            obj.time   = obj.getRTMAtimeAligned(); % to write
-            try
-                obj = obj.readRawData();
-                rawdata_matflag = 1;
-            catch 
-                obj = obj.readRawDataM(); 
-%                 disp('SessionScanEMG: no raw EMG readed');
-                obj.data.emg = zeros(8,0);
-                rawdata_matflag = 0;
-            end
-
-            % if no raw data, fill the raw data with the intermediate data
-            if (rawdata_matflag == 0)
-                obj.data.emg = double(obj.dat);
-                obj.data.t = obj.brtime';
-                obj.freq = round(mean(1./diff(obj.data.t)));
-            end
-
-            obj.if_calibSS = findCalibSS(obj.ss_num);
 
             if (ifReadAgain || ~exist(obj.fname_fmt, 'file') || obj.if_calibSS) % If want to re-perform pre-process
-                
-                % convert the channel to the right order 
+
+                load(filename_intermediate, 'Data');
+                DataInt = Data;
+                Dat = DataInt.QL.Data.RAW_CTSDATA.data;
+                N = size(Dat,2);
+                dat_all = reshape(Dat, obj.CHANNELS_NUM+obj.AINPUTS_NUM, ...
+                    N*obj.DATA_PER_SHORT);
+                % message runs at 100Hz, and get 10 data points per msg
+                obj.dat = dat_all(obj.anin_idx+obj.anin_idx_offset,:);
+                time_msg = DataInt.QL.Data.RAW_CTSDATA.source_timestamp;
+                % get brtime
+                obj.brtime = obj.getBRtimefromIntermediate(time_msg);
+                % get RTMA time (task time)
+                obj.time   = obj.getRTMAtimeAligned(); % to write
+                try
+                    obj = obj.readRawData();
+                    rawdata_matflag = 1;
+                catch
+                    obj = obj.readRawDataM();
+                    %                 disp('SessionScanEMG: no raw EMG readed');
+                    obj.data.emg = zeros(8,0);
+                    rawdata_matflag = 0;
+                end
+
+                % if no raw data, fill the raw data with the intermediate data
+                if (rawdata_matflag == 0)
+                    obj.data.emg = double(obj.dat);
+                    obj.data.t = obj.brtime';
+                    obj.freq = round(mean(1./diff(obj.data.t)));
+                end
+
+                % convert the channel to the right order
                 chmap = readConfigChannelMap(obj.ss_num);
                 obj.data.emg = obj.data.emg(chmap, :);
                 % magnify the channels according to the magnification.
                 amps = readConfigChannelAmp(obj.ss_num);
                 obj = obj.convertTomV(amps);
-                
+
                 [obj.amp_norm, exist_flag] = readConfigChannelMVF(obj.ss_num);
 
                 % visualize spectrumgram to see time-related frequency
-                % signal 
-                ifplot = 1; 
-                if(ifplot )
+                % signal
+                ifplot = 0;
+                if(ifplot)
                     for ch_i = 1:8
                         figure(ch_i);
+                        % plot the spectrum regard to time
                         spectrogram(obj.data.emg(ch_i,:), 5*2e3, 4*2e3, 2^13);
                         title(['channel ' num2str(ch_i)]);
                     end
                 end
 
-                % do the frequency-based processing 
+                % do the frequency-based processing
                 % preprocess data (filter, and take the envolope)-
                 obj = obj.preprocessRawData(1);
-                
+
                 % convert chanel to the MVF
                 obj.mvf_shrink = exist_flag;
                 obj = obj.normalizebyMVF(obj.amp_norm); % already
@@ -144,6 +152,7 @@ classdef SessionScanEMG
                 data = load(obj.fname_fmt);
                 obj.data = data.data;
             end
+
             % save data 
 
         end
@@ -192,9 +201,13 @@ classdef SessionScanEMG
             % devided by the MVF
             % 1. calculate the voltage to BLACKROCK input
             amp_mat = repmat((1./amp)',1,size(obj.data.emg,2));
-            emg_pct_mvf = obj.data.emgevl.*amp_mat;
+            emgevl_pct_mvf = obj.data.emgevl.*amp_mat;
+            obj.data.emgevl = emgevl_pct_mvf;
 
-            obj.data.emgevl = emg_pct_mvf;
+            amp_mat = repmat((1./amp)',1,size(obj.data.emg,2));
+            emg_pct_mvf = obj.data.emg.*amp_mat;
+            obj.data.emg = emg_pct_mvf;
+
         end
 
         function obj = readRawData(obj)
@@ -273,7 +286,7 @@ classdef SessionScanEMG
               t_last = max(t_tmp) + (sum(t_tmpidx)-1)*1/sample_freq; 
               t_first = t_last - (length(t_tmp)-1) * 1/sample_freq;
               t = linspace(t_first,t_last,length(t_tmp));
-            ifplot = 1; 
+            ifplot = 0; 
             if (ifplot)
                 clf; hold on;
                 plot(idx_tmp, t_tmp, 'bo');
@@ -307,7 +320,7 @@ classdef SessionScanEMG
             % try to remove the flat shifting data
             emg_raw1 = zeros(size(emg_raw));
             for ch_i = 1:8 
-                emg_raw1(ch_i,:) = detrend(emg_raw(ch_i,:));
+                emg_raw1(ch_i,:) = detrend(emg_raw(ch_i,:)); % NOT nesessary for the constant direction...
 %                 emg_raw1(ch_i,:) = emg_raw1(ch_i,:) - mean(emg_raw1(ch_i,:));
             end
             % remove line noise from the raw data 
@@ -331,7 +344,7 @@ classdef SessionScanEMG
 
             [t_filter1, emg_filter1] = obj.removeLineNoise(t_raw, emg_raw1);
 
-            ifcheckpointOn = 1;
+            ifcheckpointOn = 0;
             if (ifcheckpointOn)
                 for chi = 1:8 % what is the dimension of p_tmp and f_tmp???
                     [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_filter1(chi,:), 2000);
@@ -356,7 +369,7 @@ classdef SessionScanEMG
                 emg_filter3 = emg_filter2;
             end
 
-            ifCheckpointOn = 1;
+            ifCheckpointOn = 0;
             if (ifCheckpointOn) % the raw data
                 for chi = 1:8 % what is the dimension of p_tmp and f_tmp???
                     [p_tmp(chi,:), f_tmp(chi,:)] = pspectrum(emg_filter2(chi,:), 2000);
@@ -377,35 +390,131 @@ classdef SessionScanEMG
             emg_processed = zeros(size(emg_int));
             emg_processed0= zeros(size(emg_int));
                 
-            for chi = 1:8 % iterate through channels
+            tic 
+% %             for chi = 1:8 % iterate through channels
                 % 1. do the 100Hz low pass filter
                 fs = obj.freq; % data frequency
-                lpf1 = 20; % were60 
+                lpf1 = 10; % were60 
+%                 lpf1 = 100; % were60
+                % prior to 2022-09-20 set the freq to be 100
 %                 emg1 = bandstop(emg(ch_i,:),[118.5 121.5],fs);
-                emg_stp1 = highpass(emg_int(chi,:), lpf1, fs);
+%                 emg_stp1 = highpass(emg_int(chi,:), lpf1, fs); % highpass treated each column independently...
+                emg_stp1 = highpass(emg_int', lpf1, fs, 'Impulseresponse', 'iir', 'Steepness',0.5); % matrix operation
 %                 emg_stp1 = emg(chi,:);
                 % 2. mean-centered and scaled by standard deviation...
 %                 emg_stp2 = (emg_stp1 - obj.emg_means(chi)) / obj.emg_stds(chi);
 %                 emg_stp2 = detrend(emg_stp1);
-                emg_stp2 = emg_stp1; % already done previously...
+%                 emg_stp2 = emg_stp1; % already done previously...
                 % 3. squared, and do low-pass filter of 30Hz
 %                 lpf2 = 30; %30
 %                 emg_stp3 = lowpass(emg_stp2.^2, lpf2, fs);
 %                 emg_stp3 = emg_stp2.^2;
                 % 3. squre root transform and *2
 %                 emg_stp4 = real(sqrt(emg_stp2.^2));                                                   % bad name, need chagne
-                emg_stp4 = abs(emg_stp2);
+%                 emg_stp4 = abs(emg_stp2);
+                % prior to 2022-09-20, have abs
+%                 emg_stp4 = emg_stp2;
+                emg_stp4 = abs(emg_stp1);
 %                 emg_stp4 =  abs(emg(chi,:)/32767*5000/2000); % convert to mV % already mV since 2022-06-09
 %                 [emg_evl, ~] = envelope(real(emg_stp4), 50, 'peak'); % check what it used to be?
 %                 [emg_evl, ~] = envelope(real(emg_stp4), 10, 'peak'); % check what it used to be?
 %                 [emg_evl, ~] = envelope(emg_stp4, 50, 'rms'); 
 %                 [emg_evl, ~] = envelope(emg_stp4, 300, 'rms'); 
-                [emg_evl, ~] = envelope(emg_stp2, 50, 'rms'); 
+%                 [emg_evl, ~] = envelope(emg_stp2, 50, 'rms'); 
+%                 [emg_evl, ~] = envelope(emg_stp2, 200, 'rms');
+                [emg_evl1, ~] = envelope(emg_stp1, 50, 'rms'); % envelope treated each column independently...
+%                 emg_evl1 = emg_evl1';
+%               previous RMS filter with RMS method 
+%                 [emg_evl1, ~] = envelope(emg_stp2, 50, 'analytic');
 %                 if (~obj.if_calibSS || 1 ) % 1 when checking calibrationresult
 %                     emg_evl = emg_evl/obj.amp_norm(chi)*100; % norm by maximum
 %                     emg_evl = emg_evl; % norm by maximum
 %                 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+                % implement a buterworth filter
+                Freq = fs;
+                NyqFreq = Freq/2; 
+
+%                 LP = 0.5;
+%                 Wp = LP/NyqFreq; 
+%                 [F,E] = butter(4, Wp, 'low'); % butter worthfilter with 0.5Hz
+%                 emg_evl_bt05 = filtfilt(F,E,abs(emg_stp2)); 
+
+                LP = 2;
+                Wp = LP/NyqFreq; 
+                [F,E] = butter(4, Wp, 'low'); % butter worthfilter with 2Hz
+%                 emg_evl_bt2 = filtfilt(F,E,abs(emg_stp2)); 
+                emg_rms_bt2 = filtfilt(F,E,emg_evl1); 
+
+                LP = 20;
+                Wp = LP/NyqFreq; 
+                [F,E] = butter(2, Wp, 'low'); % butter worthfilter with 10Hz
+                emg_rms_bt10 = filtfilt(F,E,emg_evl1); 
+
+% 
+%                 LP = 5;
+%                 Wp = LP/NyqFreq; 
+%                 [F,E] = butter(4, Wp, 'low'); % butter worthfilter with 10Hz
+
+%                 F = [
+% 
+%                 1.0000    2.0000    1.0000    1.0000   -1.9949    0.9959
+%                 1.0000    2.0000    1.0000    1.0000   -1.9868    0.9879
+%                 1.0000    2.0000    1.0000    1.0000   -1.9790    0.9801
+%                 1.0000    2.0000    1.0000    1.0000   -1.9716    0.9726
+%                 1.0000    2.0000    1.0000    1.0000   -1.9646    0.9657
+%                 1.0000    2.0000    1.0000    1.0000   -1.9582    0.9593
+%                 1.0000    2.0000    1.0000    1.0000   -1.9525    0.9536
+%                 1.0000    2.0000    1.0000    1.0000   -1.9476    0.9486
+%                 1.0000    2.0000    1.0000    1.0000   -1.9434    0.9445
+%                 1.0000    2.0000    1.0000    1.0000   -1.9401    0.9412
+%                 1.0000    2.0000    1.0000    1.0000   -1.9378    0.9388
+%                 1.0000    2.0000    1.0000    1.0000   -1.9363    0.9373
+%                 1.0000    1.0000         0    1.0000   -0.9679         0];
+% 
+%                 E = [
+% 
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0003
+%                 0.0160
+%                 1.0000];
+
+            SOS =[
+                1.000000000000000   2.000000000000000   1.000000000000000   1.000000000000000  -1.993884619309987   0.994421634925319
+                1.000000000000000   2.000000000000000   1.000000000000000   1.000000000000000  -1.983143383413954   0.983677506077834
+                1.000000000000000   2.000000000000000   1.000000000000000   1.000000000000000  -1.973448250544566   0.973979762005324
+                1.000000000000000   2.000000000000000   1.000000000000000   1.000000000000000  -1.965326206532546   0.965855530472311
+                1.000000000000000   2.000000000000000   1.000000000000000   1.000000000000000  -1.959206654373552   0.959734330126138
+                1.000000000000000   2.000000000000000   1.000000000000000   1.000000000000000  -1.955405908813222   0.955932560905914
+                1.000000000000000   1.000000000000000                   0   1.000000000000000  -0.977058660983481                   0];
+            G = [0.000134253903833
+                0.000133530665970
+                0.000132877865190
+                0.000132330984941
+                0.000131918938146
+                0.000131663023173
+                0.011470669508260
+                1.000000000000000];
+
+%                 emg_evl_bt10 = filtfilt(SOS,G,abs(emg_stp4)); 
+
+%                 emg_evl_bt10 = filtfilt(SOS,G,abs(emg_evl1)); 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
 %                 emg_evl = emg_evl/obj.amp_norm(chi); % norm by maximum
+%                 emg_evl = emg_evl_bt05;
+%                     emg_evl = emg_evl_bt10;
 %                 [emg_evl, ~] = envelope(emg_stp4, 500, 'analytic'); 
 %                 [emg_evlu, emg_evlp] = envelope(emg_stp4, 300, 'rms'); 
                 emg_stp5 = emg_stp4; % do not do anything (rectify and envolope)
@@ -425,25 +534,32 @@ classdef SessionScanEMG
 %                     ylabel('magnitude (mV)');
 %                     legend('raw', 'highpass', 'z-score', 'lowpass', 'sqrt transform', 'envolope');
 %                 end
-                ifplot = 1;
+%                 ifplot = 1;
                 if (ifplot)
 
                     clear axh
                     figure(chi);
                     axh(1) = subplot(2,1,1); hold on;
                     % plot the time-domain signal 
-                    plot(t_raw, emg_raw(chi,:), ':');   % raw
-                    plot(t, emg_int(chi,:), '--');       % remove line noise
-                    plot(t, emg_stp1, '-');              % highpass
+%                     plot(t_raw, emg_raw(chi,:), ':');   % raw
+%                     plot(t, emg_int(chi,:), '--');       % remove line noise
+%                     plot(t, emg_stp1, '-');              % highpass
                     plot(t, emg_stp4, 'Color', [0.5 0.5 0.5]);              % rectify
-                    plot(t, emg_evl, 'LineWidth',1);               % envelope
+%                     plot(t, emg_evl, 'LineWidth',1);               % envelope
+%                     plot(t, emg_evl_bt05, 'LineWidth',1);               % envelope
+%                     plot(t, emg_evl1, 'LineWidth',2);               % envelope
+%                     plot(t, emg_evl_bt10, 'LineWidth',1);               % envelope
 %                     plot(t, emg_evlu, 'k.');
 %                     plot(t, emg_evlp, 'k.');
-                    legend('raw', 'line noise removed', 'highpass', 'rectified', 'envelop');
+                    plot(t, emg_evl1, 'LineWidth', 1);
+%                     plot(t-t(1), emg_evl_bt2_rms, 'LineWidth', 1);
+                    plot(t, emg_rms_bt2, 'LineWidth', 1);
+%                     legend('raw', 'line noise removed', 'highpass', 'rectified', 'envelop');
+                    legend('rectified', 'butterworth-filtered', 'rms-filtered', 'rms*btw-2Hz');
                     xlabel('time (s)');
-                    if (obj.mvf_shrink)
-                        plot(t, emg_evl./obj.amp_norm(chi)*100, 'LineWidth', 1);
-                        ylabel('intensity (%)');
+                    if (obj.mvf_shrink) % this line should not be here!!!
+%                         plot(t, emg_evl./obj.amp_norm(chi)*100, 'LineWidth', 1);
+                        ylabel('intensity (portion)');
                         ylim([-10 200]);
                     else
                         ylabel('value (mV)');
@@ -461,55 +577,86 @@ classdef SessionScanEMG
                     [p2, f2] = pspectrum(emg_int(chi,:), 2000);
                     [p3, f3] = pspectrum(emg_stp1, 2000);
                     [p4, f4] = pspectrum(emg_stp4, 2000);
-                    [p5, f5] = pspectrum(emg_evl, 2000);
-                    plot(f1, log(p1), 'r');
-                    plot(f2, log(p2), 'g');
-                    plot(f3, log(p3), 'b');
+%                     [p5, f5] = pspectrum(emg_evl, 2000);
+%                     [p6, f6] = pspectrum(emg_evl_bt05, 2000);
+%                     [p6, f6] = pspectrum(emg_evl_bt10, 2000);
+%                     plot(f1, log(p1), 'r');
+%                     plot(f2, log(p2), 'g');
+%                     plot(f3, log(p3), 'b');
                     plot(f4, log(p4), 'c');
-                    plot(f5, log(p5), 'm');
+%                     plot(f5, log(p5), 'm');
+%                     plot(f6, log(p6), 'k');
 
 %                     obj.powerspectrum(emg_evlu-emg_evlp,t,axh(2)); 
                     xlim([0 1000]); % Fs==2000;
-                    legend('raw', 'line noise removed', 'highpass', 'rectified', 'envelop');
+%                     legend('raw', 'line noise removed', 'highpass', 'rectified', 'envelop', 'envelop-btw0.5Hz');
+                    legend('raw', 'line noise removed', 'highpass', 'rectified', 'envelop', 'envelop-btw10Hz');
                     sgtitle(['emg data for ch' num2str(chi)]);
                 end
+                toc 
                 
-                emg_processed0(chi,:)=emg_stp4;
-                emg_processed(chi,:) = emg_stp5;%emg_stp4;
-                emg_processedenv(chi,:) = emg_evl;
-                
-            end
-            close all;
-            obj.data.emg = emg_processed;
-            obj.data.emgevl=emg_processedenv;
-            obj.data.t = t;
-            ifplot = 0;
+%                 ifplot = 0;
+%                 if (ifplot)
+%                     figure(); hold on;
+%                     plot(t, emg_stp4, ':');   % raw
+%                     plot(t, emg_evl_bt05, 'LineWidth',1);               % envelope
+%                 end
+
+%                 emg_processed0(chi,:)=emg_stp4;
+%                 emg_processed(chi,:) = emg_stp5;%emg_stp4;
+%                 emg_processedenv(chi,:) = emg_evl;
+%                 emg_processedenv(chi,:) = emg_evl_bt05;
+%                 emg_processedenv(chi,:) = emg_evl_bt10;
+%                emg_processedenv(chi,:) = emg_rms_bt2;
+                emg_processed = emg_stp4; % only rectified
+                emg_processedenv = emg_rms_bt10;
+% %             end
+%             close all;
+            obj.data.emg = emg_processed';
+            obj.data.emgevl2=emg_rms_bt2';
+            obj.data.emgevl10=emg_rms_bt10';
+            obj.data.emgraw = emg_int;      % a data on the intermediate after the filter the line noise
+            obj.data.emgevl = emg_rms_bt10';     % I prefer higher frequency.
+            obj.data.t = t';
+%             ifplot = 1;
             if (ifplot)
                 clf;
                 % plot
 
                 axh(2) = subplot(5,1,2); hold on;
 %                 plot(t,emg_processed0(1:2,:), '.'); %title('EMG12'); %ylabel('N');
-                plot(t,emg_processed(1:2,:)); %title('EMG12'); %ylabel('N');
-                legend('1', '2');
+                plot(t,emg_processed(:,1)); %title('EMG12'); %ylabel('N');
+                plot(t,-emg_processed(:,2)); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processedenv(:,1), 'linewidth', 2);
+                plot(t,-emg_processedenv(:,2), 'linewidth', 2);
+                legend('1', '2', '1env', '2env');
                 
                 axh(3) = subplot(5,1,3); hold on;
 %                 plot(t,emg_processed0(3:4,:), '.'); %title('EMG12'); %ylabel('N');
-                plot(t,emg_processed(3:4,:)); %title('EMG34'); %ylabel('N');
-                legend('3', '4');
+                plot(t,emg_processed(:,3)); %title('EMG12'); %ylabel('N');
+                plot(t,-emg_processed(:,4)); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processedenv(:,3), 'linewidth', 2);
+                plot(t,-emg_processedenv(:,4), 'linewidth', 2);
+                legend('3', '4', '1env', '2env');
                 
                 % hold on; plot(t,emg_processed(3,:));
                 % plot(t,emg_processed0(3,:)); %title('EMG34'); %ylabel('N');
                 
                 axh(4) = subplot(5,1,4); hold on;
 %                 plot(t,emg_processed0(5:6,:), '.'); %title('EMG12'); %ylabel('N');
-                plot(t,emg_processed(5:6,:)); %title('EMG56'); %ylabel('N');
-                legend('5', '6');
+                plot(t,emg_processed(:,5)); %title('EMG12'); %ylabel('N');
+                plot(t,-emg_processed(:,6)); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processedenv(:,5), 'linewidth', 2);
+                plot(t,-emg_processedenv(:,6), 'linewidth', 2);
+                legend('5', '6', '1env', '2env');
                 
                 axh(5) = subplot(5,1,5); hold on;
 %                 plot(t,emg_processed0(7:8,:), '.'); %title('EMG12'); %ylabel('N');
-                plot(t,emg_processed(7:8,:)); %title('EMG78'); %ylabel('N');
-                legend('7', '8');
+                plot(t,emg_processed(:,7)); %title('EMG12'); %ylabel('N');
+                plot(t,-emg_processed(:,8)); %title('EMG12'); %ylabel('N');
+                plot(t,emg_processedenv(:,7), 'linewidth', 2);
+                plot(t,-emg_processedenv(:,8), 'linewidth', 2);
+                legend('7', '8', '1env', '2env');
                 
                 linkaxes(axh, 'x');
                 linkaxes(axh(2:end), 'y');
@@ -627,7 +774,7 @@ classdef SessionScanEMG
                 legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
             end
 
-            ifplot = 1; % the summary plot of the processing
+%             ifplot = 1; % the summary plot of the processing
             if (ifplot)
                 figure('position', [0 0 552 1000]);
                 % a 8-by-1 figure shows the power intensity of all the band (to avoid the
@@ -767,7 +914,7 @@ classdef SessionScanEMG
                 legend('ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8');
             end
 
-            ifplot = 1; % the summary plot of the processing
+%             ifplot = 1; % the summary plot of the processing
             if (ifplot)
                 figure('position', [0 0 552 1000]);
                 % a 8-by-1 figure shows the power intensity of all the band (to avoid the

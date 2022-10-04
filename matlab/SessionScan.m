@@ -19,10 +19,14 @@ classdef (HandleCompatible)SessionScan < handle
         hand_pos        % position read from WAM endpoint
         hand_pos_offset % the center_pos for WAM endpoint
         force           % force in the force transducer
-        FTrot_M = ...   % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
-            [0          0           cosd(180)
-            -sind(45)   cosd(45)    0
-            cosd(45)    sind(45)    0];
+%         FTrot_M = ...   % global: x-right, y-front, z-up, FT_base x-backup, y-frontup, z-left
+%            [0          0           -cosd(180)
+%             +sind(45)  -cosd(45)    0
+%             -cosd(45)   -sind(45)    0];
+        FTrot_M = ...
+            [cosd(45) -sind(45)    0
+             sind(45)  cosd(45)    0
+                    0          0     1];
         taskState
         trials TrialScan% member function
         %%% perturbation variables
@@ -58,9 +62,9 @@ classdef (HandleCompatible)SessionScan < handle
             %   Detailed explanation goes here
             % load the INTERMEDIATE file for the time 
             file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % an examplary trial
-            file_dir_formmed = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/';
-            file_dir_int = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate/';
-            data1 = load([file_dir_int  file_name], 'Data');
+            file_dir_formmed = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
+            file_dir_int = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate';
+            data1 = load([file_dir_int  '/' file_name], 'Data');
             wam_sendt = data1.Data.QL.Headers.BURT_STATUS.send_time;
             wam_recvt = data1.Data.QL.Headers.BURT_STATUS.recv_time;
             wam_rdt   = double(data1.Data.QL.Data.BURT_STATUS.RDT);
@@ -135,6 +139,7 @@ classdef (HandleCompatible)SessionScan < handle
                     disp('Loading (intermed/raw) EMG...');
                 end
                 obj.emg = SessionScanEMG(obj.ssnum, 0); % normal blocks
+%                 obj.emg = SessionScanEMG(obj.ssnum, 1); % reload EMG
                 obj.emg_t = obj.emg.data.t;
                 obj.emg_h = obj.emg.data.emg;
                 obj.emg_evl=obj.emg.data.emgevl; % envolope
@@ -309,7 +314,9 @@ classdef (HandleCompatible)SessionScan < handle
             obj = obj.dealingEMGOpenLoopNoise();   % bad EMG to 0
             if_calibSS = findCalibSS(obj.ssnum);
             if (~if_calibSS)
-                obj = obj.dealingOPTMarkersErr();      % bad OPT markers
+%                 if (size(obj.data.ox,2)~=0)
+                    obj = obj.dealingOPTMarkersErr();      % bad OPT markers
+%                 end
             end
             end
         end
@@ -501,7 +508,11 @@ classdef (HandleCompatible)SessionScan < handle
             v_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
                 obj.Data.Velocity.Actual(:,~idx_nan)', obj.wam_t', 'previous');
             v_msg_h = v_msg_h';
-            
+            f_rotate = obj.rotateAxisForce();
+            f_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
+                f_rotate(1:3,~idx_nan)', obj.wam_t', 'previous');
+            f_msg_h = f_msg_h';
+
             ifplot = 0;
             if (ifplot)
                 clf;
@@ -544,6 +555,7 @@ classdef (HandleCompatible)SessionScan < handle
             obj.data.v_msg = v_msg_h;
             obj.data.f = force_h;
             obj.data.ftq= torque_h; % force transducer cencored torque
+            obj.data.f_msg = f_msg_h;
             
             if (ifplot)
                 clf;
@@ -600,6 +612,8 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.data.optx = data.optx;
                 obj.data.opty = data.opty;
                 obj.data.optz = data.optz;
+            else 
+                obj.data.ox = zeros(1,0,3);
             end
             
             if (~isempty(obj.emg_t) && ~isempty(obj.emg_h))
@@ -1023,9 +1037,11 @@ classdef (HandleCompatible)SessionScan < handle
                     % interp the old data into the new
                     data_org(:,:,marker_i_tmp) = obj.trials(trial_lost).data.ox(:,:,marker_i_tmp);
                     trial_lost
-                    obj.trials(trial_lost).data.ox(:,:,marker_i_tmp) = (interp1(...
-                        obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
-                        obj.trials(trial_lost).data.t_shift', 'linear', 'extrap'))';
+                    if (~isempty(trial_idx_sup))
+                        obj.trials(trial_lost).data.ox(:,:,marker_i_tmp) = (interp1(...
+                            obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
+                            obj.trials(trial_lost).data.t_shift', 'linear', 'extrap'))';
+                    end
 
                 else
                     % else, if the position reading is nan before release
@@ -1037,7 +1053,7 @@ classdef (HandleCompatible)SessionScan < handle
                         obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
                         obj.trials(trial_lost).data.t_shift', 'linear', 'extrap'))';
                 end
-                ifplot = 1;
+                ifplot = 0;
                 if(ifplot)
                     clear axhtmp lnhtmp;
                     axhtmp(1) = subplot(2,1,1);
@@ -1415,8 +1431,8 @@ classdef (HandleCompatible)SessionScan < handle
         function fh = plotTaskEndpointPosition(obj)
              % plot the y-axis position throughout this session
             fh = figure(); hold on;
-            plot(obj.time, obj.Data.Position.Actual(:,2), 'b-o');
-            plot(obj.data.t, obj.data.x(2,:), '.');
+            plot(obj.time, obj.Data.Position.Actual(:,1), 'b-o');
+            plot(obj.data.t, obj.data.x(1,:), '.');
             legend('msg', 'hi-sp');
             xlabel('time (s)');
             ylabel('pos (m)');
@@ -1467,7 +1483,7 @@ classdef (HandleCompatible)SessionScan < handle
              % plot the y-axis velocity throughout this session
             fh = figure(); hold on;
             plot(obj.time, obj.Data.Velocity.Actual(2,:), 'b-o');
-            plot(obj.data.t, obj.data.v(2,:), '.');
+            plot(obj.data.t, obj.data.v(1,:), '.');
             legend('msg', 'hi-sp');
             xlabel('time (s)');
             ylabel('vel (m/s)');
@@ -1495,8 +1511,8 @@ classdef (HandleCompatible)SessionScan < handle
             fh = figure(); 
             
             axh(1) = subplot(2,1,1); hold on;
-            plot(obj.time, obj.force(2,:), 'b-o');
-            plot(obj.data.t, obj.data.f(2,:), '.');
+            plot(obj.time, obj.force(1,:), 'b-o');
+            plot(obj.data.t, obj.data.f(1,:), '.');
             legend('msg', 'hi-sp');
             xlabel('time (s)');
             ylabel('force (N)');
@@ -1610,37 +1626,51 @@ classdef (HandleCompatible)SessionScan < handle
             
         end
 
-        function fh = plotForceEMGEVL(obj, fh) 
-            % plot the force as well as the EMG 
-            % aim to show the 'MVF'  
+        function fh = plotForceEMGEVL(obj, fh)
+            % plot the force as well as the EMG
+            % aim to show the 'MVF'
             if (~exist('fh', 'var'))
                 fh = figure();
             else
-                fh = figure(fh); 
+                fh = figure(fh);
             end
             axh(1) = subplot(5,1,1);
-            plot(obj.data.t(1:end-1), obj.data.f(1,1:end-1));
-
+            plot(obj.data.t(1:end-1) - obj.data.t(1), obj.data.f(1,1:end-1), 'linewidth', 2);
+            grid on;
+            xlabel('time (s)');
+            ylabel('force (N)');
 
             axh(2) = subplot(5,1,2); hold on;
-            plot(obj.data.t(1:end-1), obj.data.emgevl(1,1:end-1), 'r');
-            plot(obj.data.t(1:end-1),-obj.data.emgevl(2,1:end-1), 'b');
+            plot(obj.data.t(1:end-1) - obj.data.t(1), obj.data.emgevl(1,1:end-1), 'r');
+            plot(obj.data.t(1:end-1) - obj.data.t(1),-obj.data.emgevl(2,1:end-1), 'b');
+            grid on;
+            xlabel('time (s)');
+            ylabel('EMG (mV)');
 
             axh(3) = subplot(5,1,3); hold on;
-            plot(obj.data.t(1:end-1), obj.data.emgevl(3,1:end-1), 'r');
-            plot(obj.data.t(1:end-1),-obj.data.emgevl(4,1:end-1), 'b');
+            plot(obj.data.t(1:end-1) - obj.data.t(1), obj.data.emgevl(3,1:end-1), 'r');
+            plot(obj.data.t(1:end-1) - obj.data.t(1),-obj.data.emgevl(4,1:end-1), 'b');
+            grid on;
+            xlabel('time (s)');
+            ylabel('EMG (mV)');
 
             axh(4) = subplot(5,1,4); hold on;
-            plot(obj.data.t(1:end-1), obj.data.emgevl(5,1:end-1), 'r');
-            plot(obj.data.t(1:end-1),-obj.data.emgevl(6,1:end-1), 'b');
+            plot(obj.data.t(1:end-1) - obj.data.t(1), obj.data.emgevl(5,1:end-1), 'r');
+            plot(obj.data.t(1:end-1) - obj.data.t(1),-obj.data.emgevl(6,1:end-1), 'b');
+            grid on;
+            xlabel('time (s)');
+            ylabel('EMG (mV)');
 
             axh(5) = subplot(5,1,5); hold on;
-            plot(obj.data.t(1:end-1), obj.data.emgevl(7,1:end-1), 'r');
-            plot(obj.data.t(1:end-1),-obj.data.emgevl(8,1:end-1), 'b');
+            plot(obj.data.t(1:end-1) - obj.data.t(1), obj.data.emgevl(7,1:end-1), 'r');
+            plot(obj.data.t(1:end-1) - obj.data.t(1),-obj.data.emgevl(8,1:end-1), 'b');
+            grid on;
+            xlabel('time (s)');
+            ylabel('EMG (mV)');
 
             linkaxes(axh, 'x');
         end
-        function fh = plotForceEMG(obj, fh) 
+        function fh = plotForceEMG(obj, fh)
             % plot the force as well as the EMG 
             % aim to show the 'MVF'  
             if (~exist('fh', 'var'))
@@ -1650,26 +1680,88 @@ classdef (HandleCompatible)SessionScan < handle
             end
             axh(1) = subplot(5,1,1);
             plot(obj.data.t(1:end-1), obj.data.f(1,1:end-1));
+            grid on;
 
 
             axh(2) = subplot(5,1,2); hold on;
             plot(obj.data.t(1:end-1), obj.data.emg(1,1:end-1), 'r');
             plot(obj.data.t(1:end-1),-obj.data.emg(2,1:end-1), 'b');
 
+
             axh(3) = subplot(5,1,3); hold on;
             plot(obj.data.t(1:end-1), obj.data.emg(3,1:end-1), 'r');
             plot(obj.data.t(1:end-1),-obj.data.emg(4,1:end-1), 'b');
+
 
             axh(4) = subplot(5,1,4); hold on;
             plot(obj.data.t(1:end-1), obj.data.emg(5,1:end-1), 'r');
             plot(obj.data.t(1:end-1),-obj.data.emg(6,1:end-1), 'b');
 
+
             axh(5) = subplot(5,1,5); hold on;
             plot(obj.data.t(1:end-1), obj.data.emg(7,1:end-1), 'r');
             plot(obj.data.t(1:end-1),-obj.data.emg(8,1:end-1), 'b');
 
+
             linkaxes(axh, 'x');
         end
+        function fh = plotForceEMGEVL_overlap(obj, fh) 
+            % plot the force as well as the EMG 
+            % aim to show the 'MVF'  
+            if (~exist('fh', 'var'))
+                fh = figure();
+            else
+                fh = figure(fh); 
+            end
+            axh(1) = subplot(9,1,1);
+            plot(obj.data.t(1:end-1), obj.data.f(1,1:end-1));
+%             ylim([-30 30]);
+            ylim([-200 200]);
+
+
+            axh(2) = subplot(9,1,2); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(1,1:end-1), 'r');
+            plot(obj.data.t(1:end-1), obj.data.emgevl(1,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(3) = subplot(9,1,3); hold on;
+            plot(obj.data.t(1:end-1),obj.data.emg(2,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),obj.data.emgevl(2,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(4) = subplot(9,1,4); hold on;
+            plot(obj.data.t(1:end-1),obj.data.emg(3,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),obj.data.emgevl(3,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(5) = subplot(9,1,5); hold on;
+            plot(obj.data.t(1:end-1),obj.data.emg(4,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),obj.data.emgevl(4,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(6) = subplot(9,1,6); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(5,1:end-1), 'r');
+            plot(obj.data.t(1:end-1), obj.data.emgevl(5,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(7) = subplot(9,1,7); hold on;
+            plot(obj.data.t(1:end-1),obj.data.emg(6,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),obj.data.emgevl(6,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(8) = subplot(9,1,8); hold on;
+            plot(obj.data.t(1:end-1), obj.data.emg(7,1:end-1), 'r');
+            plot(obj.data.t(1:end-1), obj.data.emgevl(7,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            axh(9) = subplot(9,1,9); hold on;
+            plot(obj.data.t(1:end-1),obj.data.emg(8,1:end-1), 'r');
+            plot(obj.data.t(1:end-1),obj.data.emgevl(8,1:end-1), 'b', 'linewidth', 2);
+            ylim([-1 1]);
+
+            linkaxes(axh, 'x');
+        end
+        
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % PLOT TRIALFY DATA ON SPECIFY ALIGNED EVENTS 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1819,7 +1911,7 @@ classdef (HandleCompatible)SessionScan < handle
             hold on;
             trials = obj.trials(tidx);
             for trial_i = 1:length(trials)
-                plot(trials(trial_i).data.t_shift, trials(trial_i).data.f(2,:));
+                plot(trials(trial_i).data.t_shift, trials(trial_i).data.f(1,:));
             end
             xlim([-1 1]);
             xlabel('time (s)');
@@ -1858,6 +1950,36 @@ classdef (HandleCompatible)SessionScan < handle
             xlim([-1 1]);
         end
         
+
+        function axh = plotEachTrialTsForcePosition(obj) 
+            trials_sel = [obj.trials.tarF] == 15 & [obj.trials.tarL] == 0.075;
+            trials_list = find(trials_sel);
+            for trial_i = 1:length(trials_list)
+                trial_idx = trials_list(trial_i);
+                fh = figure(); 
+                axh(1) = subplot(4,1,1); 
+                plot(obj.trials(trial_idx).data.t_shift, obj.trials(trial_idx).data.ts);
+                ylabel('State'); ylim([0 8])
+
+                axh(2) = subplot(4,1,2); 
+                plot(obj.trials(trial_idx).data.t_shift, obj.trials(trial_idx).data.f(1,:));
+                ylabel('F(dir-x) (N)');
+
+
+                axh(3) = subplot(4,1,3); 
+                plot(obj.trials(trial_idx).data.t_shift, obj.trials(trial_idx).data.ox(1,:,1));
+                ylabel('x(OPT) (m)');
+
+                axh(4) = subplot(4,1,4); 
+                plot(obj.trials(trial_idx).data.t_shift, obj.trials(trial_idx).data.x(1,:));
+                ylabel('x(WAM) (m)');
+
+                linkaxes(axh, 'x');
+                sgtitle(fh, ['ss' num2str(obj.ssnum) ' tr' num2str(obj.trials(trial_idx).tNo)]);
+            end
+
+
+        end
         % exception figures for specific sessions:
         function axh = plotRecordedEndPointPosition(obj)
             % for testing if the recorded endpoint position is the actual
@@ -2151,6 +2273,40 @@ classdef (HandleCompatible)SessionScan < handle
             
             
             % pulse from the blackrock
+            if max(eventsL) == 16 % did not record the right pulse, find the falling edge
+                % seperte the data into 1:16 
+                eventsLidx = find(eventsL == 16); 
+                eventsT_bin = unique(eventsT); % should be same length as eventsL_bin
+                eventsL_bin = ones(length(eventsLidx), 16);
+                for i = 1:length(eventsLidx)
+                    if i == 1 
+                        eventsLidx_tmp = 1:eventsLidx(1);
+                    else
+                        eventsLidx_tmp = eventsLidx(i-1)+1:eventsLidx(i);
+                    end
+                    binstr = eventsL(eventsLidx_tmp); % a string with some subset of 1:16
+                    binstr_0 = setdiff(1:16, binstr); 
+                    for j = 1:length(binstr_0)
+                        % binstr_0(j) % 1, 2, or 3
+                        eventsL_bin(i, binstr_0(j)) = 0;
+                    end
+                end
+                eventsL_bin = [ones(1,16); eventsL_bin];
+                eventsL_bin_diff = diff(eventsL_bin);
+                eventsL_bin_diff = eventsL_bin_diff(1:end-1,:); % which may contains '-1'; 
+                eventsL_bin_ridx = find(sum(eventsL_bin_diff == -1,2))
+                % find the falling edge from the eventsL_bin 
+                eventsL_falling = [];
+                eventsT_falling = [];
+                for i = 1:length(eventsL_bin_ridx)
+                    eventsL_tmp = find(eventsL_bin_diff(i,:) == -1)
+                    eventsT_tmp = eventsT_bin(i);
+                    eventsL_falling = [eventsL_falling eventsL_tmp];
+                    eventsT_falling = [eventsT_falling eventsT_tmp];
+                end
+                eventsL = eventsL_falling;
+                eventsT = eventsT_falling;
+            end
             events_type = unique(eventsL);
             for etypei = 1:length(events_type)
                 bk_time{etypei} = eventsT(eventsL == events_type(etypei));
@@ -2330,9 +2486,11 @@ classdef (HandleCompatible)SessionScan < handle
             %%% 1. the FT time
             try
             obj.force_t = interp1(t_interest{1}, bk_time{1}, obj.ft.elapse, 'linear', 'extrap'); 
+            obj.ft.brtime = obj.force_t;
             catch 
                 if (ismember(obj.ssnum, [3197 3198]))
                     obj.force_t = interp1(t_interest{2}, bk_time{2}, obj.ft.elapse, 'linear', 'extrap'); 
+                    obj.ft.brtime = obj.force_t;
                     % this trial do not have the FT pulse, use WAM pulse to
                     % debug...
                 end

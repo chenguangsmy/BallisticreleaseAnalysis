@@ -24,6 +24,7 @@ classdef SessionScanFT
         RDT
         FT
         elapse
+        brtime % corresponding to black rock time
         force0
 
         cali_list = [4315 4312 4324 4327 4335 4338 4349 4354]; 
