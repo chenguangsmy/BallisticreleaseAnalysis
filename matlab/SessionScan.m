@@ -487,6 +487,14 @@ classdef (HandleCompatible)SessionScan < handle
             %   data in the obj.data
 %             obj.force_t
 %             obj.wam_t
+            % resample all the data in a same frequency: 2000Hz
+            % 
+            t_min = min(obj.wam_t); 
+            t_max = max(obj.wam_t); 
+            Fs = 2000; 
+            pts = floor((t_max - t_min))/(1/Fs);
+            t_max_ = t_min + (pts-1)*(1/Fs);
+            sample_t = linspace(t_min, t_max_, pts);
             force_h = interp1(obj.force_t', obj.ft.force', obj.wam_t', 'linear', 'extrap')'; 
             torque_h = interp1(obj.force_t', obj.ft.torque_origin', obj.wam_t', 'linear', 'extrap')';
             
@@ -612,6 +620,10 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.data.optx = data.optx;
                 obj.data.opty = data.opty;
                 obj.data.optz = data.optz;
+                obj.data.ox = zeros([size(data.optx), 3]);
+                obj.data.ox(:,:,1) = data.optx;
+                obj.data.ox(:,:,2) = data.opty;
+                obj.data.ox(:,:,3) = data.optz;
             else 
                 obj.data.ox = zeros(1,0,3);
             end
@@ -620,7 +632,7 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.data.emg = interp1(obj.emg_t', obj.emg_h', obj.wam_t', 'linear', 'extrap')';
                 obj.data.emgevl=interp1(obj.emg_t', obj.emg_evl', obj.wam_t', 'linear', 'extrap')';
                 
-                
+                ifplot = 0;
                 if (ifplot)
                     clf;
                     for i = 1:8
@@ -948,7 +960,8 @@ classdef (HandleCompatible)SessionScan < handle
                             4313 4314 ...
                             4328 4329 ...
                             4339 4340 4341 ...
-                            4354 4355 4356];
+                            4354 4355 4356 ...
+                            4382 4383];
             % replace the recording error trial with the closest other
             % trial data 
             % especially useful for marker2(elbow) and marker3(shoulder)
@@ -1003,6 +1016,7 @@ classdef (HandleCompatible)SessionScan < handle
                 else
                     if markers_list(trial_i) == 1
                         disp('DealingWithOPTRecordingError: cannot find suitable replacement for Marker1!')
+                        trials_rest_cond_idx = []; % should I do this...? cg20221012
                     else % marker 2 or 3 
                         trials_rest_cond = ...
                             [obj.trials(trials_rest).tarL] == obj.trials(trial_i_tmp).tarL; 
@@ -1036,7 +1050,7 @@ classdef (HandleCompatible)SessionScan < handle
                     trial_idx_sup = trials_rest_cond_idx(minidx);
                     % interp the old data into the new
                     data_org(:,:,marker_i_tmp) = obj.trials(trial_lost).data.ox(:,:,marker_i_tmp);
-                    trial_lost
+                    trial_lost;
                     if (~isempty(trial_idx_sup))
                         obj.trials(trial_lost).data.ox(:,:,marker_i_tmp) = (interp1(...
                             obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
