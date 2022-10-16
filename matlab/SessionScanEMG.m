@@ -140,11 +140,11 @@ classdef SessionScanEMG
 
                 % do the frequency-based processing
                 % preprocess data (filter, and take the envolope)-
-                obj = obj.preprocessRawData(1);
+% %                 obj = obj.preprocessRawData(1); % do not pre-process as Federico asked so 
 
                 % convert chanel to the MVF
-                obj.mvf_shrink = exist_flag;
-                obj = obj.normalizebyMVF(obj.amp_norm); % already
+% %                 obj.mvf_shrink = exist_flag;
+% %                 obj = obj.normalizebyMVF(obj.amp_norm); % already
 
                 data = obj.data;
                 save(obj.fname_fmt, 'data');
@@ -238,7 +238,7 @@ classdef SessionScanEMG
         end
         
         function obj = readRawDataM(obj)
-            %data = readRawData(obj)
+            %
             %   Read raw data from the *.mat file
             data_tmp = load(obj.fname_rawm);
             % concatinate each file

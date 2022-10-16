@@ -5,7 +5,7 @@ obj.data_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab
 % obj.data_name = 'ss4265_4274';
 % obj.data_name = 'ss4310_4341';
 % obj.data_name = 'ss4310_4356_rawEMG';
-obj.data_name = 'ss4310_4356';
+obj.data_name = 'ss4310_4356_EMG.mat';
 
 load([obj.data_dir '/' obj.data_name], 'data');
 obj.data = data;
@@ -33,7 +33,7 @@ emg_pair_label = {'wrist', 'wrist', ...
 cols = 1;
 rows = 2 + length(emg_pair)/2; % only plot position and the muscles
 axh = zeros(rows, cols);
-for subj_i  = 1:4%2%3%2;%2;
+for subj_i  = 1%1:4%2%3%2;%2;
 for dir_i   = 1%:4
 pert_i  = 1;
 for fce_i = 2 % 1:3
@@ -89,6 +89,7 @@ for fce_i = 2 % 1:3
             'EdgeColor', 'none');
         ylabel('x (m)'); title('position');
         xlabel('t (s)');
+        grid on;
 
         %
         axh(2, 1) = subplot(rows,cols,2); hold on;       % force
@@ -105,6 +106,7 @@ for fce_i = 2 % 1:3
             'EdgeColor', 'none');
         ylabel('v (m/s)'); title('velocity');
         xlabel('t (s)');
+        grid on;
 
         %
         for muscle_i = 1:length(emg_pair)
@@ -145,9 +147,9 @@ for fce_i = 2 % 1:3
         linkaxes(axh(:), 'x');
         % xlim([-3 2]); % sec
 %         set(axh(1, 1), 'YLim', [-0.50 -0.40 ])
-        set(axh(1, 1), 'YLim', [-0.60 -0.40 ])
+%         set(axh(1, 1), 'YLim', [-0.60 -0.40 ])
 %         set(axh(2, 1), 'YLim', [-0.1 0.6]);
-        set(axh(2, 1), 'YLim', [-0.6 0.6]);
+%         set(axh(2, 1), 'YLim', [-0.6 0.6]);
         xlim([-0.5 0.5]); % sec
 %         xlim([-0.5 2]); % sec
         % ylim([-1 5]);
@@ -165,7 +167,7 @@ obj.data_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab
 % obj.data_name = 'ss4253_4263';
 % obj.data_name = 'ss4253_4274';
 % obj.data_name = 'ss4310_4341';
-obj.data_name = 'ss4310_4356';
+obj.data_name = 'ss4310_4356_EMG';
 
 load([obj.data_dir '/' obj.data_name], 'data');
 obj.data = data;
@@ -894,6 +896,170 @@ end
 
 end
 
+%% 1. plot data according to endpoint position/velocity
+% %add the EMG 3 std here for comply with 'not significant change' thought
+obj.data_dir = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData';
+% obj.data_name = 'ss4253_4263';
+% obj.data_name = 'ss4253_4274';
+% obj.data_name = 'ss4265_4274';
+% obj.data_name = 'ss4310_4341';
+% obj.data_name = 'ss4310_4356_rawEMG';
+obj.data_name = 'ss4310_4356_EMG';
+
+load([obj.data_dir '/' obj.data_name], 'data');
+obj.data = data;
+obj.cond.subj = 1:size(data,1);
+obj.cond.dir  = 1:size(data,2);
+obj.cond.fce  = 1:size(data,3);
+obj.cond.dist = 1:size(data,4);
+obj.cond.trial= 1:size(data,5);
+obj.cond.pert = 1:size(data,6);
+
+clear dat
+
+% fh = figure('name', 'EMG', 'unit', 'inch', 'position', [0 0 7 12]);
+Fs = 500;
+fh1 = figure();
+col_type = colormap('lines');
+close(fh1);
+t_range = [-0.5 1];
+
+emg_pair = [1 2 3 4 5 6 7 8];
+emg_pair_label = {'wrist', 'wrist', ...
+    'elbow', 'elbow', ...
+    'deltoid', 'deltoid', ...
+    'shoulder', 'shoulder'};
+cols = 1;
+rows = 2 + length(emg_pair)/2; % only plot position and the muscles
+axh = zeros(rows, cols);
+for subj_i  = 1%1:4%2%3%2;%2;
+for dir_i   = 1%:4
+pert_i  = 1;
+for fce_i = 2 % 1:3
+    for dist_i = 2 %1:3
+        fh = figure('name', 'EMG', 'unit', 'inch', 'position', [0 0 7 12]);
+        trials_list = obj.cond.trial;
+        % make enough space for data
+        dat.row = length(trials_list);
+        dat.col = sum(obj.data{subj_i,dir_i,fce_i,dist_i,1,pert_i}.t > t_range(1) & ...
+            obj.data{subj_i,dir_i,fce_i,dist_i,1,pert_i}.t < t_range(2));
+        %                     dat.t = t_range(1):1/Fs:t_range(2);
+        dat.t = linspace(t_range(1), t_range(2), dat.col);
+        dat.pos = nan(dat.row, dat.col);
+        dat.fce = nan(dat.row, dat.col);
+        dat.vel = nan(dat.row, dat.col);
+        dat.emg = nan(8, dat.row, dat.col);
+
+        trial_idx = 0;
+        for trial_i = trials_list
+            % get the index
+            trial_idx = trial_idx + 1;
+            % stack the data into matrices
+            index_t = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t > t_range(1) & ...
+                obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t < t_range(2);
+            dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.ox(1,index_t),dat.t,'spline');
+            dat.fce(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.f(1,index_t),dat.t,'spline');
+            dat.vel(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.ov(1,index_t),dat.t,'spline');
+            %                         dat.emg(:,trial_idx,1:sum(index_t))=obj.data{subj_i,dir_i,fce_i,tar_i,trial_i,pert_i}.emg(:,index_t);
+            for ch_i = 1:8
+                try
+                    dat.emg(ch_i,trial_idx,:)=interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,index_t)',dat.t,'spline')';
+                    idx_bef0 = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(:)<0 & obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(:)>-0.4; 
+                    datavg.emgmean(ch_i) = mean(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,idx_bef0), 'omitnan');
+                    datavg.emgstd(ch_i) = std(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,idx_bef0), 'omitnan');
+%                     dat.emg(ch_i,trial_idx,:)=interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emgrtf(ch_i,index_t)',dat.t,'spline')';
+                catch
+                    disp(['no EMG this condition! fce' num2str(fce_i) ' dist' num2str(dist_i)]);
+                end
+            end
+        end
+
+        % plot the mean and average of it
+
+        %
+        axh(1, 1) = subplot(rows,cols,1); hold on;       % position
+        plot(dat.t, mean(dat.pos, 'omitnan'), ...
+            'Color', col_type(4+dist_i,:), ...
+            'LineWidth', 2);
+        patch_x = [dat.t, dat.t(end:-1:1)];
+        tmp1 = mean(dat.pos, 'omitnan')+std(dat.pos, 'omitnan');
+        tmp2 = mean(dat.pos, 'omitnan')-std(dat.pos, 'omitnan');
+        patch_y = [tmp1, tmp2(end:-1:1)];
+        patch(patch_x, patch_y, ...
+            col_type(4+dist_i,:), ...
+            'FaceAlpha', 0.3, ...
+            'EdgeColor', 'none');
+        ylabel('x (m)'); title('position');
+        xlabel('t (s)');
+
+        %
+        axh(2, 1) = subplot(rows,cols,2); hold on;       % force
+        plot(dat.t, mean(dat.vel, 'omitnan'), ...
+            'Color', col_type(4+dist_i,:), ...
+            'LineWidth', 2);
+        patch_x = [dat.t, dat.t(end:-1:1)];
+        tmp1 = mean(dat.vel, 'omitnan')+std(dat.vel,'omitnan');
+        tmp2 = mean(dat.vel, 'omitnan')-std(dat.vel,'omitnan');
+        patch_y = [tmp1, tmp2(end:-1:1)];
+        patch(patch_x, patch_y, ...
+            col_type(4+dist_i,:), ...
+            'FaceAlpha', 0.3, ...
+            'EdgeColor', 'none');
+        ylabel('v (m/s)'); title('velocity');
+        xlabel('t (s)');
+
+        %
+        for muscle_i = 1:length(emg_pair)
+            if mod(muscle_i,2) == 1
+                axh(2+muscle_i, 1) = subplot(rows,cols,2 + ceil(muscle_i/2)); hold on;       % ch 3: elbow flexor
+                ag_ant_i = 0;
+            else
+                axh(2+muscle_i, 1) = subplot(rows,cols,2 + ceil(muscle_i/2)); hold on;       % ch 3: elbow flexor
+                ag_ant_i = 1;
+            end
+            lnh(ag_ant_i+1) = plot(dat.t, mean(reshape(dat.emg(muscle_i,:,:), size(dat.emg,2), size(dat.emg,3)),'omitnan'), ...
+                'Color', col_type(4+dist_i+ag_ant_i,:), ...
+                'LineWidth', 2);
+%             ylabel('EMG (mV)'); 
+            ylabel('EMG (portion)'); 
+            title(emg_pair_label{emg_pair(muscle_i)});
+
+            patch_x = [dat.t, dat.t(end:-1:1)];
+            tmp1 = mean(reshape(dat.emg(muscle_i,:,:), size(dat.emg,2), size(dat.emg,3)),'omitnan')+ ...
+                std(reshape(dat.emg(muscle_i,:,:), size(dat.emg,2), size(dat.emg,3)),'omitnan');
+            tmp2 = mean(reshape(dat.emg(muscle_i,:,:), size(dat.emg,2), size(dat.emg,3)),'omitnan')- ...
+                std(reshape(dat.emg(muscle_i,:,:), size(dat.emg,2), size(dat.emg,3)),'omitnan');
+            patch_y = [tmp1, tmp2(end:-1:1)];
+            patch(patch_x, patch_y, ...
+                col_type(4+dist_i+ag_ant_i,:), ...
+                'FaceAlpha', 0.3, ...
+                'EdgeColor', 'none');
+            yline(datavg.emgmean(muscle_i)+[-3 3]*datavg.emgstd(muscle_i), 'color', col_type(4+dist_i+ag_ant_i,:), 'linewidth', 0.8, 'linestyle', '--');
+
+            xline(0.05, 'LineStyle','--');
+            xlabel('t (s)');
+            grid on;
 
             
+        end
+        legend(lnh, 'flexor', 'extensor');
+        %     end
 
+        linkaxes(axh(:), 'x');
+        % xlim([-3 2]); % sec
+%         set(axh(1, 1), 'YLim', [-0.50 -0.40 ])
+%         set(axh(1, 1), 'YLim', [-0.60 -0.40 ])
+%         set(axh(2, 1), 'YLim', [-0.1 0.6]);
+%         set(axh(2, 1), 'YLim', [-0.6 0.6]);
+        xlim([-0.5 0.5]); % sec
+%         xlim([-0.5 2]); % sec
+        % ylim([-1 5]);
+        %                     linkaxes(axh(3:end,:), 'y');
+        %                     set(axh(3, fce_i), 'YLim', [0 0.1]);
+        sgtitle(['EMG demo subj' num2str(subj_i), 'dir' num2str(dir_i) 'f' num2str(fce_i) 'd' num2str(dist_i)]);
+    end
+    
+end
+
+end
+end

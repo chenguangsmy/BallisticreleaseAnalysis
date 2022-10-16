@@ -79,21 +79,23 @@ classdef SessionScanWam
             
             
             try
-            obj.time = Data(:,idx_time)';
-            obj.jp   = Data(:,idx_jp)';   
-            obj.jv   = Data(:,idx_jv)';    
-            obj.tp   = Data(:,idx_tp)';     
-            obj.tv   = Data(:,idx_tv)';     
-            obj.jt   = Data(:,idx_jt)';    
-            obj.rdt  = Data(:,idx_rdt)';   
-            obj.it   = Data(:,idx_it)';
-            obj.cf   = Data(:,idx_cf)';
+            obj.time = Data(1:end-1,idx_time)'; % last datapoint 0
+            obj.jp   = Data(1:end-1,idx_jp)';   
+            obj.jv   = Data(1:end-1,idx_jv)';    
+            obj.tp   = Data(1:end-1,idx_tp)';     
+            obj.tv   = Data(1:end-1,idx_tv)';     
+            obj.jt   = Data(1:end-1,idx_jt)';    
+            obj.rdt  = Data(1:end-1,idx_rdt)';   
+            obj.it   = Data(1:end-1,idx_it)';
+            obj.cf   = Data(1:end-1,idx_cf)';
             if(exist('idx_state','var'))
-                obj.state = Data(:,idx_state)';
+                obj.state = Data(1:end-1,idx_state)';
             end
             catch
                 
             end
+
+            % seems the robot is already on a fixed frequency, no need to interp here 
         end
         
         function obj = concatinateTrials2File(obj, tarL_list, fTh_list, rdt_ranges_all)

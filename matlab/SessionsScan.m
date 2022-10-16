@@ -31,11 +31,17 @@ classdef SessionsScan
 %             ss_num{1} = [4300 4301 4303 4304]; %CZ testing
 %             ss_num{2} = [4310 4311 4313 4314]; % HA testing, 4315 & 4312 as MVF
             ss_num = {...[4300 4301 4303 4304] ...              %CZ testing
-                      [4310 4311 4313 4314]...                  %HA testing
-                      [4325 4326 4328 4329]...                  %NN testing 
-                      [4336 4337 4339 4340 4341]...             %HM testing 
-                      [4351 4352 4353 4355 4356]...   %MR testing
+                      [4310 4311 4313 4314]...                  %HA testing % MVF 4315 4312
+                      [4325 4326 4328 4329]...                  %NN testing % MVF 4324 4327
+                      [4336 4337 4339 4340 4341]...             %HM testing % MVF 4335 4338
+                      [4351 4352 4353 4355 4356]...             %MR testing % MVF 4349 4354
                       };  
+%             ss_num = {...[4300 4301 4303 4304] ...              %CZ testing
+%                       [4310 4311 4313 4314]...                  %HA testing
+%                      };  
+%             ss_num = {  [4385 4386 4387 4388] ...              %HA testing
+%                         [4379 4380 4382 4383] ...              %CZ testing
+%                       };  
 %                       [4349 4351 4352 4353 4354 4355 4356]...   %MR testing
             % subject 2, HA
 %             ss_num{2} = [4204 4205 4206 4208]
@@ -326,6 +332,7 @@ classdef SessionsScan
             % Specify the roated sessions in this function
             % Where the 'target rotation' array will be changed. 
             % 
+            % Mark the session which subject are doing front/back movements
             % This function explains which sessions the subect is sitting
             % on the left of the robot, doing subjects' front and back
             % using robot's right and front. 
@@ -339,7 +346,10 @@ classdef SessionsScan
                             4313 4314 ...
                             4328 4329 ...
                             4339 4340 4341 ...
-                            4354 4355 4356]; 
+                            4354 4355 4356 ...
+                            4382 4383 ...
+                            4387 4388 ...
+                            ]; 
                 % first assume these sessions. These can be read from .conf
                 % in the future. 
                 

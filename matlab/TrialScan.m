@@ -122,15 +122,15 @@ classdef TrialScan
             obj.data.v_msg = sessionScanObj.data.v_msg(:,data_idx);
             obj.data.f_msg = sessionScanObj.data.f_msg(:,data_idx);
             % data from optotrak 
-%             obj.data.ox = sessionScanObj.data.ox(:,data_idx,:);
+            obj.data.ox = sessionScanObj.data.ox(:,data_idx,:);
             
             %%% optional: when emg data exists 
             if (isfield(sessionScanObj.data, 'emg'))
                 obj.data.emg = sessionScanObj.data.emg(:,data_idx);
-                obj.data.emgevl = sessionScanObj.data.emgevl(:,data_idx);
+% %                 obj.data.emgevl = sessionScanObj.data.emgevl(:,data_idx);
             else 
                 obj.data.emg = nan(8,length(data_idx));
-                obj.data.emgevl = nan(8,length(data_idx));
+% %                 obj.data.emgevl = nan(8,length(data_idx));
             end
             
             %%%%%%%%%%%%%%%% deal with perturbation, etc %%%%%%%%%%%%%%%%%%
@@ -211,7 +211,9 @@ classdef TrialScan
                 data.opty=sessionScanObj.data.opty(:,data_idx);
                 data.optz=sessionScanObj.data.optz(:,data_idx);
                 data.ts  =sessionScanObj.data.ts(:,data_idx);
-                if_splineInterp = 1;
+
+                obj.opt_v(1:3) = 1; % only after ss4360 (all 3 markers are here).  
+                if_splineInterp = 1; % only should do this after save the data.
                 ifplot = 0;
                 if (ifplot)
                     clf;
@@ -229,7 +231,7 @@ classdef TrialScan
 
                     % valid ox zone: ts > 2 and ts < 7
                 end
-                ifplot = 0;
+                ifplot = 1;
                 if (if_splineInterp)
                     obj.data.ox = nan(3,length(obj.data.t),10);
                     for marker_i = 1:3%size(data.optx,1)
@@ -237,7 +239,7 @@ classdef TrialScan
                         % QUESTION? DO WE NEED SPLINE?
                         % debugging: fix the interpretation in the not
                         % nessasiry area
-                        val_idx = (~isnan(data.optx(marker_i,:))) ...  % togher with the ts
+                        val_idx = (~isnan(data.optx(marker_i,:))) ... 
                             & (~isnan(data.opty(marker_i,:))) ...
                             & (~isnan(data.optz(marker_i,:)));
                         val_idxts= (~isnan(data.optx(marker_i,:))) ...  % togher with the ts
@@ -256,14 +258,18 @@ classdef TrialScan
                         else % when marker is valid, check wiether it valid during moving
                             TS_MOV = 5;
                             TS_HOLD = 6;
-                            opt_v_th = 10;
+                            Fs = 2000; 
+%                             opt_v_th = Fs*(25/500);
+                            opt_v_th = 400;
                             nval_mov = (((isnan(data.optx(marker_i,:))) ...  % nan during TS_MOV
                                 & (isnan(data.opty(marker_i,:))) ...
                                 & (isnan(data.optz(marker_i,:))))) ...
                                 & (data.ts==TS_MOV | data.ts==TS_HOLD);
-                            % sum them up
-                            nval_mov_length = cumsum(nval_mov);
-                            max_cumsum = max(nval_mov_length);
+                            % calculate how much continuously nan
+                            nval_mov_length = cumsum(~nval_mov); % calculate the non-nan value by calculate the continuous 0
+                            f = tabulate(nval_mov_length)';      
+                            b = f(2,:) - 1;
+                            max_cumsum = max(b(b~=0));
                             if (max_cumsum > opt_v_th)
                                 obj.opt_v(marker_i) = 0;
                             else
@@ -361,19 +367,20 @@ classdef TrialScan
 
                             linkaxes(axh, 'x');
                         end
-                        data.optx(marker_i,:) = intpx;
-                        data.opty(marker_i,:) = intpy;
-                        data.optz(marker_i,:) = intpz;
-                        %                         if(marker_i == 1)
-                        %                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:);
-                        %                                                     data.opty(marker_i,:);
-                        %                                                     data.optz(marker_i,:); ];
-                        obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
-                        obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
-                        obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
-                        %                         end
-
                     end
+                    data.optx(marker_i,:) = intpx;
+                    data.opty(marker_i,:) = intpy;
+                    data.optz(marker_i,:) = intpz;
+                    %                         if(marker_i == 1)
+                    %                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:);
+                    %                                                     data.opty(marker_i,:);
+                    %                                                     data.optz(marker_i,:); ];
+                    obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
+                    obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
+                    obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
+                    %                         end
+
+                    
                 end
             end
 
@@ -1543,9 +1550,9 @@ classdef TrialScan
 %         dat.x_msg = obj.data.x_msg(:,idx);
 %         dat.v_msg = obj.data.v_msg(:,idx);
         if isfield(obj.data, 'emg')
-%             dat.emg=obj.data.emg(:,idx);
-            dat.emg=obj.data.emgevl(:,idx);
-            dat.emgrtf=obj.data.emg(:,idx);
+            dat.emg=obj.data.emg(:,idx);
+% %             dat.emg=obj.data.emgevl(:,idx);
+% %             dat.emgrtf=obj.data.emg(:,idx);)
         else 
             dat.emg=nan(8,length(idx));
         end

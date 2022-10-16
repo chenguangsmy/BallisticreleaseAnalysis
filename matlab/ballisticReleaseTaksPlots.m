@@ -8,9 +8,10 @@ classdef ballisticReleaseTaksPlots
 %         data_name = 'ss4253_4274'
 %         data_name = 'ss4310_4341'
 %         data_name = 'ss4310_4356'
-          data_name = 'ss4310_4356'
 %         data_name = 'ss4310_4314'
-%         data_name = 'ss4351_4356'; 
+%         data_name = 'ss4351_4356';
+%         data_name = 'ss4310_4356'
+        data_name = 'ss4379_4388'       % chenguang test with optotrak markers on
         data
         data_idx_ss
         data_idx_tr
@@ -148,7 +149,7 @@ classdef ballisticReleaseTaksPlots
             if (~ifavg)
                 for si = 1:r % subj
                     for ci = 1:c % direction
-                        rfigure(); 
+                        figure(); 
                         for fi = 1:f%1:2 % target force
                             % axh(ri, ci) = subplot(f,c,f*(ci-1) + ci);
                             % axh(1, ci) = subplot(1,f,ci); grid on; hold on; % plot on columns

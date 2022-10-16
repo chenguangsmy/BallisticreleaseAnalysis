@@ -51,19 +51,27 @@ classdef (HandleCompatible)SessionScan < handle
         col_vec = colormap('lines');
         badTrials = [1];       % bad trial, cull in data
         stateNames = {'Begin', 'Present', 'FrcRamp', 'FrcHold', 'Move', 'Hold', 'End', 'Reset'};
-        
+        Fs = 2000; % sample frequency
     end
     
     methods
         %%% process
-        function obj = SessionScan(ss_num) %(inputArg1,inputArg2)
+        function obj = SessionScan(ss_num, if_reload) %(inputArg1,inputArg2)
             %VARSCAN Construct an instance of this class
-            obj.ssnum = ss_num;
             %   Detailed explanation goes here
             % load the INTERMEDIATE file for the time 
-            file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % an examplary trial
+            % if_reload=0, set to 0 if I need to reload the data
+            if (~exist('if_reload', 'var'))
+                if_reload = 0;
+            end
+            obj.ssnum = ss_num;
+            file_name = ['KingKong.0' num2str(obj.ssnum) '.mat']; % the previous 'formatted' version
             file_dir_formmed = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data';
             file_dir_int = '/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/Intermediate';
+            filename_fmt = ['KingKong.0' num2str(obj.ssnum) '.format.mat']; % my formated version
+            if exist(fullfile(file_dir_formmed, filename_fmt), 'file') && ~if_reload% ifloadagain
+                obj = obj.loadData();
+            else
             data1 = load([file_dir_int  '/' file_name], 'Data');
             wam_sendt = data1.Data.QL.Headers.BURT_STATUS.send_time;
             wam_recvt = data1.Data.QL.Headers.BURT_STATUS.recv_time;
@@ -249,6 +257,7 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             percent_prev = 0;
+
             for trial_i = 1:length(trials_all)
                 trial_percent = floor(trial_i/length(trials_all) * 20)*5;
                 if (flag_progress)
@@ -269,7 +278,6 @@ classdef (HandleCompatible)SessionScan < handle
                     end
                 end
             end
-
             
             % deal with the trial sucess/failure
             [s,f] = readManualSetsf(obj.ssnum);
@@ -312,10 +320,13 @@ classdef (HandleCompatible)SessionScan < handle
             % remove error task conditions to avoid code error 
             obj = obj.dealingSessionsExceptions(); % nothing here 
             obj = obj.dealingEMGOpenLoopNoise();   % bad EMG to 0
+
+            end % from 'ifloadagain'
+            obj.saveFile(); 
             if_calibSS = findCalibSS(obj.ssnum);
             if (~if_calibSS)
 %                 if (size(obj.data.ox,2)~=0)
-                    obj = obj.dealingOPTMarkersErr();      % bad OPT markers
+                   obj = obj.dealingOPTMarkersErr();      % bad OPT markers
 %                 end
             end
             end
@@ -495,8 +506,8 @@ classdef (HandleCompatible)SessionScan < handle
             pts = floor((t_max - t_min))/(1/Fs);
             t_max_ = t_min + (pts-1)*(1/Fs);
             sample_t = linspace(t_min, t_max_, pts);
-            force_h = interp1(obj.force_t', obj.ft.force', obj.wam_t', 'linear', 'extrap')'; 
-            torque_h = interp1(obj.force_t', obj.ft.torque_origin', obj.wam_t', 'linear', 'extrap')';
+            force_h = interp1(obj.force_t', obj.ft.force', sample_t', 'linear', nan)'; 
+            torque_h = interp1(obj.force_t', obj.ft.torque_origin', sample_t', 'linear', nan)';
             
             %%% deal with the task state masks
             ts_masks = obj.Data.TaskStateMasks;
@@ -508,17 +519,17 @@ classdef (HandleCompatible)SessionScan < handle
             ts_ = sum(ts_masks_mat);
             idx_nan = isnan(obj.Data.SpikeTimestamp);
             ts_h = interp1(obj.Data.SpikeTimestamp(~idx_nan),...
-                ts_(~idx_nan), obj.wam_t, 'previous');
+                ts_(~idx_nan), sample_t, 'next');
             %%% deal with the messaged position and velocity
             x_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
-                obj.Data.Position.Actual(~idx_nan,:), obj.wam_t', 'previous');
+                obj.Data.Position.Actual(~idx_nan,:), sample_t', 'previous');
             x_msg_h = x_msg_h';
             v_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
-                obj.Data.Velocity.Actual(:,~idx_nan)', obj.wam_t', 'previous');
+                obj.Data.Velocity.Actual(:,~idx_nan)', sample_t', 'previous');
             v_msg_h = v_msg_h';
             f_rotate = obj.rotateAxisForce();
             f_msg_h = interp1(obj.Data.SpikeTimestamp(~idx_nan)', ...
-                f_rotate(1:3,~idx_nan)', obj.wam_t', 'previous');
+                f_rotate(1:3,~idx_nan)', sample_t', 'previous');
             f_msg_h = f_msg_h';
 
             ifplot = 0;
@@ -526,13 +537,13 @@ classdef (HandleCompatible)SessionScan < handle
                 clf;
                 axh(1) = subplot(3,1,1);  hold on;
                 plot(obj.force_t, obj.ft.force(1,:), 'r.');
-                plot(obj.wam_t, force_h(1,:), 'b.');
+                plot(sample_t, force_h(1,:), 'b.');
                 axh(2) = subplot(3,1,2);  hold on;
                 plot(obj.force_t, obj.ft.force(2,:), 'r.');
-                plot(obj.wam_t, force_h(2,:), 'b.');
+                plot(sample_t, force_h(2,:), 'b.');
                 axh(3) = subplot(3,1,3);  hold on;
                 plot(obj.force_t, obj.ft.force(3,:), 'r.');
-                plot(obj.wam_t, force_h(3,:), 'b.');
+                plot(sample_t, force_h(3,:), 'b.');
                 linkaxes(axh, 'x');
             end
             
@@ -541,29 +552,32 @@ classdef (HandleCompatible)SessionScan < handle
                 clf;
                 axh(1) = subplot(3,1,1);  hold on;
                 plot(obj.force_t, obj.ft.torque_origin(1,:), 'r.');
-                plot(obj.wam_t, torque_h(1,:), 'b.');
+                plot(sample_t, torque_h(1,:), 'b.');
                 axh(2) = subplot(3,1,2);  hold on;
                 plot(obj.force_t, obj.ft.torque_origin(2,:), 'r.');
-                plot(obj.wam_t, torque_h(2,:), 'b.');
+                plot(sample_t, torque_h(2,:), 'b.');
                 axh(3) = subplot(3,1,3);  hold on;
                 plot(obj.force_t, obj.ft.torque_origin(3,:), 'r.');
-                plot(obj.wam_t, torque_h(3,:), 'b.');
+                plot(sample_t, torque_h(3,:), 'b.');
                 linkaxes(axh, 'x');
             end
 
-            obj.data.t = obj.wam_t;
-            obj.data.x = obj.wam.tp;
-            obj.data.v = obj.wam.tv;
-            obj.data.Fp = obj.wam.cf;
-            obj.data.tq = obj.wam.jt;
-            obj.data.jp = obj.wam.jp;
-            obj.data.ts = obj.wam.state;
+            obj.data.t = sample_t;
+            obj.data.x = interp1(obj.wam_t', obj.wam.tp', sample_t')';
+            obj.data.v = interp1(obj.wam_t', obj.wam.tv', sample_t')';
+            obj.data.Fp = interp1(obj.wam_t', obj.wam.cf', sample_t')';
+            obj.data.tq = interp1(obj.wam_t', obj.wam.jt', sample_t')';
+            obj.data.jp = interp1(obj.wam_t', obj.wam.jp', sample_t')';
+            obj.data.ts = interp1(obj.wam_t', obj.wam.state', sample_t', 'previous')';
             obj.data.tsf = ts_h; % get from the formatted data
             obj.data.x_msg = x_msg_h;
             obj.data.v_msg = v_msg_h;
             obj.data.f = force_h;
             obj.data.ftq= torque_h; % force transducer cencored torque
             obj.data.f_msg = f_msg_h;
+            idx_spiket_nnan = ~isnan(obj.Data.SpikeTimestamp);
+            obj.data.tNo = int32(interp1(obj.Data.SpikeTimestamp(idx_spiket_nnan)', double(obj.Data.TrialNo(idx_spiket_nnan))', sample_t', 'previous')');
+            obj.data.sNo = int32(ones(size(sample_t))*obj.ssnum);
             
             if (ifplot)
                 clf;
@@ -591,9 +605,9 @@ classdef (HandleCompatible)SessionScan < handle
 %                 data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'linear', 'extrap')'; 
 %                 data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'linear', 'extrap')'; 
 %                 data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'linear', 'extrap')'; 
-                data.optx = interp1(obj.opt_t, obj.opt.datah.x', obj.wam_t', 'linear')'; 
-                data.opty = interp1(obj.opt_t, obj.opt.datah.y', obj.wam_t', 'linear')'; 
-                data.optz = interp1(obj.opt_t, obj.opt.datah.z', obj.wam_t', 'linear')'; 
+                data.optx = interp1(obj.opt_t, obj.opt.datah.x', sample_t', 'linear')'; 
+                data.opty = interp1(obj.opt_t, obj.opt.datah.y', sample_t', 'linear')'; 
+                data.optz = interp1(obj.opt_t, obj.opt.datah.z', sample_t', 'linear')'; 
                 % in case of obj.opt_t has nan values
 %                 opt_t1 = interp1(1:length(obj.opt_t(~isnan(obj.opt_t))), obj.opt_t(~isnan(obj.opt_t)), 1:length(obj.opt_t), 'linear', 'extrap'); % not guareentee!  
 %                 obj.opt_t(1) = opt_t1(1); %??? possible???
@@ -607,13 +621,13 @@ classdef (HandleCompatible)SessionScan < handle
                     for i = 1:nmarkers
                         axh(i) = subplot(nmarkers,1,i); hold on; grid on; 
                         %plot(obj.opt.datah.bkt,obj.opt.datah.x(i,:),'marker', '.', 'Color', 'r');
-                        plot(obj.wam_t, data.optx(i,:), '.', 'Color', 'b');
+                        plot(sample_t, data.optx(i,:), '.', 'Color', 'b');
                         
                         %plot(obj.opt.datah.bkt,obj.opt.datah.y(i,:),'marker', '.', 'Color', 'r');
-                        plot(obj.wam_t, data.opty(i,:), '.', 'Color', 'b');
+                        plot(sample_t, data.opty(i,:), '.', 'Color', 'b');
                         
                         %plot(obj.opt.datah.bkt,obj.opt.datah.z(i,:),'marker', '.', 'Color', 'r');
-                        plot(obj.wam_t, data.optz(i,:), '.', 'Color', 'b');
+                        plot(sample_t, data.optz(i,:), '.', 'Color', 'b');
                     end
                     
                 end
@@ -629,8 +643,8 @@ classdef (HandleCompatible)SessionScan < handle
             end
             
             if (~isempty(obj.emg_t) && ~isempty(obj.emg_h))
-                obj.data.emg = interp1(obj.emg_t', obj.emg_h', obj.wam_t', 'linear', 'extrap')';
-                obj.data.emgevl=interp1(obj.emg_t', obj.emg_evl', obj.wam_t', 'linear', 'extrap')';
+                obj.data.emg = interp1(obj.emg_t', obj.emg_h', sample_t', 'linear', nan)'; % for data not collected, set to nan directly
+%                 obj.data.emgevl=interp1(obj.emg_t', obj.emg_evl', sample_t', 'linear', 'extrap')';
                 
                 ifplot = 0;
                 if (ifplot)
@@ -638,12 +652,16 @@ classdef (HandleCompatible)SessionScan < handle
                     for i = 1:8
                         axh(i) = subplot(8,1,i); hold on; grid on;
                         plot(obj.emg_t, obj.emg_h(i,:), 'marker', '.', 'Color', 'r');
-                        plot(obj.wam_t, obj.data.emg(i,:), 'marker', '.', 'Color', 'b');
-                        ylim([-5000 5000]);
+                        plot(obj.data.t, obj.data.emg(i,:), 'marker', '.', 'Color', 'b');
+%                         ylim([-5000 5000]);
+                        ylim([-1 1]*5);
                     end
                     linkaxes(axh, 'xy');
                 end
             end
+
+            % get from trial specific...
+
         end
         function force = rotateAxisForce(obj) % convert from select into world axis
             % force = rotateAxisForce(obj) 
@@ -961,7 +979,7 @@ classdef (HandleCompatible)SessionScan < handle
                             4328 4329 ...
                             4339 4340 4341 ...
                             4354 4355 4356 ...
-                            4382 4383];
+                            ];
             % replace the recording error trial with the closest other
             % trial data 
             % especially useful for marker2(elbow) and marker3(shoulder)
@@ -997,10 +1015,20 @@ classdef (HandleCompatible)SessionScan < handle
                 ifplot = 1;
                 if (ifplot)     % see if this trial has a lost data
                     clf; 
-                    hold on;
-                    plot(obj.trials(trial_i_tmp).data.t_shift,obj.trials(trial_i_tmp).data.ox(:,:,1), 'r.');
-                    plot(obj.trials(trial_i_tmp).data.t_shift,obj.trials(trial_i_tmp).data.ox(:,:,2), 'g.');
-                    plot(obj.trials(trial_i_tmp).data.t_shift,obj.trials(trial_i_tmp).data.ox(:,:,3), 'b.');
+                    subplot(3,1,1); hold on;
+                    plot(obj.trials(trial_i_tmp).data.t_shift,...
+                        reshape(obj.trials(trial_i_tmp).data.ox(1,:,:), size(obj.trials(trial_i_tmp).data.ox(1,:,:), [2,3])), '.');
+                    legend('marker1', 'marker2', 'marker3');
+                    ylabel('x'); 
+                    subplot(3,1,2); hold on;
+                    plot(obj.trials(trial_i_tmp).data.t_shift,...
+                        reshape(obj.trials(trial_i_tmp).data.ox(2,:,:), size(obj.trials(trial_i_tmp).data.ox(2,:,:), [2,3])), '.');
+                    ylabel('y'); 
+                    subplot(3,1,3); hold on;
+                    plot(obj.trials(trial_i_tmp).data.t_shift,...
+                        reshape(obj.trials(trial_i_tmp).data.ox(3,:,:), size(obj.trials(trial_i_tmp).data.ox(3,:,:), [2,3])), '.');
+                    ylabel('z'); 
+                    xlabel('time (s)');
                 end
                 marker_lost = markers_list(trial_i); 
                 trial_lost = trial_i_tmp; % the index of trials_lost                
@@ -2536,6 +2564,7 @@ classdef (HandleCompatible)SessionScan < handle
                 ernie_timeh = interp1(wam_time, ernie_time, obj.wam.time, 'linear', 'extrap');
                 obj.wam_t = interp1(t_interest{2}, bk_time{2}, ernie_timeh, 'linear', 'extrap');
                 obj.wam.tp = nan(3,length(obj.wam.time));
+                obj.wam.jp = nan(4,length(obj.wam.time));
                 obj.wam.tv = nan(3,length(obj.wam.time));
                 obj.wam.jt= nan(4,length(obj.wam.time));
                 obj.wam.cf = zeros(3,length(obj.wam.time));
@@ -2657,6 +2686,39 @@ classdef (HandleCompatible)SessionScan < handle
 %                 obj.force_t = align_Time; % not work after ss 3046
 %                 obj.force_t = reshape(obj.force_t, 1, length(obj.force_t));
 %              end
+        end
+    
+        %% save and load the data directly
+        function saveFile(obj)
+        % save the data into the .mat file 
+            % ssprop: sessoin properties;
+            % data: time-sequence data; 
+            % trials: 
+            ssprop.ss_num = obj.ssnum;
+            ssprop.stateNames = obj.stateNames;
+            ssprop.Fs = obj.Fs; 
+            data = obj.data; 
+            trials = obj.trials;
+            filename = sprintf('KingKong.%05d.format.mat', obj.ssnum);
+            save(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/', ...
+                filename], 'ssprop', 'data', 'trials', '-v7.3');
+        end
+
+        function obj = loadData(obj)
+        % load the data from the .mat file 
+            % ssprop: sessoin properties;
+            % data: time-sequence data; 
+            % trials: 
+
+            filename = sprintf('KingKong.%05d.format.mat', obj.ssnum);
+            load(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/', ...
+                filename], 'ssprop', 'data', 'trials');
+
+            obj.ssnum = ssprop.ss_num;
+            obj.stateNames = ssprop.stateNames;
+            obj.Fs = ssprop.Fs; 
+            obj.data = data; 
+            obj.trials = trials;
         end
     end
 

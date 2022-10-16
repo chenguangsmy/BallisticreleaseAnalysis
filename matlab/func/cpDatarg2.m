@@ -65,6 +65,7 @@ for ss_i = 1:length(ss_num)
     fname2 = sprintf([srcdir1 'KingKong.DK.%05d/KingKongWAM%05d.csv'], ss_num(ss_i), ss_num(ss_i));
     fname20= sprintf([srcdir1 'KingKong.DK.%05d/KingKongWAM0.csv'], ss_num(ss_i));
     fname21= sprintf([srcdir1 'KingKong.DK.%05d/KingKongWAMbin'], ss_num(ss_i));
+    fname22= sprintf([srcdir1 'KingKong.DK.%05d/KingKongWAM%05d.bin'], ss_num(ss_i), ss_num(ss_i));
     if (~exist(fname2, 'file'))
 %         disp(['no processed WAM file for ss' num2str(ss_num(ss_i))]);
         if (~exist(fname20, 'file'))
@@ -160,6 +161,11 @@ for ss_i = 1:length(ss_num)
     catch
     end
     
+    try 
+        copyfile(fname22, dstn21);
+    catch 
+    end
+
     try
         copyfile(fname3, dstn3);
     catch

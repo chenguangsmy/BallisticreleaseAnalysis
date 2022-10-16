@@ -35,13 +35,20 @@ classdef SessionScanOPT
 %         A =    [  -0.037848635084157   1.006139173669417  -0.049302507925071
 %                   -0.925253905845084   0.004383012560907   0.338479651807431
 %                    0.382639418084085  -0.005081861415701   0.919003503546431]; 
-        %%%%%%%%%%%%% after I touched the optotrack, after ss4296
+        %%%%%%%%%%%% after I touched the optotrack, after ss4296
         X_opt0 = [ -0.207025909363952;  -0.159552961960486;  -1.672379585727084];
         X_wam0 = [ -0.509554118480000;  -0.503134221202000;  -0.155901906928000];
         A = [   -0.046020953751129   1.000420282996839  -0.075813059226936
                 -0.893388205043085   0.000259334777461   0.430759897297924
                  0.417832205169391  -0.015157199405532   0.850685498567284
         ];
+% %%%%%%%%%%%%% after I changed the OPTOTRAK to record 4-directional movements, ss4380+
+%         X_opt0 = [ -0.235506752156631; -0.152483568257886; -2.029648849949897];
+%         X_wam0 = [ -0.483487380695104; -0.515928544761709;  0.000212069030294];
+%         A = [  0.815624029142575   0.022565602301858   0.580372878692031
+%                0.045561432941106   0.979353608089214  -0.052734482680461
+%               -0.612336443489890  -0.009123779994844   0.754623006280087
+%         ];
                 
 
         read_from_intermediate = 1;
@@ -366,21 +373,25 @@ classdef SessionScanOPT
         end
 
         
-        function axh = plotRawEMGData(obj) % consider shift this function into the opt function
+        function axh = plotRawOPTData(obj) % consider shift this function into the opt function
             % axh = plotRawEMGData(obj)
             % plot the raw data of EMG
             % with BlackRock time, and the raw data
             axh = figure(); 
             axesh = zeros(1,8);
-            for axi = 1:8
-                axesh(axi) = subplot(8,1,axi);
-                plot(obj.brtime, (obj.dath.x));
-                ylabel(['ch' num2str(axi)] );
+            for axi = 1:3
+                axesh(axi) = subplot(3,1,axi);
+                
                 switch axi
                     case 1
-                        title('raw EMG data');
-                    case 8
-                        xlabel('time (BlackRock Sys)');
+                        ylabel('x');
+                        plot(obj.brtime, (obj.datah.x), '.');
+                    case 2
+                        ylabel('y');
+                        plot(obj.brtime, (obj.datah.y), '.');
+                    case 3
+                        ylabel('z');
+                        plot(obj.brtime, (obj.datah.z), '.');
                 end
             end
             linkaxes(axesh, 'x');
