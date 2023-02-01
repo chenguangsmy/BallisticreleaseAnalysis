@@ -250,6 +250,8 @@ classdef (HandleCompatible)SessionScan < handle
             
             % should interpolate all the data here !!!!!
             obj = interpData(obj);
+
+            obj = dealingOPTMissingShoulderMarker(obj); 
             ifdotrialfy = 1;
             if (ifdotrialfy)
             if (flag_progress)
@@ -269,7 +271,7 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.trials(trial_i) = TrialScan(obj, trial_i);
                 % align to mov
                 obj.trials(trial_i) = alignMOV(obj.trials(trial_i));
-                obj.trials(trial_i) = judgeOffline(obj.trials(trial_i));
+%                 obj.trials(trial_i) = judgeOffline(obj.trials(trial_i));
                 %obj.trials(trial_i) = alignPertInit(obj.trials(trial_i));
                 
                 if (flag_progress)
@@ -325,9 +327,9 @@ classdef (HandleCompatible)SessionScan < handle
             obj.saveFile(); 
             if_calibSS = findCalibSS(obj.ssnum);
             if (~if_calibSS)
-%                 if (size(obj.data.ox,2)~=0)
+                if (size(obj.data.ox,2)~=0)
                    obj = obj.dealingOPTMarkersErr();      % bad OPT markers
-%                 end
+                end
             end
             end
         end
@@ -357,6 +359,107 @@ classdef (HandleCompatible)SessionScan < handle
                 end
             end
 
+        end
+        function obj = dealingOPTMissingShoulderMarker(obj)
+            % when the case the shoulder marker is not shown 
+            % shoulder marker index-3
+            % another shoulder marker index-4
+            % Assume a constant displacemnt, convert another marker's
+            % position to the current marker
+
+            % 1. Check the displacement between markers 
+            ifplot = 1; 
+            if (ifplot)
+              clf;
+              figure();
+              axh(1) = subplot(4,1,1); hold on; 
+              plot(obj.data.t, obj.data.ox(1,:,3), 'r.');
+              plot(obj.data.t, obj.data.ox(1,:,4), 'g.');
+              legend('marker3', 'marker4');
+              title('position-x (m)');
+              ylabel('x (m)');
+              xlabel('time (s)');
+              axh(2) = subplot(4,1,2); hold on; 
+              plot(obj.data.t, obj.data.ox(2,:,3), 'r.');
+              plot(obj.data.t, obj.data.ox(2,:,4), 'g.');
+%                 plot(obj.data.t, obj.data.x(1,:));
+%                 plot(obj.data.t, obj.data.tNo);
+              title('position-y (m)');
+              ylabel('y (m)');
+              xlabel('time (s)');
+              axh(3) = subplot(4,1,3); hold on;
+              plot(obj.data.t, obj.data.ox(3,:,3), 'r.');
+              plot(obj.data.t, obj.data.ox(3,:,4), 'g.');
+              title('position-z (m)');
+              ylabel('z (m)');
+              xlabel('time (s)');
+              axh(4) = subplot(4,1,4); hold on;
+              plot(obj.data.t, obj.data.ox(1,:,3) - obj.data.ox(1,:,4), 'c.');
+              plot(obj.data.t, obj.data.ox(2,:,3) - obj.data.ox(2,:,4), 'm.');
+              plot(obj.data.t, obj.data.ox(3,:,3) - obj.data.ox(3,:,4), 'y.');
+              legend('dx', 'dy', 'dz');
+              title('difference');
+              ylabel('\Delta x (m)');
+              xlabel('time (s)');
+              linkaxes(axh, 'x');
+            end
+            
+             % 2. Add the shoulder marker information by another marker
+
+            delta_pos = (obj.data.ox(:,:,3) - obj.data.ox(:,:,4)); % stop here and debug...!!!
+%             delta_pos = reshape(delta_pos, size(delta_pos,[2,3]));
+            delta_pos_avg = mean(delta_pos, 2, 'omitnan');
+
+            idx_n3v4 = isnan(obj.data.ox(1,:,3)) & ~isnan(obj.data.ox(1,:,4));
+            idx_n4v3 = isnan(obj.data.ox(1,:,4)) & ~isnan(obj.data.ox(1,:,3));
+            
+            % length 
+            if (sum(idx_n3v4)>0)
+                Delta_pos_avg1 = repmat(delta_pos_avg,1,[sum(idx_n3v4)]);
+                Delta_pos_avg2 = zeros(3,sum(idx_n3v4),1);
+                Delta_pos_avg2(:,:,1) = Delta_pos_avg1;
+                obj.data.ox(:,idx_n3v4,3) = obj.data.ox(:,idx_n3v4,4) + Delta_pos_avg2;
+            end
+            if (sum(idx_n4v3)>0)
+                Delta_pos_avg1 = repmat(delta_pos_avg,1,[sum(idx_n4v3)]);
+                Delta_pos_avg2 = zeros(3,sum(idx_n4v3),1);
+                Delta_pos_avg2(:,:,1) = Delta_pos_avg1;
+                obj.data.ox(:,idx_n4v3,4) = obj.data.ox(:,idx_n4v3,3) - Delta_pos_avg2;
+            end
+
+            % see it again
+            if (ifplot)
+%               clf;
+              figure();
+              axh(1) = subplot(4,1,1); hold on; 
+              plot(obj.data.t, obj.data.ox(1,:,3), 'r.');
+              plot(obj.data.t, obj.data.ox(1,:,4), 'g.');
+              legend('marker3', 'marker4');
+              title('position-x (m)');
+              ylabel('x (m)');
+              xlabel('time (s)');
+              axh(2) = subplot(4,1,2); hold on; 
+              plot(obj.data.t, obj.data.ox(2,:,3), 'r.');
+              plot(obj.data.t, obj.data.ox(2,:,4), 'g.');
+              title('position-y (m)');
+              ylabel('y (m)');
+              xlabel('time (s)');
+              axh(3) = subplot(4,1,3); hold on;
+              plot(obj.data.t, obj.data.ox(3,:,3), 'r.');
+              plot(obj.data.t, obj.data.ox(3,:,4), 'g.');
+              title('position-z (m)');
+              ylabel('z (m)');
+              xlabel('time (s)');
+              axh(4) = subplot(4,1,4); hold on;
+              plot(obj.data.t, obj.data.ox(1,:,3) - obj.data.ox(1,:,4), 'c.');
+              plot(obj.data.t, obj.data.ox(2,:,3) - obj.data.ox(2,:,4), 'm.');
+              plot(obj.data.t, obj.data.ox(3,:,3) - obj.data.ox(3,:,4), 'y.');
+              legend('dx', 'dy', 'dz');
+              title('difference');
+              ylabel('\Delta x (m)');
+              xlabel('time (s)');
+              linkaxes(axh, 'x');
+            end
         end
         function [sT, tT, sR] = getConditionalSucessTrials(obj) 
             % tobe re-written for the multi sessions processing
@@ -579,6 +682,34 @@ classdef (HandleCompatible)SessionScan < handle
             obj.data.tNo = int32(interp1(obj.Data.SpikeTimestamp(idx_spiket_nnan)', double(obj.Data.TrialNo(idx_spiket_nnan))', sample_t', 'previous')');
             obj.data.sNo = int32(ones(size(sample_t))*obj.ssnum);
             
+            % deal with exception of session 4339
+            ifplot = 1; % if check
+            if unique(obj.data.sNo) == 4339 % I missed saving the wam.bin
+                % detect when the release happens 
+                fce_thr = 5*std(diff(obj.data.f'));
+                obj.data.ts = obj.data.tsf;
+                fcediff = [0 diff(obj.data.f(1,:))];
+                for trial_i = unique(obj.data.tNo)
+                    trial_idx = obj.data.tNo == trial_i;
+                    fcechgidx = find(fcediff< -fce_thr(1) & obj.data.tsf == 5 & obj.data.tNo == trial_i);
+                    statechgidx= find(obj.data.tsf == 5 & obj.data.tNo == trial_i);
+                    if (~isempty(statechgidx))
+                    obj.data.ts(statechgidx(1):fcechgidx(1)) = 4;
+                    if (ifplot)
+                        clf;
+                        axh(1) = subplot(3,1,1); 
+                        plot(obj.data.t(trial_idx), obj.data.ts(trial_idx)); 
+                        axh(2) = subplot(3,1,2); 
+                        plot(obj.data.t(trial_idx), obj.data.f(1,trial_idx));
+                        axh(3) = subplot(3,1,3); 
+                        plot(obj.data.t(trial_idx), fcediff(trial_idx));
+                        linkaxes(axh, 'x');
+                    end
+                    end
+                end
+
+            end
+
             if (ifplot)
                 clf;
                 axh(1) = subplot(5,1,1);  hold on;
@@ -634,10 +765,10 @@ classdef (HandleCompatible)SessionScan < handle
                 obj.data.optx = data.optx;
                 obj.data.opty = data.opty;
                 obj.data.optz = data.optz;
-                obj.data.ox = zeros([size(data.optx), 3]);
-                obj.data.ox(:,:,1) = data.optx;
-                obj.data.ox(:,:,2) = data.opty;
-                obj.data.ox(:,:,3) = data.optz;
+                obj.data.ox = zeros([3, size(data.optx, [2,1])]);
+                obj.data.ox(1,:,:) = data.optx';
+                obj.data.ox(2,:,:) = data.opty';
+                obj.data.ox(3,:,:) = data.optz';
             else 
                 obj.data.ox = zeros(1,0,3);
             end
@@ -985,7 +1116,7 @@ classdef (HandleCompatible)SessionScan < handle
             % especially useful for marker2(elbow) and marker3(shoulder)
 
             % 1. read bad trials
-            marker_val = [obj.trials.opt_v];
+            marker_val = [obj.trials.opt_v]; % valid
             markers_list = [];
             trials_list = [];
             marker_max = 3; 
@@ -1095,18 +1226,37 @@ classdef (HandleCompatible)SessionScan < handle
                         obj.trials(trial_idx_sup).data.t_shift', obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp)',...
                         obj.trials(trial_lost).data.t_shift', 'linear', 'extrap'))';
                 end
-                ifplot = 0;
+%                 ifplot = 0;
                 if(ifplot)
                     clear axhtmp lnhtmp;
-                    axhtmp(1) = subplot(2,1,1);
-                    plot(obj.trials(trial_idx_sup).data.t_shift,obj.trials(trial_idx_sup).data.ox(:,:,marker_i_tmp), 'b.');
+                    axhtmp(1) = subplot(3,2,1);
+                    plot(obj.trials(trial_idx_sup).data.t_shift,obj.trials(trial_idx_sup).data.ox(1,:,marker_i_tmp), 'b.');
                     title('suppliment trial');
-                    axhtmp(2) = subplot(2,1,2); hold on;
-                    lnhtmp{1} = plot(obj.trials(trial_lost).data.t_shift,data_org(:,:,marker_i_tmp), 'g.');
-                    lnhtmp{2} = plot(obj.trials(trial_lost).data.t_shift,obj.trials(trial_lost).data.ox(:,:,marker_i_tmp), 'r.');
+                    ylabel('x');
+                    axhtmp(3) = subplot(3,2,3);
+                    plot(obj.trials(trial_idx_sup).data.t_shift,obj.trials(trial_idx_sup).data.ox(2,:,marker_i_tmp), 'b.');
+                    ylabel('y');
+                    axhtmp(5) = subplot(3,2,5);
+                    plot(obj.trials(trial_idx_sup).data.t_shift,obj.trials(trial_idx_sup).data.ox(3,:,marker_i_tmp), 'b.');
+                    ylabel('z');
+                    xlabel('t (s)');
+                    
+                    axhtmp(2) = subplot(3,2,2); hold on;
+                    lnhtmp{1} = plot(obj.trials(trial_lost).data.t_shift,data_org(1,:,marker_i_tmp), 'g.');
+                    lnhtmp{2} = plot(obj.trials(trial_lost).data.t_shift,obj.trials(trial_lost).data.ox(1,:,marker_i_tmp), 'r.');
                     legend([lnhtmp{1}(1), lnhtmp{2}(1)], 'raw', 'replaced');
-                    title('lost trial reconstruct');
+                    title('lost trial reconstruct');ylabel('x');
+                    axhtmp(4) = subplot(3,2,4); hold on;
+                    lnhtmp{1} = plot(obj.trials(trial_lost).data.t_shift,data_org(2,:,marker_i_tmp), 'g.');
+                    lnhtmp{2} = plot(obj.trials(trial_lost).data.t_shift,obj.trials(trial_lost).data.ox(2,:,marker_i_tmp), 'r.');
+                    ylabel('y');
+                    axhtmp(6) = subplot(3,2,6); hold on;
+                    lnhtmp{1} = plot(obj.trials(trial_lost).data.t_shift,data_org(3,:,marker_i_tmp), 'g.');
+                    lnhtmp{2} = plot(obj.trials(trial_lost).data.t_shift,obj.trials(trial_lost).data.ox(3,:,marker_i_tmp), 'r.');
+                    ylabel('z');
+                    xlabel('t (s)');
                     linkaxes(axhtmp, 'x');
+                    xlim([-0.5 2]);
                     sgtitle({'reconstructing data on other trial', ...
                         ['ss' num2str(obj.ssnum)  ...
                         ' tr' num2str(trial_i_tmp) ...
@@ -1473,7 +1623,7 @@ classdef (HandleCompatible)SessionScan < handle
         function fh = plotTaskEndpointPosition(obj)
              % plot the y-axis position throughout this session
             fh = figure(); hold on;
-            plot(obj.time, obj.Data.Position.Actual(:,1), 'b-o');
+%             plot(obj.time, obj.Data.Position.Actual(:,1), 'b-o');
             plot(obj.data.t, obj.data.x(1,:), '.');
             legend('msg', 'hi-sp');
             xlabel('time (s)');
@@ -1503,7 +1653,7 @@ classdef (HandleCompatible)SessionScan < handle
             axis_name = 'xyz';
             for ai = 1:3 % xyz
                 axh(ai)=subplot(3,1,ai);hold on;grid on;
-                plot(obj.time, obj.Data.Position.Actual(:,ai), 'b-o');
+%                 plot(obj.time, obj.Data.Position.Actual(:,ai), 'b-o');
                 switch ai
                     case 1
                         plot(obj.data.t, obj.data.optx(1,:), '.');
@@ -1553,7 +1703,7 @@ classdef (HandleCompatible)SessionScan < handle
             fh = figure(); 
             
             axh(1) = subplot(2,1,1); hold on;
-            plot(obj.time, obj.force(1,:), 'b-o');
+%             plot(obj.time, obj.force(1,:), 'b-o');
             plot(obj.data.t, obj.data.f(1,:), '.');
             legend('msg', 'hi-sp');
             xlabel('time (s)');
@@ -1561,9 +1711,9 @@ classdef (HandleCompatible)SessionScan < handle
             title('y axis force')
             
             axh(2) = subplot(2,1,2); hold on;
-            plot(obj.time, sqrt(obj.force(1,:).^2+...
-                                obj.force(2,:).^2+...
-                                obj.force(3,:).^2), 'b-o');
+%             plot(obj.time, sqrt(obj.force(1,:).^2+...
+%                                 obj.force(2,:).^2+...
+%                                 obj.force(3,:).^2), 'b-o');
             plot(obj.data.t, sqrt(obj.data.f(1,:).^2+...
                                 obj.data.f(2,:).^2+...
                                 obj.data.f(3,:).^2), '.');
@@ -1881,7 +2031,7 @@ classdef (HandleCompatible)SessionScan < handle
             for axi = 1:3
                 axh(axi) = subplot(3,1,axi); hold on;
                 for trial_i = 1:length(trials)
-                    plot(trials(trial_i).data.t_shift, trials(trial_i).data.ox(axi,:));
+                    plot(trials(trial_i).data.t_shift, trials(trial_i).data.ox(axi,:,1));
                 end
                 xlim([-1 1]);
                 xlabel('time');

@@ -207,9 +207,12 @@ classdef TrialScan
             %             obj.comboTT = getComboTT(obj,sessionScanObj);
 
             if (~isempty(sessionScanObj.opt))   % if use optotrak
-                data.optx=sessionScanObj.data.optx(:,data_idx);
-                data.opty=sessionScanObj.data.opty(:,data_idx);
-                data.optz=sessionScanObj.data.optz(:,data_idx);
+%                 data.optx=sessionScanObj.data.optx(:,data_idx);
+%                 data.opty=sessionScanObj.data.opty(:,data_idx);
+%                 data.optz=sessionScanObj.data.optz(:,data_idx);
+                data.optx=reshape(sessionScanObj.data.ox(1,data_idx,:), size(sessionScanObj.data.ox(1,data_idx,:),[2,3]))';
+                data.opty=reshape(sessionScanObj.data.ox(2,data_idx,:), size(sessionScanObj.data.ox(2,data_idx,:),[2,3]))';
+                data.optz=reshape(sessionScanObj.data.ox(3,data_idx,:), size(sessionScanObj.data.ox(3,data_idx,:),[2,3]))';
                 data.ts  =sessionScanObj.data.ts(:,data_idx);
 
                 obj.opt_v(1:3) = 1; % only after ss4360 (all 3 markers are here).  
@@ -231,10 +234,10 @@ classdef TrialScan
 
                     % valid ox zone: ts > 2 and ts < 7
                 end
-                ifplot = 1;
+                ifplot = 0;
                 if (if_splineInterp)
                     obj.data.ox = nan(3,length(obj.data.t),10);
-                    for marker_i = 1:3%size(data.optx,1)
+                    for marker_i = 1:4%size(data.optx,1)
                         % do the splineInterp here, for x, y, and z
                         % QUESTION? DO WE NEED SPLINE?
                         % debugging: fix the interpretation in the not
@@ -269,7 +272,10 @@ classdef TrialScan
                             nval_mov_length = cumsum(~nval_mov); % calculate the non-nan value by calculate the continuous 0
                             f = tabulate(nval_mov_length)';      
                             b = f(2,:) - 1;
-                            max_cumsum = max(b(b~=0));
+                            max_cumsum = max(b(b~=0));                            
+                            if (isempty(max_cumsum))
+                                max_cumsum = 0;
+                            end
                             if (max_cumsum > opt_v_th)
                                 obj.opt_v(marker_i) = 0;
                             else
@@ -307,6 +313,15 @@ classdef TrialScan
                             intpx = nan(size(obj.data.t));
                             intpy = nan(size(obj.data.t));
                             intpz = nan(size(obj.data.t));
+
+                            intpxp = nan(size(obj.data.t));
+                            intpyp = nan(size(obj.data.t));
+                            intpzp = nan(size(obj.data.t));
+
+                            intpxm = nan(size(obj.data.t));
+                            intpym = nan(size(obj.data.t));
+                            intpzm = nan(size(obj.data.t));
+
                             % fill with interped data
                             % think: do we want to spline it for the
                             % lacking data?
@@ -315,8 +330,14 @@ classdef TrialScan
                                 intpx(val_idxts) = data.optx(marker_i,val_idxts);
                                 intpy(val_idxts) = data.opty(marker_i,val_idxts);
                                 intpz(val_idxts) = data.optz(marker_i,val_idxts);
+
+                                intpxp = intpx; intpxm = intpx;
+                                intpyp = intpy; intpym = intpy;
+                                intpzp = intpz; intpzm = intpz;
                             else
                                 % do interp
+
+                                %spline
                                 intpx(val_idxts) = spline(obj.data.t(val_idx), ...
                                     data.optx(marker_i,val_idx),...
                                     obj.data.t(val_idxts));
@@ -324,6 +345,26 @@ classdef TrialScan
                                     data.opty(marker_i,val_idx),...
                                     obj.data.t(val_idxts));
                                 intpz(val_idxts) = spline(obj.data.t(val_idx), ...
+                                    data.optz(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                % pchip
+                                intpxp(val_idxts) = pchip(obj.data.t(val_idx), ...
+                                    data.optx(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                intpyp(val_idxts) = pchip(obj.data.t(val_idx), ...
+                                    data.opty(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                intpzp(val_idxts) = pchip(obj.data.t(val_idx), ...
+                                    data.optz(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                % makima
+                                intpxm(val_idxts) = makima(obj.data.t(val_idx), ...
+                                    data.optx(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                intpym(val_idxts) = makima(obj.data.t(val_idx), ...
+                                    data.opty(marker_i,val_idx),...
+                                    obj.data.t(val_idxts));
+                                intpzm(val_idxts) = makima(obj.data.t(val_idx), ...
                                     data.optz(marker_i,val_idx),...
                                     obj.data.t(val_idxts));
                             end
@@ -338,14 +379,39 @@ classdef TrialScan
                                 obj.data.t, 'nearest', 'extrap');
                             intpz = interp1(obj.data.t(val_idxts),intpz(val_idxts), ...
                                 obj.data.t, 'nearest', 'extrap');
+
+                            intpxp = interp1(obj.data.t(val_idxts),intpxp(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                            intpyp = interp1(obj.data.t(val_idxts),intpyp(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                            intpzp = interp1(obj.data.t(val_idxts),intpzp(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+
+                            intpxm = interp1(obj.data.t(val_idxts),intpxm(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                            intpym = interp1(obj.data.t(val_idxts),intpym(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+                            intpzm = interp1(obj.data.t(val_idxts),intpzm(val_idxts), ...
+                                obj.data.t, 'nearest', 'extrap');
+
                         else
                             intpx = nan(size(obj.data.t));
                             intpy = nan(size(obj.data.t));
                             intpz = nan(size(obj.data.t));
+
+                            intpxp = nan(size(obj.data.t));
+                            intpyp = nan(size(obj.data.t));
+                            intpzp = nan(size(obj.data.t));
+
+                            intpxm = nan(size(obj.data.t));
+                            intpym = nan(size(obj.data.t));
+                            intpzm = nan(size(obj.data.t));
+
                         end
                         if (ifplot && marker_i <4)
                             clf;
                             clear lnhtmp
+                            if( size(data.optx,2)>1)
                             axh(1) = subplot(4,1,1); title('ts'); hold on;
                             plot(obj.data.t, data.ts, 'b', 'MarkerSize', 10);
                             ylim([0 10]);
@@ -353,34 +419,81 @@ classdef TrialScan
                             axh(2) = subplot(4,1,2); title('x'); hold on;
                             lnhtmp(1) = plot(obj.data.t, data.optx(marker_i,:), 'r.', 'MarkerSize', 10);
                             lnhtmp(2) = plot(obj.data.t, intpx, 'b.');
-                            legend(lnhtmp, {'original data', 'interp data'});
+                            lnhtmp(3) = plot(obj.data.t, intpxp, 'g.');
+                            lnhtmp(4) = plot(obj.data.t, intpxm, 'c.');
+                            legend(lnhtmp, {'original data', 'spline', 'pchip', 'makima'});
 
                             axh(3) = subplot(4,1,3); title('y'); hold on;
                             plot(obj.data.t, data.opty(marker_i,:), 'r.', 'MarkerSize', 10);
                             plot(obj.data.t, intpy, 'b.');
+                            plot(obj.data.t, intpyp, 'g.');
+                            plot(obj.data.t, intpym, 'c.');
 
                             axh(4) = subplot(4,1,4); title('z'); hold on;
                             plot(obj.data.t, data.optz(marker_i,:), 'r.', 'MarkerSize', 10);
                             plot(obj.data.t, intpz, 'b.');
+                            plot(obj.data.t, intpzp, 'g.');
+                            plot(obj.data.t, intpzm, 'c.');
 
                             sgtitle(['trial' num2str(obj.tNo) ' marker' num2str(marker_i)]);
 
+                            if marker_i == 3 % also plot marker4 here
+                                axh(2) = subplot(4,1,2); 
+                                plot(obj.data.t, data.optx(4,:), 'm.')
+
+                                axh(3) = subplot(4,1,3); 
+                                plot(obj.data.t, data.opty(4,:), 'm.')
+
+                                axh(4) = subplot(4,1,4); 
+                                plot(obj.data.t, data.optz(4,:), 'm.')
+                            end
+
                             linkaxes(axh, 'x');
+
+                            end
                         end
-                    end
-                    data.optx(marker_i,:) = intpx;
-                    data.opty(marker_i,:) = intpy;
-                    data.optz(marker_i,:) = intpz;
+                        data.optx(marker_i,:) = intpxm;
+                        data.opty(marker_i,:) = intpym;
+                        data.optz(marker_i,:) = intpzm;
+
+                        obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
+                        obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
+                        obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
+                    end % end for marker_i=1:4
+
                     %                         if(marker_i == 1)
                     %                             obj.data.ox(1:3,:) = [  data.optx(marker_i,:);
                     %                                                     data.opty(marker_i,:);
                     %                                                     data.optz(marker_i,:); ];
-                    obj.data.ox(1,:,marker_i) = data.optx(marker_i,:)';
-                    obj.data.ox(2,:,marker_i) = data.opty(marker_i,:)';
-                    obj.data.ox(3,:,marker_i) = data.optz(marker_i,:)';
                     %                         end
 
-                    
+                    ifplot = 0;
+                    if (ifplot && marker_i <=4)
+                            clf;
+                            clear lnhtmp
+                            for marker_i = 1:4
+                                if( size(data.optx,2)>1)
+                                    axh(1) = subplot(4,1,1); title('ts'); hold on;
+                                    plot(obj.data.t, data.ts, 'b', 'MarkerSize', 10);
+                                    ylim([0 10]);
+
+                                    axh(2) = subplot(4,1,2); title('x'); hold on;
+                                    plot(obj.data.t, obj.data.ox(1,:,marker_i), 'r.', 'MarkerSize', 10);
+
+                                    axh(3) = subplot(4,1,3); title('y'); hold on;
+                                    plot(obj.data.t, obj.data.ox(2,:,marker_i), 'r.', 'MarkerSize', 10);
+
+                                    axh(4) = subplot(4,1,4); title('z'); hold on;
+                                    plot(obj.data.t, obj.data.ox(3,:,marker_i), 'r.', 'MarkerSize', 10);
+
+                                    sgtitle(['trial' num2str(obj.tNo) ' marker' num2str(marker_i)]);
+
+                                    linkaxes(axh, 'x');
+                                end
+                            end
+                            legend({'1','2','3','4'});
+                    end
+
                 end
             end
 
@@ -2177,8 +2290,8 @@ classdef TrialScan
             % do a interptation 
             % obj.data.ox(1,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(1,:,marker_i), obj.data.t);
             % here t must be 0 at release
-            % obj.data.ox(2,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(1,:,marker_i), obj.data.t);
-            % obj.data.ox(3,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(1,:,marker_i), obj.data.t);
+            % obj.data.ox(2,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(2,:,marker_i), obj.data.t);
+            % obj.data.ox(3,:,marker_i) = interp1(obj1.data.t, obj1.data.ox(3,:,marker_i), obj.data.t);
         end
     end
 end

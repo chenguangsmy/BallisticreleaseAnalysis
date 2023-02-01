@@ -10,8 +10,21 @@ classdef ballisticReleaseTaksPlots
 %         data_name = 'ss4310_4356'
 %         data_name = 'ss4310_4314'
 %         data_name = 'ss4351_4356';
-%         data_name = 'ss4310_4356'
-        data_name = 'ss4379_4388'       % chenguang test with optotrak markers on
+%         data_name = 'ss4310_4356_emg'
+%          data_name = 'ss4446_4467'       % other 3 subjects
+%         data_name = 'ss4472_4495'         % subj10,11,and 12
+%          data_name = 'ss4491_4495'         % subj12
+%             data_name = 'ss4512_4524'         % subj14&15
+%           data_name = 'ss4500_4524'          % subject 13, 14, 15 
+          data_name = 'ss4530_4563'       % subject 16, 17, 18
+%         data_name = 'ss4379_4414'       % chenguang test with optotrak markers on
+%         data_name = 'ss4385_4388'       % subjeH data
+%         data_name = 'ss4379_4383'       % subjeC data
+%         data_name = 'ss4401_4427'       % subjeB data
+%         data_name = 'ss4408_4414'       % subjeM data
+%         data_name = 'ss4418_4422'       % subjeM data
+%         data_name = 'ss4379_4422'       % subjeM data
+%           data_name = 'ss4379_4438'       % 6-subject data
         data
         data_idx_ss
         data_idx_tr
@@ -126,8 +139,8 @@ classdef ballisticReleaseTaksPlots
             fce_levels = [15 20 25];
             dist_levels = [2.5 5.0 7.5];
             clear axh
-            Freq = 500;
-            t_step = 1/500;
+            Freq = 2000;
+            t_step = 1/Freq;
             fh = figure();
             colors = colormap('lines');
             close(fh);
@@ -137,7 +150,8 @@ classdef ballisticReleaseTaksPlots
             d = size(Data, 4); % target
             l = size(Data, 5); % trials
             p = size(Data, 6); % perturbation type
-            idx_last = 200;
+            idx_lead = Freq/5;
+            idx_last = Freq/2;
             if_subtract = 0;
             epoc_type = 2;
             plot_type = 8;%4;  % 1 displacement
@@ -176,10 +190,10 @@ classdef ballisticReleaseTaksPlots
                                                 idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
                                             case 2
                                                 idx = find(Data{si,ci,fi,di,ti,li}.ts==5 | Data{si,ci,fi,di,ti,li}.ts==6);
-                                                idx = (idx-100):idx(end);
+                                                idx = (idx-idx_lead):idx(end);
                                                 %                                 idx = (idx(1)):idx(end);
                                         end
-                                        time = t_step*(idx-idx(100));
+                                        time = t_step*(idx-idx(idx_lead));
 %                                             time = t_step*(idx);
                                         %                                         switch plot_type
                                         %                                             case 2
@@ -215,7 +229,7 @@ classdef ballisticReleaseTaksPlots
 
                                         switch plot_type
                                             case 1
-                                                dat = Data{si,ci,fi,di,ti,li}.x(xyi,idx);
+                                                dat = Data{si,ci,fi,di,ti,li}.x(1,idx);
                                                 titlestr = 'displacement';
                                             case 2
                                                 dat = Data{si,ci,fi,di,ti,li}.f(xyi,idx);
@@ -247,6 +261,7 @@ classdef ballisticReleaseTaksPlots
                                                         dat = Data{si,ci,fi,di,ti,li}.ox(1,idx);
                                                     case 3
                                                         dat = Data{si,ci,fi,di,ti,li}.ox(1,idx,1);    % marker 1, x
+%                                                             dat = Data{si,ci,fi,di,ti,li}.ox(3,idx,1);    % marker 1, z
 %                                                         dat = Data{si,ci,fi,di,ti,li}.ox(1,idx,2); % marker 2,x
 %                                                         dat = Data{si,ci,fi,di,ti,li}.ox(1,idx,3); % marker 3,x
                                                 end
@@ -295,10 +310,10 @@ classdef ballisticReleaseTaksPlots
                         switch ci
                             case 1
                             case 2
-                                ylim([-0.5 -0.38]);
+%                                 ylim([-0.5 -0.38]);
                             case 3
                             case 4
-                                ylim([-0.57 -0.45]);
+%                                 ylim([-0.57 -0.45]);
                         end
                     end
                 end
@@ -435,8 +450,8 @@ classdef ballisticReleaseTaksPlots
             fce_levels = [15 20 25];
             dist_levels = [2.5 5.0 7.5];
             clear axh
-            Freq = 500;
-            t_step = 1/500;
+            Freq = 2000;
+            t_step = 1/Freq;
             fh = figure();
             colors = colormap('lines');
             close(fh);
@@ -446,7 +461,8 @@ classdef ballisticReleaseTaksPlots
             d = size(Data, 4); % target
             l = size(Data, 5); % trials
             p = size(Data, 6); % perturbation type
-            idx_last = 200;
+            idx_last = Freq/2;
+            idx_lead = Freq/5;
             if_subtract = 0;
             epoc_type = 2;
             plot_type = 2;%4;  % 1 displacement
@@ -485,10 +501,10 @@ classdef ballisticReleaseTaksPlots
                                                 idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
                                             case 2
                                                 idx = find(Data{si,ci,fi,di,ti,li}.ts==5 | Data{si,ci,fi,di,ti,li}.ts==6);
-                                                idx = (idx-100):idx(end);
+                                                idx = (idx-idx_lead):idx(end);
                                                 %                                 idx = (idx(1)):idx(end);
                                         end
-                                        time = t_step*(idx-idx(100));
+                                        time = t_step*(idx-idx(idx_lead));
 %                                             time = t_step*(idx);
                                         %                                         switch plot_type
                                         %                                             case 2
@@ -754,7 +770,7 @@ classdef ballisticReleaseTaksPlots
             rows = 2 + length(emg_pair); % only plot position and the muscles 
             axh = zeros(rows, cols);
 %             subj_i  = 4;
-            subj_i  = 1;
+            subj_i  = 4;
             dir_i   = 1;
             pert_i  = 1;
             for fce_i = 1:3
@@ -1146,7 +1162,7 @@ classdef ballisticReleaseTaksPlots
             cols = 3;
             rows = 2 + length(emg_pair); % only plot position and the muscles 
             axh = zeros(rows, cols);
-            for subj_i  = 1%:4 %;
+            for subj_i  = 1:4 %;
                 fh(subj_i) = figure('name', 'EMG', 'unit', 'inch', 'position', [0 0 7 12]);
             dir_i   = 1;
             pert_i  = 1;
@@ -1255,7 +1271,7 @@ classdef ballisticReleaseTaksPlots
             for muscle_i = 1:length(emg_pair)
                  linkaxes(axh(2+muscle_i,:), 'xy');
             end
-            sgtitle('variate force');
+            sgtitle(['variate force subj'  num2str(subj_i) 'dir' num2str(dir_i)]);
             end
         end
     
@@ -1757,7 +1773,7 @@ classdef ballisticReleaseTaksPlots
             % use the mean and std
             %   Detailed explanation goes here
 %             fh = figure('name', 'EMG', 'unit', 'inch', 'position', [0 0 7 12]);
-            Fs = 500;
+            Freq = 2000;
             col_type = colormap('lines');
             t_range = [-0.5 1];
 
@@ -1772,7 +1788,7 @@ classdef ballisticReleaseTaksPlots
             subj_i  = 2;
             dir_i   = 1;
             pert_i  = 1;
-            t_step = 1/500;
+            t_step = 1/Freq;
             colors = colormap('lines');
                
             Data = obj.data;
@@ -1783,7 +1799,8 @@ classdef ballisticReleaseTaksPlots
             l = size(Data, 4); % distance
             t = size(Data, 5); % trials
             p = size(Data, 6); % perturbation type
-            idx_last = 200;
+            idx_last = Freq/2;
+            idx_lead = Freq/5;
             if_subtract = 0;
             fce_list = [15 20 25];
             dist_list = [2.5 5.0 7.5]; % cm
@@ -1815,8 +1832,8 @@ classdef ballisticReleaseTaksPlots
                                         end
                                     case 2
                                         idx = find(Data{ri,di,fi,li,1,pi}.ts==5 | Data{ri,di,fi,li,ti,pi}.ts==6);
-                                        idx = (idx(1)-100):idx(end);
-                                        %                                 idx = (idx(1)-500):(idx(end)+100);
+                                        idx = (idx(1)-idx_lead):idx(end);
+                                        %                                 idx = (idx(1)-500):(idx(end)+idx_lead);
                                         %idx = (idx(1)):idx(end);
                                 end
                                 
@@ -1854,8 +1871,8 @@ classdef ballisticReleaseTaksPlots
                                                 end
                                             case 2
                                                 idx = find(Data{ri,di,fi,li,ti,pi}.ts==5 | Data{ri,di,fi,li,ti,pi}.ts==6);
-                                                idx = (idx(1)-100):idx(end);
-                                                %                                 idx = (idx(1)-500):(idx(end)+100);
+                                                idx = (idx(1)-idx_lead):idx(end);
+                                                %                                 idx = (idx(1)-500):(idx(end)+idx_lead);
                                                 %idx = (idx(1)):idx(end);
                                         end
                                         %plot(Data{ri,ci,di,ti,li}.Fp(xyi,:));
@@ -1863,7 +1880,7 @@ classdef ballisticReleaseTaksPlots
                                         %idx = [idx idx(end)+(1:idx_last)]; % may error as the pert not long enough
                                         %idx = find(Data{ri,ci,di,ti,li}.ts==5 | Data{ri,ci,di,ti,li}.ts==6);
                                         %idx = (idx-9):idx(end);
-                                        %idx = (idx(1)):(idx(end)+100);
+                                        %idx = (idx(1)):(idx(end)+idx_lead);
                                         time = t_step*(idx-idx(1));
                                         %time = idx-idx(1);
 

@@ -137,7 +137,7 @@ classdef SessionScanFT
                 timediffdx = (timediffidx-1);            % select the last timepoint
                 timediffidx = timediffdx(timediffdx>1);
                 time1 = interp1(rdt(timediffidx),time(timediffidx), rdt, 'linear', 'extrap');
-                ifplot = 1;
+                ifplot = 0;
                 if (ifplot)
                     clf; hold on;
                     plot(rdt, time, 'b*');

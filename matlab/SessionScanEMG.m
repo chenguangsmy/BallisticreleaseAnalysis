@@ -1,24 +1,20 @@
 classdef SessionScanEMG
-    %SESSIONSCANEMG Summary of this class goes here
-    %   Detailed explanation goes here
-    %SESSIONSCANEMG scan from the intermediate mat file (which
-    %   contains the EMG continuous sitnal), or the raw file and
-    %   get a variable.
+    %SESSIONSCANEMG Read EMG raw data and save as formatted 
+    %   Detailed explanation:
+    %SESSIONSCANEMG scan from the mat file (which contains the EMG signal),
+    %   or the message send via OPTOTRAK messanger.
     %   SessionScanEMG(ss_num, ifReadAgain)
-    %   Current setting is from the `intermediate` file
-    %   header read from %DT sequence% described above.
-
 
     %%%%%%%%%%%%%%%%
-    % todo: have a bandstop notch filter
     %%%%%%%%%%%%%%%
+
     properties
         ss_num
         anin_idx = 1:8
         anin_idx_offset = 0
-        dat             % intermediate
+        datmsg          % intermediate get in msg
         data            % full
-        unit
+        unit = 'mV'
         time
         brtime          % blackrock time
         freq
@@ -31,24 +27,8 @@ classdef SessionScanEMG
         mvf_shrink = true;
         amp_norm = zeros(1,8);
         if_calibSS
-        emg_means = [...
-                    51.0777
-                    23.6027
-                    41.4865
-                    80.8630
-                    16.5060
-                    46.2156
-                    36.5228
-                    23.6265];
-        emg_stds = 1.0e+03 * [ ...
-                    1.7848
-                    3.1263
-                    0.3451
-                    1.2234
-                    4.0816
-                    1.3261
-                    0.8344
-                    1.2729];
+        emg_means = [];
+        emg_stds = 1.0e+03 * [];
 
 
     end
@@ -91,28 +71,30 @@ classdef SessionScanEMG
                 DataInt = Data;
                 Dat = DataInt.QL.Data.RAW_CTSDATA.data;
                 N = size(Dat,2);
-                dat_all = reshape(Dat, obj.CHANNELS_NUM+obj.AINPUTS_NUM, ...
+                dat_msg = reshape(Dat, obj.CHANNELS_NUM+obj.AINPUTS_NUM, ...
                     N*obj.DATA_PER_SHORT);
-                % message runs at 100Hz, and get 10 data points per msg
-                obj.dat = dat_all(obj.anin_idx+obj.anin_idx_offset,:);
+                % message runs at 100Hz, and get 10 data points per msg -> 1000Hz
+                obj.datmsg = dat_msg(obj.anin_idx+obj.anin_idx_offset,:);
                 time_msg = DataInt.QL.Data.RAW_CTSDATA.source_timestamp;
                 % get brtime
-                obj.brtime = obj.getBRtimefromIntermediate(time_msg);
+                obj.brtime = obj.getBRtimefromIntermediate(time_msg); % only from message
                 % get RTMA time (task time)
-                obj.time   = obj.getRTMAtimeAligned(); % to write
+%                 obj.time   = obj.getRTMAtimeAligned(); 
+                rawdata_flag = 0;
                 try
                     obj = obj.readRawData();
-                    rawdata_matflag = 1;
+                    rawdata_flag = 1;
                 catch
-                    obj = obj.readRawDataM();
+                    % Raw data saved in *.mat format
+                    obj = obj.readRawDataM(); 
                     %                 disp('SessionScanEMG: no raw EMG readed');
-                    obj.data.emg = zeros(8,0);
-                    rawdata_matflag = 0;
+                    %                 obj.data.emg = zeros(8,0);
+                    rawdata_flag = 1;
                 end
 
                 % if no raw data, fill the raw data with the intermediate data
-                if (rawdata_matflag == 0)
-                    obj.data.emg = double(obj.dat);
+                if (rawdata_flag == 0)
+                    obj.data.emg = double(obj.datmsg);
                     obj.data.t = obj.brtime';
                     obj.freq = round(mean(1./diff(obj.data.t)));
                 end
@@ -299,7 +281,7 @@ classdef SessionScanEMG
             obj.data.t = t;
             obj.freq = mean(1./diff(t));
 %             obj.freq = [unique(data_tmp{:,2})];
-            obj.data.emg = d_tmp;
+            obj.data.emg = d_tmp';
         end
 
         function obj = preprocessRawData(obj, ifplot)
@@ -1069,7 +1051,7 @@ classdef SessionScanEMG
             axesh = zeros(1,8);
             for axi = 1:8
                 axesh(axi) = subplot(8,1,axi);
-                plot(obj.brtime, obj.dat(axi,:));
+                plot(obj.brtime, obj.datmsg(axi,:));
                 ylabel(['ch' num2str(axi)] );
                 switch axi
                     case 1

@@ -12,36 +12,78 @@ classdef SessionsScan
         % cond.ssNo
         % cond.sf
         sessions
+        subjprop % subject properties
         trials TrialScan
         export_cond
         filename
     end
     
     methods
-        function obj = SessionsScan() %inputArg1,inputArg2
+        function obj = SessionsScan(ss_input, ifsave) %inputArg1,inputArg2
             %SESSIONSSCAN Construct an instance of this class
             %   read several sessions, and put all the trials together with
             %   conditions (the trial descriptions) aligned. 
             %
             % 
             % 1. Have the subjects - directions - sessions trials
-            % subject 1, CZ
+            if (exist('ss_input', 'var'))
+                ss_num = ss_input;
+            else
+
+            
+%             % subject 1, CZ
 %             ss_num{1} = [4216 4217 4218 4219 4220]; % CZ            
 %             ss_num{1} = [ 4217];
 %             ss_num{1} = [4300 4301 4303 4304]; %CZ testing
 %             ss_num{2} = [4310 4311 4313 4314]; % HA testing, 4315 & 4312 as MVF
-            ss_num = {...[4300 4301 4303 4304] ...              %CZ testing
-                      [4310 4311 4313 4314]...                  %HA testing % MVF 4315 4312
-                      [4325 4326 4328 4329]...                  %NN testing % MVF 4324 4327
-                      [4336 4337 4339 4340 4341]...             %HM testing % MVF 4335 4338
-                      [4351 4352 4353 4355 4356]...             %MR testing % MVF 4349 4354
-                      };  
 %             ss_num = {...[4300 4301 4303 4304] ...              %CZ testing
+%                       [4310 4311 4313 4314]...                  %HA testing % MVF 4315 4312
+%                       [4325 4326 4328 4329]...                  %NN testing % MVF 4324 4327
+%                       [4336 4337 4339 4340 4341]...             %HM testing % MVF 4335 4338
+%                       [4351 4352 4353 4355 4356]...             %MR testing % MVF 4349 4354
+%                       [4300 4301 4303 4304] ...                 %CZ testing
 %                       [4310 4311 4313 4314]...                  %HA testing
-%                      };  
-%             ss_num = {  [4385 4386 4387 4388] ...              %HA testing
-%                         [4379 4380 4382 4383] ...              %CZ testing
 %                       };  
+            ss_num = {  ...
+%                 [4401 4402 4404 4405 4426 4427] ...     % BH conducting
+%                 [4408 4409 4412 4414] ...               % MR conducting
+%                 [4418 4419 4422 4421] ...               % NN conducting
+%                 [4432 4434 4437 4438] ...               % HM conducting
+%                 [4379 4380 4382 4383] ...               % CZ testing
+%                 [4385 4386 4387 4388] ...               % HA testing
+%                 [4446 4448 4450 4451]  ...              % FM conducting
+%                 [4455 4456 4458 4459]  ...              % FT conduting
+%                 [4463 4464 4466 4467]  ...              % QX conducting
+%                 [4472 4473 4476 4477] ...               % VC
+%                 [4481 4482 4483 4485 4486] ...          % DS
+%                 [4491 4492 4494 4495] ...               % BW
+%                 [4500 4501 4503 4504] ...               % AS
+%                 [4512 4513 4515 4516] ...               % XZ
+%                 [4520 4521 4523 4524] ...               % ZC
+%                 [4530 4531 4533 4534] ...               % KO
+%                 [4542 4543 4545 4546] ...               % SL
+%                 [4558 4560 4562 4563] ...               % AK
+%                 [4568 4569] ... % unfinished            % AR
+                  [4573 4574 4576 4577] ...               % RL
+                  [4583 4584 4586 4587] ...               % HD
+                  };  
+            end
+
+            if (~exist('ifsave', 'var'))
+                ifsave = 0;
+            end
+%             obj.subjprop.hight  = [170 175 183 160 183 172];            % cm
+%             obj.subjprop.weight = [63.2 65.7 85.8 50.2 82.0 77.8];      % kg
+%             obj.subjprop.hight = [180 183 182];                         % subj 7,8,9
+%             obj.subjprop.weight = [90.0 78.5 81.3];                     % subj 7,8,9
+%             obj.subjprop.hight = [163 180 182];                         % subj 10,11,12
+%             obj.subjprop.weight = [60.0 75.0 113.0];                    % subj 10,11,12
+%             obj.subjprop.height = [188 163 180];                        % subj 13,14,15
+%             obj.subjprop.weight = [101.5 55.2 65];                      % subj 13,14,15
+%             obj.subjprop.height = [162.6 160.0 157.5];                    % subj 16,17,18
+%             obj.subjprop.weight = [62.1 58.0 58.5];                       % subj 16,17,18
+              obj.subjprop.height = [168.0 162.0];                           % subj 19,20
+              obj.subjprop.weight = [57.3  46.4];                            % subj 19,20
 %                       [4349 4351 4352 4353 4354 4355 4356]...   %MR testing
             % subject 2, HA
 %             ss_num{2} = [4204 4205 4206 4208]
@@ -78,6 +120,7 @@ classdef SessionsScan
                     disp(['Loading Sessions ' num2str(sessions_load_i) '/' ...
                         num2str(ss_num_total)]);
                     % loading
+%                     ss_tmp{subj_i}{ss_i} = SessionScan(ss_num{subj_i}(ss_i),1);
                     ss_tmp{subj_i}{ss_i} = SessionScan(ss_num{subj_i}(ss_i));
                     obj.sessions{subj_i}{ss_i} = ss_tmp{subj_i}{ss_i};
                 end
@@ -131,7 +174,9 @@ classdef SessionsScan
 
             obj = obj.SessionsSpecifyRotation();
 
-            obj.SessionsExport();
+            if (ifsave)
+                obj.SessionsExport();
+            end
         end
         
         function [performc] = getTrialPerformance(obj) 
@@ -143,13 +188,15 @@ classdef SessionsScan
                 performc{subj_i}.rate_all = zeros(1,1);
                 performc{subj_i}.rate_eachd= zeros(1,4);
                 performc{subj_i}.rate_eachc= zeros(1,4,3,3);
+                performc{subj_i}.trial_all = zeros(1,1);
                 % time-all
                 trial_idx = obj.cond.subject == subj_i;
                 performc{subj_i}.time_all = max([obj.trials(trial_idx).edn_t]) - ...
                                             min([obj.trials(trial_idx).bgn_t]);
                 trialLength = [obj.trials.edn_t] - [obj.trials.bgn_t];
                 % rate-all
-                performc{subj_i}.rate_all = sum([obj.cond.sf(trial_idx)])/sum(trial_idx);
+                performc{subj_i}.rate_all = sum([obj.cond.sf(trial_idx)] & ~isnan([obj.cond.direction(trial_idx)]))/sum(~isnan(obj.cond.direction(trial_idx)));
+                performc{subj_i}.trial_all = sum(~isnan(obj.cond.direction(trial_idx))); % trial started (excluded from the rest trials
                 for d_i = 1:length(obj.export_cond.direction)
                 % time_eachd
                     trial_idx = obj.cond.subject == subj_i & ...
@@ -189,11 +236,11 @@ classdef SessionsScan
             % 
             % In experiment with 4 directions no pulse, perturbation is 1
             data = cell(length(unique(obj.export_cond.subject)), ... % subjects
-                4, ...                                       % directions
-                3, ...                                       % fce
-                3, ...                                       % dist
-                9, ...15, ...                                      % trials
-                4);                                          % pert
+                4, ...                                               % directions
+                3, ...                                               % fce
+                3, ...                                               % dist
+                9, ...15, ...                                        % trials
+                4);                                                  % pert
 %                 1);                                          % pert
             data_index_ss = zeros(size(data));
             data_index_tr = zeros(size(data));
@@ -226,7 +273,7 @@ classdef SessionsScan
                                 % if trial is enough, get trials, 
                                 if (sum(trialMask))>=trials_req(pert_i)
                                     trial_idx = find(trialMask);
-                                    trial_idx = trial_idx(1:trials_req(pert_i));
+                                    trial_idx = trial_idx(end-trials_req(pert_i)+1:end);
                                 % if trial is not enough, get more trials
                                 % from repeating
                                 else
@@ -253,8 +300,9 @@ classdef SessionsScan
                     end
                 end
             end
-            
+            subjprop = obj.subjprop;
             save(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/' obj.filename '.mat'], 'data', 'data_index_ss', 'data_index_tr', '-v7.3');
+            save(['/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/processedData/' obj.filename '.mat'], 'subjprop', '-append');
         end
         
         function data = SessionsExportf(obj)
@@ -349,6 +397,24 @@ classdef SessionsScan
                             4354 4355 4356 ...
                             4382 4383 ...
                             4387 4388 ...
+                            4404 4405 4427 ...
+                            4412 4414 ...
+                            4421 4422 ...
+                            4437 4438 ...
+                            4450 4451 ...
+                            4458 4459 ...
+                            4466 4467 ...
+                            4476 4477 ...
+                            4485 4486 ...
+                            4494 4495 ...
+                            4503 4504 ...
+                            4515 4516 ...
+                            4523 4524 ...
+                            4533 4534 ...
+                            4545 4546 ...
+                            4562 4563 ...
+                            4576 4577 ...
+                            4586 4587 ...
                             ]; 
                 % first assume these sessions. These can be read from .conf
                 % in the future. 
