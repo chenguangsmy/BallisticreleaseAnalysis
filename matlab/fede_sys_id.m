@@ -8,16 +8,26 @@ clc, clear, close all
 % himanshu and chenguang
 % load('ss4181_4202.mat', 'data');  % 6N and 12N perturbation on x, himanshu and chenguang
 % load('ss4216_4226.mat'); %Multiple Direction Chenguang/Himanshu
-load('ss4216_4239.mat'); %Multiple Direction Chenguang/Himanshu stricter conditions
+% load('ss4216_4239.mat'); %Multiple Direction Chenguang/Himanshu stricter conditions
 % load('ss4253_4274.mat') %Single Direction Cheng/Himan with Pulse in force and position hold
-
+% load('data/processedData/ss4310_4341.mat');
+% load('data/processedData/ss4310_4356.mat');
+% load('data/processedData/ss4379_4422.mat'); % new data with 5 subject 
+% load('data/processedData/ss4379_4438.mat'); % new data with 5 subject 
+% load('data/processedData/ss4446_4467.mat');   % new data with 3 subjects
+% load('data/processedData/ss4472_4486.mat');   % new data with subj10,11
+% load('data/processedData/ss4512_4524.mat');   % subj14,15
+% load('data/processedData/ss4500_4524.mat');   % subj13,14,15
+% load('data/processedData/ss4472_4495.mat');   % subj10,11,12
+% load('data/processedData/ss4530_4563.mat');   % subj16,17,18
+load('data/processedData/ss4573_4587.mat');     % subj19,20
 % Chenguang adapted code to briefly plot the loaded data and check that
 % everythin is fine! ;)
 
 
 Data = data;
-Freq = 500;
-t_step = 1/500;
+Freq = 2000;
+t_step = 1/Freq;
 clear axh
 fh = figure(2); 
 
@@ -28,7 +38,7 @@ f = size(Data, 3); % force
 d = size(Data, 4); % target
 l = size(Data, 5); % trials
 p = size(Data, 6); % perturbation type
-idx_last = 200;
+idx_last = 800;
 if_subtract = 0;
 epoc_type = 2;
 plot_type = 1;          % 1 displacement
@@ -74,9 +84,9 @@ for ri = 1:r % subj
 %                                 idx = (idx(1)-600):idx(end);
                                 
                                 %For Multiple t_in = release - 0.5s
-                                idx = (idx(1)-250):idx(end); 
+                                idx = (idx(1)-0.5*Freq):idx(end); 
                                 
-                                %idx = (idx(1)):idx(end);
+%                                 idx = (idx(1)):idx(end);
                         end
 
                         time = t_step*(idx-idx(1));
@@ -85,7 +95,7 @@ for ri = 1:r % subj
                         %time = idx-idx(1);
                         switch plot_type
                             case 1
-                                dat = Data{ri,ci,fi,di,ti,li}.ox(1,idx);
+                                dat = Data{ri,ci,fi,di,ti,li}.ox(3,idx);
                                 %dat = dat - dat(1);
                                 titlestr = 'displacement';
                             case 2
@@ -131,13 +141,13 @@ linkaxes(axh, 'xy');
 % xlim([0 2])
 sgtitle(titlestr);
 
-%% System Identification
+%%% System Identification
 
 clc, close all
-%Select Subject
-subj = 1;
+% Select Subject
+for subj = 1:r
 % Select Direction (1=+x,2=+y,3=-x,4=-y)
-dir = 1;
+for dir = 1:4
 
 %Here you have the functions to perfrom system identification depending 
 %on the kind of test you performed: Unpeturbed+Pulses or UnperturbedOnly
@@ -148,15 +158,36 @@ dir = 1;
 
 %------Function Computing system Identification Unpert Only (remember to
 %change idx_t above)
-results = sys_id_ubr(Data,idx_t,time_t,subj,dir);
-
+%     results(subj,dir) = sys_id_ubr(Data,idx_t,time_t,subj,dir);
+    Results(subj,dir) = sys_id_ubr(Data,idx_t,time_t,subj,dir);
+end
+end
 %The following function is to compute the kinematic analysis based on the Optotrak
 %markers on hand, elbow and shoulder
 %(As far as I have seen now, it works well only for direction "+x" e
 %subject Chenguamng)
-
-%------Function Computing Arm Kinematic Analysis (Joint Angles, Jacobian, Mass Matrix)
-% results = sys_kin(Data,idx_t,time_t,subj,dir);
+% save('data/processedData/ss4310_4356.mat','Results', '-append');
+% save('data/processedData/ss4379_4438.mat','Results', '-append');
+% save('data/processedData/ss4446_4467.mat','Results', '-append'); 
+% save('data/processedData/ss4512_4524.mat', 'Results', '-append');   % subj14,15
+% save('data/processedData/ss4500_4524.mat', 'Results', '-append');   % subj13,14,15
+% save('data/processedData/ss4472_4495.mat', 'Results', '-append');   % subj12
+% save('data/processedData/ss4530_4563.mat', 'Results', '-append');   % subj16,17,18
+% save('data/processedData/ss4472_4486.mat','Results', '-append'); 
+save('data/processedData/ss4573_4587.mat','Results', '-append');    % subj19,20
+%% ------Function Computing Arm Kinematic Analysis (Joint Angles, Jacobian, Mass Matrix)
+for subj = 1:2
+    % Select Direction (1=+x,2=+y,3=-x,4=-y)
+    for dir = 1:4%[1 3] % dir 2 and 4 are not recorded
+        subj
+        dir
+        results = sys_kin(Data,idx_t,time_t,subj,dir);
+        Results_kin(subj,dir) = results;
+    end
+end
+% save('data/processedData/ss4472_4486.mat','Results_kin', '-append');
+% save('data/processedData/ss4530_4563.mat','Results_kin', '-append');
+save('data/processedData/ss4573_4587.mat','Results', '-append');    % subj19,20
 
 %% PLOTTING (the rest of the code concerns only results plotting)
 
@@ -190,6 +221,9 @@ d_maxx = +0.1;
 % d_minn = -0.1;
 % d_maxx = +0.01;
 
+for subj_i = 5%1:r
+    for dir_i = 1 % 1:c
+%         results = Results(subj_i,dir_i);
 % Unperturbed
 figure(),
 set(gcf,'color','w');
@@ -659,151 +693,162 @@ sgtitle('Displacement [m] in Unperturbed Ballistic Release')
 %                 plot(results.avg_FD_P{3}.p{3,3}(2,:),'r','LineWidth',2), grid on
 %                 ylim([d_minn d_maxx])
 % sgtitle('Displacement [m] in Pulse @ Position Hold')
-
+    end
+end
 %% FREQUENCY PLOTS
 %Bode Plots
 clc, close all
 
-options = bodeoptions;
-options.FreqUnits = 'Hz'; % or 'rad/second', 'rpm', etc.
-figure(),
-set(gcf,'color','w');
-subplot(3,3,1), bodemag(results.TF.up{1, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{1,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{1,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{1,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,2), bodemag(results.TF.up{1, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{1,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{1,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{1,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,3), bodemag(results.TF.up{1, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{1,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{1,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{1,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,4), bodemag(results.TF.up{2, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{2,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{2,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{2,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,5), bodemag(results.TF.up{2, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{2,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{2,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{2,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,6), bodemag(results.TF.up{2, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{2,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{2,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{2,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,7), bodemag(results.TF.up{3, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{3,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{3,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{3,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,8), bodemag(results.TF.up{3, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{3,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{3,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{3,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-subplot(3,3,9), bodemag(results.TF.up{3, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
-%                 for w = wind_start:length(results.wind_v)
-%                     bodemag(results.TF.p{3,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-%                     bodemag(results.TF.p{3,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodemag(results.TF.p{3,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-%                 end
-                grid on
-sgtitle('Bode Plot - Magnitude - Identified Models')
+
+for subj = 1:4
+    for dirc = 1:4
+
+        results = Results(subj,dirc);
+        options = bodeoptions;
+        options.FreqUnits = 'Hz'; % or 'rad/second', 'rpm', etc.
+        figure(),
+        set(gcf,'color','w');
+        subplot(3,3,1), bodemag(results.TF.up{1, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{1,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{1,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{1,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,2), bodemag(results.TF.up{1, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{1,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{1,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{1,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,3), bodemag(results.TF.up{1, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{1,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{1,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{1,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,4), bodemag(results.TF.up{2, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{2,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{2,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{2,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,5), bodemag(results.TF.up{2, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{2,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{2,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{2,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,6), bodemag(results.TF.up{2, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{2,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{2,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{2,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,7), bodemag(results.TF.up{3, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{3,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{3,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{3,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,8), bodemag(results.TF.up{3, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{3,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{3,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{3,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        subplot(3,3,9), bodemag(results.TF.up{3, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        %                 for w = wind_start:length(results.wind_v)
+        %                     bodemag(results.TF.p{3,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        %                     bodemag(results.TF.p{3,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodemag(results.TF.p{3,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        %                 end
+        grid on
+        sgtitle({'Bode Plot - Magnitude - Identified Models', ['subj' num2str(subj) ' dirc' num2str(dirc)]});
 
 
-options.MagVisible = 'off';
-% figure(),
-% set(gcf,'color','w');
-% subplot(3,3,1), bodeplot(results.TF.up{1, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{1,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{1,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{1,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,2), bodeplot(results.TF.up{1, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{1,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{1,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{1,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,3), bodeplot(results.TF.up{1, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{1,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{1,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{1,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,4), bodeplot(results.TF.up{2, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{2,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{2,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{2,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,5), bodeplot(results.TF.up{2, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{2,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{2,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{2,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,6), bodeplot(results.TF.up{2, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{2,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{2,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{2,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,7), bodeplot(results.TF.up{3, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{3,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{3,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{3,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,8), bodeplot(results.TF.up{3, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{3,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{3,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{3,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% subplot(3,3,9), bodeplot(results.TF.up{3, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
-% %                 for w = wind_start:length(results.wind_v)
-% %                     bodeplot(results.TF.p{3,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
-% %                     bodeplot(results.TF.p{3,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
-% %                     bodeplot(results.TF.p{3,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
-% %                 end
-%                 grid on
-% sgtitle('Bode Plot - Phase - Identified Models')
+        options.MagVisible = 'off';
+        % figure(),
+        % set(gcf,'color','w');
+        % subplot(3,3,1), bodeplot(results.TF.up{1, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{1,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{1,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{1,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,2), bodeplot(results.TF.up{1, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{1,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{1,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{1,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,3), bodeplot(results.TF.up{1, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{1,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{1,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{1,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,4), bodeplot(results.TF.up{2, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{2,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{2,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{2,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,5), bodeplot(results.TF.up{2, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{2,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{2,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{2,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,6), bodeplot(results.TF.up{2, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{2,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{2,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{2,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,7), bodeplot(results.TF.up{3, 1},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{3,1,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{3,1,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{3,1,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,8), bodeplot(results.TF.up{3, 2},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{3,2,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{3,2,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{3,2,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % subplot(3,3,9), bodeplot(results.TF.up{3, 3},{0.1*2*pi,10*2*pi},'b',options), hold on,
+        % %                 for w = wind_start:length(results.wind_v)
+        % %                     bodeplot(results.TF.p{3,3,1,w},{0.1*2*pi,10*2*pi},options,'g--'), hold on
+        % %                     bodeplot(results.TF.p{3,3,2,w},{0.1*2*pi,10*2*pi},options,'y--'), hold on
+        % %                     bodeplot(results.TF.p{3,3,3,w},{0.1*2*pi,10*2*pi},options,'c--'), hold on
+        % %                 end
+        %                 grid on
+        % sgtitle('Bode Plot - Phase - Identified Models')
+    end
+end
 %% 2-D Bar Plots Unperturbed 
 clc, close all
 
+for subj = 1:3%2
+    for dir = 1:4
+        results = Results(subj,dir);
 % tpause = 0.05; %Speed of plotting
 % wind_start = 20; %From which time window to start showing
 
@@ -816,7 +861,7 @@ widx =23;
 
 %Stiffness 
 
-figure(),
+figure('name', ['subj' num2str(subj), ', dir' num2str(dir)]),
 subplot(1,3,1)
 set(gcf,'color','w');
 b = bar(xx,results.K_up_avg'); hold on
@@ -887,10 +932,14 @@ legend('15 N','20 N','25 N')
 % legend('S','M','L')
 title('Ballistic Release')
 
-
+sgtitle(['subj' num2str(subj), ', dir' num2str(dir)]);
+    end
+end
 %% 2-D Bar Plots Unperturbed vs Pulses over Trials at Constant Window
 clc, close all
-
+for subj_i = 1:r
+    for dir_i = 1:c
+        results = Results(subj,dir);
 % tpause = 0.05; %Speed of plotting
 % wind_start = 20; %From which time window to start showing
 
@@ -1163,7 +1212,8 @@ title('Pulse @ Position Hold')
 % % legend('15 N','20 N','25 N')
 % legend('S','M','L')
 % title('Pulse @ Position Hold')
-
+    end
+end
 %% 2-D Bar Plots Unperturbed vs Average Pulses over Windows
 clc, close all
 
@@ -1359,128 +1409,133 @@ title('Pulse @ Position Hold')
 % legend('S','M','L')
 % title('Pulse @ Position Hold')
 %% KINEMATIC PLOTS - run this part to plot the results of the kinematic analysis
+% load('data/processedData/ss4379_4438.mat', 'Results_kin')
 clc, close all
-trial_l = 15;
+% trial_l = 15;
+trial_l = 9;
+for subj_i = 1:2%:6
+    for dir_i = 1:4%[1 3]
+        results = Results_kin(subj_i,dir_i);
+        %Marker Trajectories
+        figure(),
+        set(gcf,'color','w');
+        sgtitle('Trajectories of the Hand-Elbow-Shoulder Joints')
+        idx = 1;
 
-%Marker Trajectories
-figure(),
-set(gcf,'color','w');
-sgtitle('Trajectories of the Hand-Elbow-Shoulder Joints')
-idx = 1;
-
-for f_sel = 1:3
-    for d_sel = 1:3
-        for i = 1:trial_l
-            subplot(3,3,idx),
-            plot3(results.hand{f_sel,d_sel,i}.x,results.hand{f_sel,d_sel,i}.y,results.hand{f_sel,d_sel,i}.z,'.k'), hold on
-            plot3(results.elbow{f_sel,d_sel,i}.x,results.elbow{f_sel,d_sel,i}.y,results.elbow{f_sel,d_sel,i}.z,'.r'), hold on
-            plot3(results.shoulder{f_sel,d_sel,i}.x,results.shoulder{f_sel,d_sel,i}.y,results.shoulder{f_sel,d_sel,i}.z,'.b'), hold on, grid on
-            xlabel('X [m]')
-            ylabel('Y [m]')
-            zlabel('Z [m]')
-            xlim([-0.5 0])
-            ylim([-0.9 -0.5])
-            view(2)
-            axis equal
+        for f_sel = 1:3
+            for d_sel = 1:3
+                for i = 1:trial_l
+                    subplot(3,3,idx),
+                    plot3(results.hand{f_sel,d_sel,i}.x,results.hand{f_sel,d_sel,i}.y,results.hand{f_sel,d_sel,i}.z,'.k'), hold on
+                    plot3(results.elbow{f_sel,d_sel,i}.x,results.elbow{f_sel,d_sel,i}.y,results.elbow{f_sel,d_sel,i}.z,'.r'), hold on
+                    plot3(results.shoulder{f_sel,d_sel,i}.x,results.shoulder{f_sel,d_sel,i}.y,results.shoulder{f_sel,d_sel,i}.z,'.b'), hold on, grid on
+                    xlabel('X [m]')
+                    ylabel('Y [m]')
+                    zlabel('Z [m]')
+                    xlim([-0.5 0])
+                    ylim([-0.9 -0.5])
+                    view(2)
+                    axis equal
+                end
+                idx = idx+1;
+            end
         end
-        idx = idx+1;
+
+        %Mass Ellipsoid
+        en_f = 8; %Enalrgement factor of Arm Lengths
+        figure(),
+        set(gcf,'color','w');
+        sgtitle('End-Effector Mass Ellipsoid')
+        idx = 1;
+        for f_sel = 1:3
+            for d_sel = 1:3
+                for i = 1:trial_l
+
+                    subplot(3,3,idx),
+                    plot(results.Fxx{f_sel,d_sel,i,1},results.Fyy{f_sel,d_sel,i,1},'.k'), hold on
+                    plot(results.Fxx{f_sel,d_sel,i,end},results.Fyy{f_sel,d_sel,i,end},'.r'), hold on
+                    plot(en_f*[0,results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],en_f*[0,-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
+                    plot(en_f*[results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*cosd(results.th_s{f_sel,d_sel,i}(1))], ...
+                        en_f*[-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*sind(results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
+                    plot(en_f*[0,results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],en_f*[0,-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
+                    plot(en_f*[results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*cosd(results.th_s{f_sel,d_sel,i}(end))], ...
+                        en_f*[-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*sind(results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
+                    grid on
+                    xlabel('Fx [N]')
+                    ylabel('Fy [N]')
+                    [t,s] = title(strcat('M_x(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(1,1),'%.1f'),' kg , M_x(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(1,1),'%.1f'),' kg'),...
+                        strcat('M_y(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(2,2),'%.1f'),' kg , M_y(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(2,2),'%.1f'),' kg'));
+                    t.FontSize = 9;
+                    t.FontWeight = 'normal';
+                    s.FontSize = 9;
+                    s.FontWeight = 'normal';
+                    axis equal
+                end
+                idx = idx+1;
+            end
+        end
+
+        %Stiffness Ellipsoid
+        en_f = 800; %Enalrgement factor of Arm Lengths
+        figure(),
+        set(gcf,'color','w');
+        sgtitle('End-Effector Stiffness Ellipsoid')
+        idx = 1;
+        for f_sel = 1:3
+            for d_sel = 1:3
+                for i = 1:trial_l
+
+                    subplot(3,3,idx),
+                    plot(results.Fxx_k{f_sel,d_sel,i,1},results.Fyy_k{f_sel,d_sel,i,1},'.k'), hold on
+                    plot(results.Fxx_k{f_sel,d_sel,i,end},results.Fyy_k{f_sel,d_sel,i,end},'.r'), hold on
+                    plot(en_f*[0,results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],en_f*[0,-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
+                    plot(en_f*[results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*cosd(results.th_s{f_sel,d_sel,i}(1))], ...
+                        en_f*[-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*sind(results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
+                    plot(en_f*[0,results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],en_f*[0,-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
+                    plot(en_f*[results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*cosd(results.th_s{f_sel,d_sel,i}(end))], ...
+                        en_f*[-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*sind(results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
+                    grid on
+                    xlabel('Fx [N]')
+                    ylabel('Fy [N]')
+                    [t,s] = title(strcat('K_x(t_0)= ',num2str(results.KEE_avg_t0{f_sel,d_sel}(1,1),'%.1f'),' Nm/rad , K_x(t_f)= ',num2str(results.KEE_avg_tf{f_sel,d_sel}(1,1),'%.1f'),' Nm/rad'),...
+                        strcat('K_y(t_0)= ',num2str(results.KEE_avg_t0{f_sel,d_sel}(2,2),'%.1f'),' Nm/rad , K_y(t_f)= ',num2str(results.KEE_avg_tf{f_sel,d_sel}(2,2),'%.1f'),' Nm/rad'));
+                    t.FontSize = 9;
+                    t.FontWeight = 'normal';
+                    s.FontSize = 9;
+                    s.FontWeight = 'normal';
+                    axis equal
+                end
+                idx = idx+1;
+            end
+        end
+
+        %Angular Plots
+        figure(),
+        set(gcf,'color','w');
+        sgtitle('Elbow-Shoulder Angles')
+        idx = 1;
+        for f_sel = 1:3
+            for d_sel = 1:3
+                for i = 1:trial_l
+
+                    subplot(3,3,idx),
+                    plot(results.th_s{f_sel,d_sel,i},results.th_e{f_sel,d_sel,i}), hold on
+                    grid on
+                    xlabel('\theta_s [deg]')
+                    ylabel('\theta_e [deg]')
+                    %             [t,s] = title(strcat('M_x(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(1,1),'%.1f'),' kg , M_x(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(1,1),'%.1f'),' kg'),...
+                    %                 strcat('M_y(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(2,2),'%.1f'),' kg , M_y(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(2,2),'%.1f'),' kg'));
+                    t.FontSize = 9;
+                    t.FontWeight = 'normal';
+                    s.FontSize = 9;
+                    s.FontWeight = 'normal';
+                    axis equal
+                end
+                idx = idx+1;
+            end
+        end
     end
 end
-
-%Mass Ellipsoid
-en_f = 8; %Enalrgement factor of Arm Lengths
-figure(),
-set(gcf,'color','w');
-sgtitle('End-Effector Mass Ellipsoid')
-idx = 1;
-for f_sel = 1:3
-    for d_sel = 1:3
-        for i = 1:trial_l
-            
-            subplot(3,3,idx),
-            plot(results.Fxx{f_sel,d_sel,i,1},results.Fyy{f_sel,d_sel,i,1},'.k'), hold on
-            plot(results.Fxx{f_sel,d_sel,i,end},results.Fyy{f_sel,d_sel,i,end},'.r'), hold on
-            plot(en_f*[0,results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],en_f*[0,-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
-            plot(en_f*[results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*cosd(results.th_s{f_sel,d_sel,i}(1))], ...
-                en_f*[-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*sind(results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
-            plot(en_f*[0,results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],en_f*[0,-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
-            plot(en_f*[results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*cosd(results.th_s{f_sel,d_sel,i}(end))], ...
-                en_f*[-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*sind(results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
-            grid on
-            xlabel('Fx [N]')
-            ylabel('Fy [N]')
-            [t,s] = title(strcat('M_x(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(1,1),'%.1f'),' kg , M_x(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(1,1),'%.1f'),' kg'),...
-                strcat('M_y(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(2,2),'%.1f'),' kg , M_y(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(2,2),'%.1f'),' kg'));
-            t.FontSize = 9;
-            t.FontWeight = 'normal';
-            s.FontSize = 9;
-            s.FontWeight = 'normal';
-            axis equal
-        end
-        idx = idx+1;
-    end
-end
-
-%Stiffness Ellipsoid
-en_f = 800; %Enalrgement factor of Arm Lengths
-figure(),
-set(gcf,'color','w');
-sgtitle('End-Effector Stiffness Ellipsoid')
-idx = 1;
-for f_sel = 1:3
-    for d_sel = 1:3
-        for i = 1:trial_l
-            
-            subplot(3,3,idx),
-            plot(results.Fxx_k{f_sel,d_sel,i,1},results.Fyy_k{f_sel,d_sel,i,1},'.k'), hold on
-            plot(results.Fxx_k{f_sel,d_sel,i,end},results.Fyy_k{f_sel,d_sel,i,end},'.r'), hold on
-            plot(en_f*[0,results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],en_f*[0,-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
-            plot(en_f*[results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),results.forearm{f_sel,d_sel,i}(1).*cosd(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*cosd(results.th_s{f_sel,d_sel,i}(1))], ...
-                en_f*[-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1)),-results.forearm{f_sel,d_sel,i}(1).*sind(results.th_e{f_sel,d_sel,i}(1)-results.th_s{f_sel,d_sel,i}(1))-results.arm{f_sel,d_sel,i}(1).*sind(results.th_s{f_sel,d_sel,i}(1))],'Color','k','LineWidth',2), hold on
-            plot(en_f*[0,results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],en_f*[0,-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
-            plot(en_f*[results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),results.forearm{f_sel,d_sel,i}(end).*cosd(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*cosd(results.th_s{f_sel,d_sel,i}(end))], ...
-                en_f*[-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end)),-results.forearm{f_sel,d_sel,i}(end).*sind(results.th_e{f_sel,d_sel,i}(end)-results.th_s{f_sel,d_sel,i}(end))-results.arm{f_sel,d_sel,i}(end).*sind(results.th_s{f_sel,d_sel,i}(end))],'Color','r','LineWidth',2), hold on
-            grid on
-            xlabel('Fx [N]')
-            ylabel('Fy [N]')
-            [t,s] = title(strcat('K_x(t_0)= ',num2str(results.KEE_avg_t0{f_sel,d_sel}(1,1),'%.1f'),' Nm/rad , K_x(t_f)= ',num2str(results.KEE_avg_tf{f_sel,d_sel}(1,1),'%.1f'),' Nm/rad'),...
-                strcat('K_y(t_0)= ',num2str(results.KEE_avg_t0{f_sel,d_sel}(2,2),'%.1f'),' Nm/rad , K_y(t_f)= ',num2str(results.KEE_avg_tf{f_sel,d_sel}(2,2),'%.1f'),' Nm/rad'));
-            t.FontSize = 9;
-            t.FontWeight = 'normal';
-            s.FontSize = 9;
-            s.FontWeight = 'normal';
-            axis equal
-        end
-        idx = idx+1;
-    end
-end
-
-%Angular Plots
-figure(),
-set(gcf,'color','w');
-sgtitle('Elbow-Shoulder Angles')
-idx = 1;
-for f_sel = 1:3
-    for d_sel = 1:3
-        for i = 1:trial_l
-            
-            subplot(3,3,idx),
-            plot(results.th_s{f_sel,d_sel,i},results.th_e{f_sel,d_sel,i}), hold on
-            grid on
-            xlabel('\theta_s [deg]')
-            ylabel('\theta_e [deg]')
-%             [t,s] = title(strcat('M_x(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(1,1),'%.1f'),' kg , M_x(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(1,1),'%.1f'),' kg'),...
-%                 strcat('M_y(t_0)= ',num2str(results.MEE_avg_t0{f_sel,d_sel}(2,2),'%.1f'),' kg , M_y(t_f)= ',num2str(results.MEE_avg_tf{f_sel,d_sel}(2,2),'%.1f'),' kg'));
-            t.FontSize = 9;
-            t.FontWeight = 'normal';
-            s.FontSize = 9;
-            s.FontWeight = 'normal';
-            axis equal
-        end
-        idx = idx+1;
-    end
-end
-
 %% STATISTICAL ANALYSIS
 clc, close all
 
