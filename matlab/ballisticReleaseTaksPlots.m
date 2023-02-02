@@ -11,20 +11,21 @@ classdef ballisticReleaseTaksPlots
 %         data_name = 'ss4310_4314'
 %         data_name = 'ss4351_4356';
 %         data_name = 'ss4310_4356_emg'
-%          data_name = 'ss4446_4467'       % other 3 subjects
-%         data_name = 'ss4472_4495'         % subj10,11,and 12
-%          data_name = 'ss4491_4495'         % subj12
-%             data_name = 'ss4512_4524'         % subj14&15
-%           data_name = 'ss4500_4524'          % subject 13, 14, 15 
-          data_name = 'ss4530_4563'       % subject 16, 17, 18
+%         data_name = 'ss4446_4467'       % other 3 subjects
 %         data_name = 'ss4379_4414'       % chenguang test with optotrak markers on
+%         data_name = 'ss4379_4438'       % 6-subject data
+%         data_name = 'ss4472_4495'       % subject 10, 11, and 12
+%         data_name = 'ss4491_4495'       % subject 12
+%         data_name = 'ss4500_4524'       % subject 13, 14, 15 
+%         data_name = 'ss4512_4524'       % subject 14, and 15
+%         data_name = 'ss4530_4563'       % subject 16, 17, 18
+          data_name = 'ss4573_4587'       % subject 19, 20
 %         data_name = 'ss4385_4388'       % subjeH data
 %         data_name = 'ss4379_4383'       % subjeC data
 %         data_name = 'ss4401_4427'       % subjeB data
 %         data_name = 'ss4408_4414'       % subjeM data
 %         data_name = 'ss4418_4422'       % subjeM data
 %         data_name = 'ss4379_4422'       % subjeM data
-%           data_name = 'ss4379_4438'       % 6-subject data
         data
         data_idx_ss
         data_idx_tr
@@ -34,7 +35,7 @@ classdef ballisticReleaseTaksPlots
     methods
         function obj = ballisticReleaseTaksPlots()
             %BALLISTICRELEASETAKSPLOTS Construct an instance of this class
-            %   read data to construct the plot 
+            %   read data to construct the plot
             load([obj.data_dir '/' obj.data_name], 'data*');
             obj.data = data;
             cond.subj = 1:size(data,1);
@@ -78,7 +79,7 @@ classdef ballisticReleaseTaksPlots
                     dat.row = length(trials_list);
                     dat.col = sum(obj.data{subj_i,dir_i,fce_i,dist_i,1,pert_i}.t > t_range(1) & ...
                         obj.data{subj_i,1,fce_i,dist_i,1,1}.t < t_range(2));
-%                     dat.t = t_range(1):1/Fs:t_range(2);
+                    % dat.t = t_range(1):1/Fs:t_range(2);
                     dat.t = linspace(t_range(1), t_range(2), dat.col);
                     dat.pos = nan(dat.row, dat.col);
                     dat.fce = nan(dat.row, dat.col);
@@ -91,10 +92,10 @@ classdef ballisticReleaseTaksPlots
                         % stack the data into matrices
                         index_t = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t > t_range(1) & ...
                             obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t < t_range(2);
-%                         dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.x(1,index_t),dat.t,'spline');
+                        % dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.x(1,index_t),dat.t,'spline');
                         dat.pos(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.ox(1,index_t),dat.t,'spline');
                         dat.fce(trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.f(1,index_t),dat.t,'spline');
-%                         dat.emg(:,trial_idx,1:sum(index_t))=obj.data{subj_i,dir_i,fce_i,tar_i,trial_i,pert_i}.emg(:,index_t);
+                        % dat.emg(:,trial_idx,1:sum(index_t)) = obj.data{subj_i,dir_i,fce_i,tar_i,trial_i,pert_i}.emg(:,index_t);
                         for ch_i = 1:8
                         try
                         dat.emg(ch_i,trial_idx,:)=interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,index_t)',dat.t,'spline')';
@@ -154,7 +155,8 @@ classdef ballisticReleaseTaksPlots
             idx_last = Freq/2;
             if_subtract = 0;
             epoc_type = 2;
-            plot_type = 8;%4;  % 1 displacement
+            plot_type = 8;%4;  
+            % 1 displacement
             % 2 force
             % 3 Fp
             % 4 vlocity
@@ -172,7 +174,7 @@ classdef ballisticReleaseTaksPlots
                             
                             if (ci==1)
 %                                 title(subj_names{si});
-%                                title(['subj#' num2str(si)]);
+%                                 title(['subj#' num2str(si)]);
                             end
                             for di = 1:d % target distance
                                 axh(di, fi) = subplot(d,f,f*(di-1) + fi); grid on; hold on;
@@ -867,7 +869,7 @@ classdef ballisticReleaseTaksPlots
                     
                     % ylim([-1 5]);
 
-%                     set(axh(3, fce_i), 'YLim', [0 0.1]);
+                    % set(axh(3, fce_i), 'YLim', [0 0.1]);
 
                 end
             end
@@ -1915,7 +1917,7 @@ classdef ballisticReleaseTaksPlots
                             end
                         end
                         
-                        %         xlim([0.2 1.2])
+                        %         xlim([0.2 1.2]);
                         %         ylim([0 0.1]);
                         %         ylim([0 0.1]);
                     end

@@ -46,3 +46,9 @@ hold on;
 plot(sstmp.data.t, sstmp.data.x);
 plot(sstmp.data.t, [sstmp.data.optx(1,:);sstmp.data.opty(1,:);sstmp.data.optz(1,:)], '.');
 title(['session' num2str(ss_num)]);
+
+
+%% 
+% Subject 12, dir 3, force3, tar1 missing hand data. I'm checking the
+% reason
+load('/Users/cleave/Documents/projPitt/BallisticreleaseAnalysis/matlab/data/ProcessedData/ss4491_4495.mat');

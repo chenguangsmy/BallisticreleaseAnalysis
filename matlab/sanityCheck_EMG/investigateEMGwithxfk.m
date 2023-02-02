@@ -1656,29 +1656,30 @@ for subj_i  = 1:4
                     [v_closest1, idx_v_closestafr] = min(abs(v(index_t_fhd)-v_threshold1));
                     idx_v_closest1 = index_t_fhd(idx_v_closestafr);
 %                     idx_v_closest1 = index_t_fhd(idx_v_closest1);
-                    t_fhd = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t - ...
-                        obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t(idx_v_closest1));
+%                     t_fhd = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t - ...
+%                         obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t(idx_v_closest1));
+                    t_fhd = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t;
                     fhd_idx = t_fhd > time_window_fhold(1) & t_fhd < time_window_fhold(2);
 
                     % at-fly
-                    v_threshold2 = 0.5*v_max;
-                    v_threshold3 = 0.5*v_max;
-                    [v_closest2, idx_v_closest2] = min(abs(dir_sig(dir_i)*v(1:idx_v_max)-v_threshold2));
-                    [v_closest3, idx_v_closest3] = min(abs(dir_sig(dir_i)*v(idx_v_max:end)-v_threshold2));
-                    idx_v_closest3 = idx_v_max + idx_v_closest3-1;
-                    t_afl = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t - ...
-                        obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t(idx_v_max));
-                    time_window_atfly = [t_afl(index_t(idx_v_closest2)), t_afl(index_t(idx_v_closest3))];
-                    afl_idx = t_afl > time_window_atfly(1) & t_afl < time_window_atfly(2);
+%                     v_threshold2 = 0.5*v_max;
+%                     v_threshold3 = 0.5*v_max;
+%                     [v_closest2, idx_v_closest2] = min(abs(dir_sig(dir_i)*v(1:idx_v_max)-v_threshold2));
+%                     [v_closest3, idx_v_closest3] = min(abs(dir_sig(dir_i)*v(idx_v_max:end)-v_threshold2));
+%                     idx_v_closest3 = idx_v_max + idx_v_closest3-1;
+%                     t_afl = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t - ...
+%                         obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t(idx_v_max));
+%                     time_window_atfly = [t_afl(index_t(idx_v_closest2)), t_afl(index_t(idx_v_closest3))];
+%                     afl_idx = t_afl > time_window_atfly(1) & t_afl < time_window_atfly(2);
                         
 
                     % position-hold;
-                    v_threshold4 = 0.05*v_max;
-                    [v_closest4, idx_v_closest4] = min(abs(v(idx_v_max:end)-v_threshold4));
-                    idx_v_closest4 = idx_v_max + idx_v_closest4-1;
-                    t_phd = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t - ...
-                        obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t(idx_v_closest4));
-                    phd_idx = t_phd > time_window_phold(1) & t_phd < time_window_phold(2);
+%                     v_threshold4 = 0.05*v_max;
+%                     [v_closest4, idx_v_closest4] = min(abs(v(idx_v_max:end)-v_threshold4));
+%                     idx_v_closest4 = idx_v_max + idx_v_closest4-1;
+%                     t_phd = obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t - ...
+%                         obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t(idx_v_closest4));
+%                     phd_idx = t_phd > time_window_phold(1) & t_phd < time_window_phold(2);
                 
 %                     ifplot = 0;
                     if (ifplot & 0) % check the velocity and its corresponding marks
@@ -1753,12 +1754,12 @@ for subj_i  = 1:4
 
                     for ch_i = 1:8
                             emg_fhd = mean(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,fhd_idx), 'omitnan');
-                            emg_afl = mean(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,afl_idx), 'omitnan');
-                            emg_phd = mean(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,phd_idx), 'omitnan');
+%                             emg_afl = mean(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,afl_idx), 'omitnan');
+%                             emg_phd = mean(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,phd_idx), 'omitnan');
     
                             Dat_EMG_fhd(subj_i,dir_i,fce_i,dist_i,trial_i,ch_i) = emg_fhd;
-                            Dat_EMG_afl(subj_i,dir_i,fce_i,dist_i,trial_i,ch_i) = emg_afl;
-                            Dat_EMG_phd(subj_i,dir_i,fce_i,dist_i,trial_i,ch_i) = emg_phd;
+%                             Dat_EMG_afl(subj_i,dir_i,fce_i,dist_i,trial_i,ch_i) = emg_afl;
+%                             Dat_EMG_phd(subj_i,dir_i,fce_i,dist_i,trial_i,ch_i) = emg_phd;
     
 %                             ifplot = 0;
                             if (ifplot)
@@ -1893,20 +1894,20 @@ for subj_i  = 1:4
 end
 
 % Do the pair-wise t-test for each of the subject and direction
-t_test_p = nan(16,8);
-for subj_i = 1:4
-    for dir_i = 1:4
-        for ch_i = 1:8
-            emg1 = Dat_EMG_phd(subj_i,dir_i,:,:,:,ch_i);
-            emg2 = Dat_EMG_fhd(subj_i,dir_i,:,:,:,ch_i);
-            [h,p] = ttest(emg1(:),emg2(:));
-            t_test_p((subj_i-1)*4+dir_i,ch_i) = p;
-        end
-    end
-end
-t_test_p
-
-[h,p] = ttest(Dat_EMG_phd(:), Dat_EMG_fhd(:)) % pool all subj,dir,conditions
+% t_test_p = nan(16,8);
+% for subj_i = 1:4
+%     for dir_i = 1:4
+%         for ch_i = 1:8
+%             emg1 = Dat_EMG_phd(subj_i,dir_i,:,:,:,ch_i);
+%             emg2 = Dat_EMG_fhd(subj_i,dir_i,:,:,:,ch_i);
+%             [h,p] = ttest(emg1(:),emg2(:));
+%             t_test_p((subj_i-1)*4+dir_i,ch_i) = p;
+%         end
+%     end
+% end
+% t_test_p
+% 
+% [h,p] = ttest(Dat_EMG_phd(:), Dat_EMG_fhd(:)) % pool all subj,dir,conditions
 %% Using 2-way anova only on the force and distance 
 
 Dat_subj = zeros(4,4,3,3,9); 

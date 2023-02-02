@@ -22,3 +22,6 @@ tmp.txt
 *.mat
 *.mp4
 *.pptx
+*.slxc
+*.asv
+*.fig
