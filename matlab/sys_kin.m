@@ -1,4 +1,4 @@
-function results = sys_kin(Data,idx_t,time_t,subj,dir)
+function results = sys_kin(Data,idx_t,time_t,subj,dir,subjprop)
 % Sys Ident - THIS SECTION OF CODE TAKES a while to run
 clc, close all
 
@@ -100,7 +100,7 @@ for f_sel= 1:3
                 results.lhs{f_sel,d_sel,i} = sqrt(diff_hs);
 
                 for tt = length(results.arm{f_sel,d_sel,i}):-1:1
-                    if results.arm{f_sel,d_sel,i}(tt) >= 0.4 % cg: don't know why 0.3 or 0.4
+                    if results.arm{f_sel,d_sel,i}(tt) >= 0.4
                         results.hand{f_sel,d_sel,i}.x(tt) = [];
                         results.hand{f_sel,d_sel,i}.y(tt) = [];
                         results.hand{f_sel,d_sel,i}.z(tt) = [];
@@ -118,31 +118,35 @@ for f_sel= 1:3
                         results.lhs{f_sel,d_sel,i}(tt) = [];
                     end
                 end
-
-                lhs_p = abs(results.hand{f_sel,d_sel,i}.x-results.shoulder{f_sel,d_sel,i}.x);
-                les_p = abs(results.elbow{f_sel,d_sel,i}.x-results.shoulder{f_sel,d_sel,i}.x);
-
+                
+                if (dir == 1) || (dir == 3)
+                    lhs_p = abs(results.hand{f_sel,d_sel,i}.x-results.shoulder{f_sel,d_sel,i}.x);
+                    les_p = abs(results.elbow{f_sel,d_sel,i}.x-results.shoulder{f_sel,d_sel,i}.x);
+                elseif (dir == 2) || (dir == 4)
+                    lhs_p = abs(results.hand{f_sel,d_sel,i}.y-results.shoulder{f_sel,d_sel,i}.y);
+                    les_p = abs(results.elbow{f_sel,d_sel,i}.y-results.shoulder{f_sel,d_sel,i}.y);                
+                end
                 %Shoulder Angle
                 results.th_s{f_sel,d_sel,i} = acosd(les_p./results.arm{f_sel,d_sel,i});
 
                 alph = acosd(lhs_p./results.lhs{f_sel,d_sel,i});
-
+                
                 th_he = 180 - alph - results.th_s{f_sel,d_sel,i};
                 % Elbow Angle
-                results.th_e{f_sel,d_sel,i} = asind((results.lhs{f_sel,d_sel,i}/results.forearm{f_sel,d_sel,i}).*sind(th_he));
+                results.th_e{f_sel,d_sel,i} = asind((results.lhs{f_sel,d_sel,i}./results.forearm{f_sel,d_sel,i}).*sind(th_he));
 
                 %Anthropometric Parameters
                 %(based on Winter Biomechanics book 2009)
-                M = 75; %[kg] user mass
+                M = subjprop.weight(subj); %[kg] user mass
                 m1 = 0.028*M; %[kg] upper arm mass
                 m2 = 0.022*M; %[kg] forearm+hand mass
-                l1G{f_sel,d_sel,i} = 0.436*results.arm{f_sel,d_sel,i};     % 0.436 for computing the center of the mass of the arm. antropomatic?
-                l2G{f_sel,d_sel,i} = 0.682*results.forearm{f_sel,d_sel,i}; % theoratical mass center calculated from (integration)...
+                l1G{f_sel,d_sel,i} = 0.436*results.arm{f_sel,d_sel,i};
+                l2G{f_sel,d_sel,i} = 0.682*results.forearm{f_sel,d_sel,i};
 
-                rhoG1{f_sel,d_sel,i} = 0.322*results.arm{f_sel,d_sel,i};        % radius of gyration !!!(Check that) \rho
+                rhoG1{f_sel,d_sel,i} = 0.322*results.arm{f_sel,d_sel,i};
                 rhoG2{f_sel,d_sel,i} = 0.468*results.forearm{f_sel,d_sel,i};
 
-                I1{f_sel,d_sel,i} = m1*rhoG1{f_sel,d_sel,i}.^2;                 % momenton of inerta...
+                I1{f_sel,d_sel,i} = m1*rhoG1{f_sel,d_sel,i}.^2;
                 I2{f_sel,d_sel,i} = m2*rhoG2{f_sel,d_sel,i}.^2;
 
                 
@@ -159,8 +163,29 @@ for f_sel= 1:3
                     results.MEE{f_sel,d_sel,i,tt} = inv(results.J{f_sel,d_sel,i,tt}')*results.M{f_sel,d_sel,i,tt}*inv(results.J{f_sel,d_sel,i,tt});
 
                     %Apparent End-Effector Stiffness
-                    results.KEE{f_sel,d_sel,i,tt} = inv(results.J{f_sel,d_sel,i,tt}')*K_joint*inv(results.J{f_sel,d_sel,i,tt});
+                    if (dir == 1 || dir == 3)
+                        F1 = force_interp(i,tt);
+                        F2 = 0;
+                    elseif (dir == 2 || dir == 4)
+                        F1 = 0;
+                        F2 = force_interp(i,tt);
+                    end
+                    l1 = results.arm{f_sel,d_sel,i}(tt);
+                    l2 = results.forearm{f_sel,d_sel,i}(tt);
+                    s1 = sind(results.th_s{f_sel,d_sel,i}(tt));
+                    s12 = sind(results.th_s{f_sel,d_sel,i}(tt)+(180-results.th_e{f_sel,d_sel,i}(tt)));
+                    c1 = cosd(results.th_s{f_sel,d_sel,i}(tt));
+                    c12 = cosd(results.th_s{f_sel,d_sel,i}(tt)+(180-results.th_e{f_sel,d_sel,i}(tt)));
+% 
+%                   ddJthF =  [(-l1*c1-l2*c12)*F1-l2*c12*F2,-l2*c12*F1-l2*c12*F2;...
+%                                 (l1*s1*l2*s12)*F1+l2*s12*F2,+l2*s12*F1+l2*s12*F2];
+                    ddJt1 = [(-l1*c1-l2*c12),-l2*c12;-l2*c12,-l2*c12];
+                    ddJt2 =[(-l1*s1-l2*s12),-l2*s12;-l2*s12,-l2*s12];
+                    ddJthF = [(-l1*c1-l2*c12),-l2*c12;-l2*c12,-l2*c12]*F1+[(-l1*s1-l2*s12),-l2*s12;-l2*s12,-l2*s12]*F2;
                     
+%                     results.KEE{f_sel,d_sel,i,tt} = inv(results.J{f_sel,d_sel,i,tt}')*K_joint*inv(results.J{f_sel,d_sel,i,tt});
+                    results.KEE{f_sel,d_sel,i,tt} = inv(results.J{f_sel,d_sel,i,tt}')*(K_joint-ddJthF)*inv(results.J{f_sel,d_sel,i,tt});
+
                     %Computation of Mass Ellipsoids
                     results.Fxx{f_sel,d_sel,i,tt} = results.MEE{f_sel,d_sel,i,tt}(1,:)*[xdd;ydd];
                     results.Fyy{f_sel,d_sel,i,tt} = results.MEE{f_sel,d_sel,i,tt}(2,:)*[xdd;ydd];
@@ -170,7 +195,7 @@ for f_sel= 1:3
                     results.Fyy_k{f_sel,d_sel,i,tt} = results.KEE{f_sel,d_sel,i,tt}(2,:)*[xdd;ydd];
                 end
                 
-                if size(results.MEE{f_sel,d_sel,i,1}) == [2 2] % summing up for all the trials...
+                if size(results.MEE{f_sel,d_sel,i,1}) == [2 2]
                     Msum_t0 = Msum_t0+results.MEE{f_sel,d_sel,i,1};
                     idx_sum0 = idx_sum0+1;
                     Ksum_t0 = Ksum_t0+results.KEE{f_sel,d_sel,i,1};
