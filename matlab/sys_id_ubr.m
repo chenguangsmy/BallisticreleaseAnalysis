@@ -45,7 +45,7 @@ for f_sel= 1:3
         %Reset Force-Displacement Identification Data
         disp_interp_t = [];
         force_interp_t = [];
-
+        preddisp_interp_t = [];
 
         for i = 1:trial_l
             if size(Data{subj,dir,f_sel,d_sel,i,unpert}) == [1 1]
@@ -56,6 +56,8 @@ for f_sel= 1:3
                 %Identification on Single Trial
                 force_interp_t(i,:) = -(force_interp(i,:)-mean(force_interp(i,1:230)));
                 disp_interp_t(i,:) = disp_interp(i,:)-mean(disp_interp(i,1:230));
+                preddisp_interp_t(i,:) = nan(size(disp_interp_t(i,:)));
+                
                 % SYS IDENT
                 % Unperturbed
                 Ts = (time_new(15)-time_new(14));
@@ -65,6 +67,9 @@ for f_sel= 1:3
                 if (sum(isnan(force_interp_t(i,:)))+sum(isnan(disp_interp_t(i,:)))) == 0
                     data_est_UPs = iddata(disp_interp_t(i,:)',force_interp_t(i,:)',Ts);
                     sysUP_s = tfest(data_est_UPs,2,0);
+                    opt = predictOptions('InitialCondition','z');
+                    [yp,~,~] = predict(sysUP_s,data_est_UPs,0,opt);
+                    preddisp_interp_t(i,:) = yp.OutputData;
                     [NUM_UPs,DEN_UPs] = tfdata(sysUP_s);
                     K_est_up_s(i) = DEN_UPs{1}(3)/NUM_UPs{1}(3);
                     B_est_up_s(i) = DEN_UPs{1}(2)/NUM_UPs{1}(3);
@@ -200,7 +205,7 @@ for f_sel= 1:3
         FIT_up = sysUP.Report.Fit.FitPercent;
         % bode(sysUP)
 
-        results.FD_UP{f_sel,d_sel} = {time_new;force_interp;disp_interp_t}; %Properly Cropped Force-Displacement Data
+        results.FD_UP{f_sel,d_sel} = {time_new;force_interp;disp_interp_t;preddisp_interp_t}; %Properly Cropped Force-Displacement Data
         results.avg_FD_UP{f_sel,d_sel} = [time_new;force_up_avg;disp_up_avg_t]; %Average Cropped Force-Displacement Data
         FD_UP_avg{f_sel,d_sel} = [time_new;force_up_avg_t;disp_up_avg_t];
         results.K_up(f_sel,d_sel) = K_est_up;

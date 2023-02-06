@@ -22,27 +22,27 @@ set(groot,'defaultTextInterpreter','latex');
 
 %6Subject Multiple Direction - Fall 2022 - Beginning of Human
 %Experimentation Data (Subj 1-6)
-% load('ss4379_4438_OPTupdate.mat');
+load('data/processedData/ss4379_4438_OPTupdate.mat');
 
 %3Subject Multiple Direction - Thanksgiving 2022 - Continiue of Human
 %Experimentation Data (Subj 7-9)
-% load('ss4446_4467.mat');
+% load('data/processedData/ss4446_4467.mat');
 
 %3Subject Multiple Direction - Early December 2022 - Continiue of Human
 %Experimentation Data (Subj 10-12)
-% load('ss4472_4495.mat');
+% load('data/processedData/ss4472_4495.mat');
 
 %3Subject Multiple Direction - Mid December 2022 - Continiue of Human
 %Experimentation Data (Subj 13-15)
-% load('ss4500_4524.mat');
+% load('data/processedData/ss4500_4524.mat');
 
 %3Subject Multiple Direction - Early January 2023 - Continiue of Human
 %Experimentation Data (Subj 16-18)
-% load('ss4530_4563.mat');
+% load('data/processedData/ss4530_4563.mat');
 
 %2Subject Multiple Direction - Late January 2023 - Continiue of Human
 %Experimentation Data (Subj 19-20)
-load('ss4573_4587.mat');
+% load('data/processedData/ss4573_4587.mat');
 
 %Check on Pulse with Ballistic Models
 % load('ss4253_4274.mat')
@@ -239,14 +239,15 @@ clc, close all
 % results = sys_force_hold_analysis(Data,idx_t,time_t,subj,dir);
 
 %------Imp. Ident and Kin. Analysis of All Subject and Directions
-for subj = 1:2
+for subj = 1:6
     for dir = 1:4
         BMI{subj} = subjprop.weight(subj)/((0.01*subjprop.height(subj))^2);
         results{subj+18,dir} = sys_id_ubr(Data,idx_t,time_t,subj,dir,subjprop);
-        resultsK{subj,dir} = sys_kin(Data,idx_t,time_t,subj,dir,subjprop);
+%         resultsK{subj,dir} = sys_kin(Data,idx_t,time_t,subj,dir,subjprop);
     end
-    subj+18
+    subj+0
 end
+save('data/processedData/ss4379_4438_OPTupdate_results.mat', 'results');
 %% Specific Data Removals for Anomalies
 
 %Subject 10, All Directions, Force 3, Displacement 1 --> not following
