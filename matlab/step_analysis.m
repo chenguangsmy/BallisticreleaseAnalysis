@@ -10,7 +10,7 @@ set(groot,'defaultTextInterpreter','latex');
 
 s = tf('s');
 
-load('step_force_WAM.mat');
+load('NotTrack/step_force_WAM.mat');
 
 m_n = 2; %[kg]
 b_n = 20; %[Ns/m]
@@ -141,6 +141,103 @@ ylabel('Disp. [mm]')
 subplot(4,1,4)
 plot(t,x_n*1000,'k'), hold on
 plot(tt,x_kvar(:,4)*1000), hold on
+plot([0.2 0.2],[0 50],'b'), hold on
+grid on
+xlabel('Time [s]')
+ylabel('Disp. [mm]')
+
+
+
+%Variable Damping
+a = 0.5;
+toff = 0.2;
+b = b_n*(1-a*exp(-(t-toff).^2/(2*0.05^2)));
+figure(),
+plot(t,b), grid on
+xlabel('Time [s]')
+ylabel('Damping [Ns/m]')
+
+i = 1;
+for toff = [0.03 0.06 0.1 0.2]
+    %Differential Equation
+    f = @(t,x) [x(2);-(b_n*(1-a*exp(-(t-toff).^2/(2*0.05^2)))/m_n)*x(2)-(k_n/m_n)*x(1)+F/m_n];
+
+    [tt,xx] = ode45(f,0:0.001:1,[0,0]);
+
+    x_bvar(:,i) = xx(:,1);
+    i = i + 1;
+end
+
+figure(),
+subplot(4,1,1)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_bvar(:,1)*1000), hold on
+plot([0.03 0.03],[0 50],'b'), hold on
+ylabel('Disp. [mm]')
+grid on
+subplot(4,1,2)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_bvar(:,2)*1000), hold on
+plot([0.06 0.06],[0 50],'b'), hold on
+grid on
+ylabel('Disp. [mm]')
+subplot(4,1,3)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_bvar(:,3)*1000), hold on
+plot([0.1 0.1],[0 50],'b'), hold on
+grid on
+ylabel('Disp. [mm]')
+subplot(4,1,4)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_bvar(:,4)*1000), hold on
+plot([0.2 0.2],[0 50],'b'), hold on
+grid on
+xlabel('Time [s]')
+ylabel('Disp. [mm]')
+
+
+%Variable mass
+a = 0.5;
+toff = 0.2;
+m = m_n*(1-a*exp(-(t-toff).^2/(2*0.05^2)));
+figure(),
+plot(t,m), grid on
+xlabel('Time [s]')
+ylabel('Mass [kg]')
+
+i = 1;
+for toff = [0.03 0.06 0.1 0.2]
+    %Differential Equation
+    f = @(t,x) [x(2);-(b_n/(m_n*(1-a*exp(-(t-toff).^2/(2*0.05^2)))))*x(2)-(k_n/(m_n*(1-a*exp(-(t-toff).^2/(2*0.05^2))))*x(1))+F/(m_n*(1-a*exp(-(t-toff).^2/(2*0.05^2))))];
+
+    [tt,xx] = ode45(f,0:0.001:1,[0,0]);
+
+    x_mvar(:,i) = xx(:,1);
+    i = i + 1;
+end
+
+figure(),
+subplot(4,1,1)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_mvar(:,1)*1000), hold on
+plot([0.03 0.03],[0 50],'b'), hold on
+ylabel('Disp. [mm]')
+grid on
+subplot(4,1,2)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_mvar(:,2)*1000), hold on
+plot([0.06 0.06],[0 50],'b'), hold on
+grid on
+ylabel('Disp. [mm]')
+subplot(4,1,3)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_mvar(:,3)*1000), hold on
+plot([0.1 0.1],[0 50],'b'), hold on
+grid on
+ylabel('Disp. [mm]')
+subplot(4,1,4)
+plot(t,x_n*1000,'k'), hold on
+plot(tt,x_mvar(:,4)*1000), hold on
 plot([0.2 0.2],[0 50],'b'), hold on
 grid on
 xlabel('Time [s]')
