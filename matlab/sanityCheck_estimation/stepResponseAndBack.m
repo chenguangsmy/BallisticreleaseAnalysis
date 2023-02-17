@@ -1,7 +1,7 @@
 % Step response and calculate its force back
 % Question: Why cannot I get the original force?
 
-% build a model with the 
+%% build a model with the actual step response
 clear, clc,
 % close all
 
@@ -39,3 +39,9 @@ sgtitle(['freq' num2str(freq)]);
 
 % conclusion: the step-response is able to predict step-force... 
 
+%% build a model with the theoratical impulse reseponse 
+x_pred_ir = impulse(G,t);
+figure(); hold on;
+plot(t, x_pred, 'k--');
+plot(t, x_pred_ir, 'b.-');
+legend('actual impulse', 'theoratical impulse')

@@ -1,7 +1,7 @@
 % Assume a pulse was exerted on a second-order system 
 % F(t) = Kx + Bx' + Mx''
-% close all; 
-% clear; 
+close all; 
+clear; 
 clc
 
 % build a transfer function
@@ -25,7 +25,8 @@ G=tf(num,den)
 Fs = 2000;
 t = linspace(0, 1, Fs);
 Ugus = gaussmf(t,[0.015 0.05])*15;
-Ugus = yF; % get from another script, aimed to do a position control
+% yF = Ugus * K_parm + [0 diff(Ugus)*Fs]*B_parm + [0 0 diff(Ugus,2)*Fs*Fs]*M_parm; 
+% Ugus = yF; 
 y = lsim(G, Ugus, t);
 
 % calculate the force from each component
@@ -145,3 +146,37 @@ xlabel('time (s)');
 ylabel('x (m)');
 sgtitle('force and displacement');
 
+%% compare the impulse response from a actual gaussian impulse, or from a ideal infinite impulse
+
+% Assume a pulse was exerted on a second-order system 
+% F(t) = Kx + Bx' + Mx''
+close all; 
+clear; 
+clc
+
+% build a transfer function
+K_parm = 250;
+M_parm = 2; 
+B_parm = 20;
+wn = sqrt(K_parm/M_parm);
+T = 2*pi*1/wn
+num = 1;
+den = [M_parm B_parm K_parm];
+
+
+G=tf(num,den)
+% create a gaussian force pulse
+Fs = 2000;
+t = linspace(0, 1, Fs);
+Ugus = gaussmf(t,[0.015 0.05])*15; %
+y_prac = lsim(G, Ugus, t);
+y_ideal= impulse(G,t);
+
+
+figure
+hold on; 
+plot(t, y_prac, 'k--');
+plot(t, y_ideal, 'b.-');
+legend('practical IR', 'theoratical IR');
+grid on;
+title(['K=', num2str(K_parm), ', M=', num2str(M_parm), ', T=', num2str(T)]);
