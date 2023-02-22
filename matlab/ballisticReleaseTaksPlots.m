@@ -758,6 +758,9 @@ classdef ballisticReleaseTaksPlots
             %PLOTEMG_RELEASE plot out the emg data at the time of release
             % use the mean and std
             %   Detailed explanation goes here
+            %
+            if_smooth = 1; 
+            % plotting below
             fh = figure('name', 'EMG', 'unit', 'inch', 'position', [0 0 6 12]);
             Fs = 500;
             col_type = colormap('lines');
@@ -772,8 +775,8 @@ classdef ballisticReleaseTaksPlots
             rows = 2 + length(emg_pair); % only plot position and the muscles 
             axh = zeros(rows, cols);
 %             subj_i  = 4;
-            subj_i  = 4;
-            dir_i   = 1;
+            subj_i  = 1;
+            dir_i   = 2;
             pert_i  = 1;
             for fce_i = 1:3
                 for dist_i = 1:3
@@ -801,6 +804,19 @@ classdef ballisticReleaseTaksPlots
                         for ch_i = 1:8
                         try
                         dat.emg(ch_i,trial_idx,:)=interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,index_t)',dat.t,'spline')';
+                        if (if_smooth)
+                            dattmp.emg_raw(ch_i,trial_idx,:) = interp1(obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.t(index_t),obj.data{subj_i,dir_i,fce_i,dist_i,trial_i,pert_i}.emg(ch_i,index_t)',dat.t,'spline')';
+                            dattmp.emg_rec(ch_i,trial_idx,:) = abs(dattmp.emg_raw(ch_i,trial_idx,:));
+                            dattmp.emg_smooth(ch_i,trial_idx,:) = smooth(dattmp.emg_rec(ch_i,trial_idx,:), 50);
+                            dat.emg(ch_i,trial_idx,:) = dattmp.emg_smooth(ch_i,trial_idx,:);
+%                             ifplot = 0;
+%                             if (ifplot)
+%                                 figure(); 
+%                                 hold on; 
+%                                 plot(reshape(dattmp.emg_rec(ch_i,trial_idx,:), size(dattmp.emg_rec(ch_i,trial_idx,:), 3), 1)); 
+%                                 plot(reshape(dattmp.emg_smooth(ch_i,trial_idx,:), size(dattmp.emg_rec(ch_i,trial_idx,:), 3), 1))
+%                             end
+                        end
                         catch 
                             disp(['no EMG this condition! fce' num2str(fce_i) ' dist' num2str(dist_i)]);
                         end

@@ -64,7 +64,7 @@ clc;
 
 a = 0.5;
 t = 0:1/freq:2;
-toff = 0.2;
+toff = 0.20;
 k = k_n*(1-a*exp(-(t-toff).^2/(2*0.05^2)));
 figure(),
 hold on;
@@ -129,49 +129,53 @@ figure(),
 subplot(4,1,1);
 hold on;
 plot([0.03 0.03],[0 50],'--b');
-plot(t,x_n*1000,':k');
+plot(t,x_n*1000);
 plot(tt,x_kvar(:,1)*1000);
-plot(tt,x_pred(:,1)*1000);
-legend('K trough', 'TI model', 'TV model', 'TI prediction');
+plot(tt,x_pred(:,1)*1000, ':k');
+legend('K peak time', 'TI model', 'TV model', 'TI fitting of TV');
 ylabel('Disp. [mm]');
 grid on
-title(['K' num2str(K_est_up_s(1)), ' fit' num2str(FIT_up_s(1))  '%']);
+% title(['K' num2str(K_est_up_s(1)), ' fit' num2str(FIT_up_s(1))  '%']);
+title('K peak at 0.03s');
 
 
 subplot(4,1,2);
 hold on;
 plot([0.06 0.06],[0 50],'--b');
-plot(t,x_n*1000,':k');
+plot(t,x_n*1000);
 plot(tt,x_kvar(:,2)*1000);
-plot(tt,x_pred(:,2)*1000);
+plot(tt,x_pred(:,2)*1000, ':k');
 grid on
-legend('K trough', 'TI model', 'TV model', 'TI prediction');
+% legend('K peak time', 'TI model', 'TV model', 'TI fitting of TV');
 ylabel('Disp. [mm]');
-title(['K' num2str(K_est_up_s(2)), ' fit' num2str(FIT_up_s(2))  '%']);
+% title(['K' num2str(K_est_up_s(2)), ' fit' num2str(FIT_up_s(2))  '%']);
+title('K peak at 0.06s')
 
 subplot(4,1,3)
 hold on;
 plot([0.1 0.1],[0 50],'--b');
-plot(t,x_n*1000,':k');
+plot(t,x_n*1000);
 plot(tt,x_kvar(:,3)*1000);
-plot(tt,x_pred(:,3)*1000);
+plot(tt,x_pred(:,3)*1000, ':k');
 grid on
-legend('K trough', 'TI model', 'TV model', 'TI prediction');
+% legend('K peak time', 'TI model', 'TV model', 'TI fitting of TV');
 ylabel('Disp. [mm]');
-title(['K' num2str(K_est_up_s(3)), ' fit' num2str(FIT_up_s(3))  '%']);
+% title(['K' num2str(K_est_up_s(3)), ' fit' num2str(FIT_up_s(3))  '%']);
+title('K peak at 0.10s')
 
 subplot(4,1,4)
 hold on;
 plot([0.2 0.2],[0 50],'--b');
-plot(t,x_n*1000,':k');
+plot(t,x_n*1000);
 plot(tt,x_kvar(:,4)*1000);
-plot(tt,x_pred(:,4)*1000);
+plot(tt,x_pred(:,4)*1000, ':k');
 grid on
 title(['K' num2str(K_est_up_s(4)), ' fit' num2str(FIT_up_s(4))  '%']);
 xlabel('Time [s]');
 ylabel('Disp. [mm]');
-legend('K trough', 'TI model', 'TV model', 'TI prediction');
-sgtitle('displacement variates with reflex delay');
+% legend('K peak time', 'TI model', 'TV model', 'TI fitting of TV');
+title('K peak at 0.20s')
+% sgtitle('displacement variates with reflex delay');
 
 %% Time-variant impedance on multiple values
 
@@ -247,7 +251,7 @@ end
 
 K_pred_all_arr = K_pred_all(:);
 FIT_pred_all_arr = FIT_pred_all(:);
-K_pred_all_arr(FIT_pred_all_arr<80) = nan;
+% K_pred_all_arr(FIT_pred_all_arr<80) = nan;
 K_pred_all_val = reshape(K_pred_all_arr,5,4);
 plot(toff_list, K_pred_all_val, 'o-', 'linewidth', 2);
 title('neglegable difference in model K and estimated K using TI model'); 
