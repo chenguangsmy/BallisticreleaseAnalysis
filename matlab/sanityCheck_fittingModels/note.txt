@@ -1,0 +1,19 @@
+This folder contains analysis on different models. 
+
+According to Dr. Loughlin's suggestion, fitting models can be adjusted so 
+that it can describe more "biological" effect. 
+
+Also, Chenguang think Dr. Loughlin want to test how Chenguang knows about 
+model fitting. Thus a document describsion is needed. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+According to Dr. Loughlin's suggestion, the following model will be tested:
+
+1. F(t) = k(x(t) - x0); 
+2. F(t) = k(x(t) - x0) + b(dx(t))
+3. F(t) = k(x(t) - x0) + b(dx(t)) + m(ddx(t))
+4. F(t) = k(x(t) - x0) + k(t-tau)(x(t) - x0) + b(dx(t)) + m(ddx(t))
+
+The model I'm using now is 3. My committee want to see the model prediction
+of 1. and 2., and 
+
